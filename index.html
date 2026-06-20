@@ -26,7 +26,7 @@
     --body:'Inter', sans-serif;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
+  html,body{margin:0;padding:0;overflow-x:hidden;}
   body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;}
 
   /* ---------- chapter nav ---------- */
@@ -62,7 +62,7 @@
   /* ---------- layout ---------- */
   .layout{display:grid;grid-template-columns:230px 1fr;gap:18px;}
   @media(max-width:760px){.layout{grid-template-columns:1fr;}}
-  .sidebar{display:flex;flex-direction:column;gap:14px;}
+  .sidebar{display:flex;flex-direction:column;gap:14px;min-width:0;}
   .level-tabs{display:flex;flex-direction:column;gap:6px;}
   @media(max-width:760px){.level-tabs{flex-direction:row;overflow-x:auto;padding-bottom:4px;}}
   .level-tab{text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--text);font-family:var(--body);transition:.15s;}
@@ -131,6 +131,68 @@
   .cursor{display:inline-block;width:7px;height:13px;background:var(--accent-soft);animation:blink 1s steps(1) infinite;vertical-align:-2px;}
   @keyframes blink{50%{opacity:0;}}
   .loading{padding:60px 0;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px;}
+
+  /* ========== 모바일 반응형 ========== */
+  @media(max-width:600px){
+    /* chapter nav */
+    #chapter-nav{padding:8px 12px;gap:6px;}
+    .ch-btn{font-size:11px;padding:6px 10px;}
+
+    /* app 패딩 */
+    #app{padding:14px 12px 80px;}
+
+    /* topbar */
+    .topbar{flex-direction:column;align-items:flex-start;gap:12px;margin-bottom:14px;}
+    .brand-title{font-size:20px;}
+    .brand-sub{font-size:12px;}
+    .top-stats{width:100%;}
+    .progress-wrap{min-width:0;width:100%;}
+    .reset-btn{font-size:11px;padding:6px 10px;}
+
+    /* 레이아웃: 사이드바를 위로 */
+    .layout{grid-template-columns:1fr;gap:12px;}
+
+    /* 레벨 탭 가로 스크롤 */
+    .level-tabs{flex-direction:row;overflow-x:auto;padding-bottom:6px;gap:6px;
+      scrollbar-width:none;}
+    .level-tabs::-webkit-scrollbar{display:none;}
+    .level-tab{flex:0 0 auto;min-width:140px;padding:8px 10px;}
+    .level-tab .lt-name{font-size:12px;}
+    .level-tab .lt-sub{font-size:10px;}
+
+    /* dot grid */
+    .dot-grid{grid-template-columns:repeat(10,1fr);gap:4px;padding:8px;}
+    .dot{font-size:8px;min-height:28px;}
+
+    /* kbd hint 숨기기 (모바일엔 키보드 단축키 불필요) */
+    .kbd-hint{display:none;}
+
+    /* 카드 */
+    .card{padding:14px 14px;gap:12px;border-radius:12px;}
+    .card-title{font-size:17px;}
+    .concept{font-size:13px;padding:9px 12px;}
+
+    /* 코드박스 */
+    .codebox{padding:10px 12px;font-size:12.5px;overflow-x:auto;}
+    .blank{font-size:12.5px;padding:8px 10px;}
+
+    /* 버튼 */
+    .btn{font-size:13px;padding:10px 14px;}
+    .actions{gap:6px;}
+    .btn-grade,.btn-ghost{width:100%;}
+
+    /* 네비 버튼 */
+    .nav-row{gap:8px;}
+    .btn-nav{flex:1;text-align:center;font-size:13px;padding:10px 8px;}
+
+    /* 정답 박스 */
+    .answer-box{padding:12px;}
+    .answer-box .al{font-size:12.5px;}
+
+    /* 터미널 */
+    .terminal{margin-top:14px;}
+    .terminal-body{height:120px;font-size:12px;}
+  }
 </style>
 <script src="ch1-basic-syntax/items/levels.js"></script>
 <script src="ch1-basic-syntax/items/questions.js"></script>
