@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java 기본 문법 (형변환·String·예외처리)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#15120D;
+    --surface:#1E1912;
+    --surface2:#241D15;
+    --code-bg:#0F0D09;
+    --border:#332B20;
+    --border-soft:#2A2318;
+    --accent:#D98C3D;
+    --accent-soft:#E8A552;
+    --success:#6FD9A0;
+    --fail:#E2604F;
+    --text:#F3ECDD;
+    --muted:#9C9284;
+    --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    --display:'Space Grotesk', sans-serif;
+    --body:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    min-height:100vh;
+  }
+  #app{max-width:1180px;margin:0 auto;padding:28px 20px 60px;}
+
+  /* ---------- topbar ---------- */
+  .topbar{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    gap:20px;flex-wrap:wrap;margin-bottom:22px;
+  }
+  .brand-eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+    color:var(--accent-soft);text-transform:uppercase;margin-bottom:6px;
+  }
+  .brand-title{
+    font-family:var(--display);font-weight:700;font-size:28px;
+    letter-spacing:-0.01em;margin:0;
+  }
+  .brand-sub{color:var(--muted);font-size:13px;margin-top:4px;}
+  .top-stats{display:flex;align-items:center;gap:14px;}
+  .progress-wrap{min-width:220px;}
+  .progress-label{
+    display:flex;justify-content:space-between;font-family:var(--mono);
+    font-size:12px;color:var(--muted);margin-bottom:6px;
+  }
+  .progress-label b{color:var(--text);font-weight:600;}
+  .progress-track{
+    height:8px;border-radius:99px;background:var(--surface2);
+    border:1px solid var(--border);overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-soft));
+    transition:width .3s ease;
+  }
+  .reset-btn{
+    font-family:var(--mono);font-size:12px;color:var(--muted);
+    background:transparent;border:1px solid var(--border);border-radius:8px;
+    padding:8px 12px;cursor:pointer;transition:.15s;
+  }
+  .reset-btn:hover{border-color:var(--fail);color:var(--fail);}
+
+  /* ---------- layout ---------- */
+  .layout{display:grid;grid-template-columns:230px 1fr;gap:18px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+
+  .sidebar{display:flex;flex-direction:column;gap:14px;}
+  .level-tabs{display:flex;flex-direction:column;gap:6px;}
+  @media(max-width:760px){.level-tabs{flex-direction:row;overflow-x:auto;padding-bottom:4px;}}
+  .level-tab{
+    text-align:left;background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--text);
+    font-family:var(--body);transition:.15s;
+  }
+  @media(max-width:760px){.level-tab{flex:0 0 auto;min-width:150px;}}
+  .level-tab:hover{border-color:var(--accent-soft);}
+  .level-tab.active{border-color:var(--accent);background:var(--surface2);}
+  .level-tab .lt-name{font-weight:600;font-size:13px;}
+  .level-tab .lt-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+  .level-tab .lt-count{
+    font-family:var(--mono);font-size:11px;color:var(--accent-soft);margin-top:6px;
+  }
+
+  .dot-grid{
+    display:grid;grid-template-columns:repeat(6,1fr);gap:6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;
+  }
+  @media(max-width:760px){.dot-grid{grid-template-columns:repeat(10,1fr);}}
+  .dot{
+    aspect-ratio:1;border-radius:6px;border:1px solid var(--border);
+    background:var(--surface2);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;transition:.15s;
+  }
+  .dot:hover{border-color:var(--accent-soft);}
+  .dot.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+  .dot.pass{background:rgba(111,217,160,.14);border-color:var(--success);color:var(--success);}
+  .dot.fail{background:rgba(226,96,79,.14);border-color:var(--fail);color:var(--fail);}
+  .dot.bookmarked{outline:2px solid var(--accent-soft);outline-offset:1px;}
+
+  .kbd-hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px;}
+  .kbd-hint kbd{
+    background:var(--surface2);border:1px solid var(--border);border-radius:4px;
+    padding:1px 5px;font-family:var(--mono);font-size:10.5px;color:var(--text);
+  }
+
+  /* ---------- question card ---------- */
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:22px 24px;display:flex;flex-direction:column;gap:14px;
+  }
+  .card-eyebrow{
+    font-family:var(--mono);font-size:11px;color:var(--accent-soft);
+    letter-spacing:.08em;text-transform:uppercase;
+  }
+  .card-title{font-family:var(--display);font-size:21px;font-weight:600;margin:0;}
+  .concept{
+    background:var(--surface2);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:10px 14px;font-size:13.5px;line-height:1.6;color:var(--text);
+  }
+  .concept b{color:var(--accent-soft);}
+
+  .codebox{
+    background:var(--code-bg);border:1px solid var(--border-soft);border-radius:10px;
+    padding:14px 16px;font-family:var(--mono);font-size:13.5px;line-height:1.7;
+  }
+  .cl{white-space:pre-wrap;color:var(--text);}
+  .cl.muted{color:var(--muted);}
+  .blank{
+    width:100%;resize:vertical;background:#191309;border:1px dashed var(--accent-soft);
+    border-radius:6px;color:var(--accent-soft);font-family:var(--mono);font-size:13.5px;
+    padding:8px 10px;margin:4px 0;outline:none;
+  }
+  .blank:focus{border-style:solid;border-color:var(--accent);}
+  .expected{
+    font-family:var(--mono);font-size:12.5px;color:var(--muted);
+  }
+  .expected code{color:var(--accent-soft);background:none;}
+
+  .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .btn{
+    font-family:var(--body);font-weight:600;font-size:13px;border-radius:8px;
+    padding:9px 16px;cursor:pointer;border:1px solid var(--border);transition:.15s;
+  }
+  .btn-grade{background:var(--accent);border-color:var(--accent);color:#191309;}
+  .btn-grade:hover{background:var(--accent-soft);}
+  .btn-ghost{background:transparent;color:var(--muted);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--accent-soft);}
+  .btn-nav{background:var(--surface2);color:var(--text);}
+  .btn-nav:hover{border-color:var(--accent-soft);}
+  .btn-nav:disabled{opacity:.35;cursor:not-allowed;}
+
+  .feedback{
+    font-family:var(--mono);font-size:13px;border-radius:8px;padding:9px 12px;display:none;
+  }
+  .feedback.show{display:block;}
+  .feedback.pass{background:rgba(111,217,160,.12);color:var(--success);border:1px solid rgba(111,217,160,.3);}
+  .feedback.fail{background:rgba(226,96,79,.12);color:var(--fail);border:1px solid rgba(226,96,79,.3);}
+
+  .answer-box{
+    display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;
+  }
+  .answer-box.show{display:block;}
+  .answer-box .lbl{font-family:var(--mono);font-size:11px;color:var(--accent-soft);margin-bottom:8px;letter-spacing:.06em;}
+  .answer-box .al{font-family:var(--mono);font-size:13.5px;color:var(--text);white-space:pre-wrap;}
+  .answer-box .note{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6;}
+
+  .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:4px;}
+  .nav-row .pos{font-family:var(--mono);font-size:12px;color:var(--muted);}
+
+  /* ---------- terminal log ---------- */
+  .terminal{
+    margin-top:20px;background:var(--code-bg);border:1px solid var(--border-soft);
+    border-radius:12px;overflow:hidden;
+  }
+  .terminal-head{
+    display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--surface2);
+    border-bottom:1px solid var(--border-soft);font-family:var(--mono);font-size:11.5px;color:var(--muted);
+  }
+  .terminal-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
+  .terminal-body{
+    height:150px;overflow-y:auto;padding:12px 14px;font-family:var(--mono);
+    font-size:12.5px;line-height:1.7;color:var(--muted);
+  }
+  .terminal-body .ln{white-space:pre-wrap;}
+  .terminal-body .ln.pass{color:var(--success);}
+  .terminal-body .ln.fail{color:var(--fail);}
+  .terminal-body .ln.cmd{color:var(--accent-soft);}
+  .cursor{display:inline-block;width:7px;height:13px;background:var(--accent-soft);
+    animation:blink 1s steps(1) infinite;vertical-align:-2px;}
+  @keyframes blink{50%{opacity:0;}}
+
+  .loading{padding:60px 0;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px;}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">진행 상황 불러오는 중...</div></div>
+
+<script>
+(function(){
+
+  /* ============ 데이터 ============ */
+  var LEVELS = [
+    {id:0, name:'1장 형변환 기초', sub:'캐스팅 · char ↔ int'},
+    {id:1, name:'2장 형변환 응용', sub:'문자열 ↔ 숫자 변환, 파싱'},
+    {id:2, name:'3장 String 비교와 검색', sub:'equals · contains · indexOf'},
+    {id:3, name:'4장 String 자르기와 변형', sub:'substring · split · replace'},
+    {id:4, name:'5장 예외처리 기초', sub:'try-catch-finally · throws'},
+    {id:5, name:'6장 변형 연습', sub:'같은 패턴, 다른 데이터로 반복'}
+  ];
+
+  var QUESTIONS = [
+    {id:'CAST1', level:0, title:'int → double 자동 형변환',
+     concept:'더 작은 범위의 타입에서 더 큰 범위의 타입으로 옮겨 담을 때는, 자바가 알아서 변환해줍니다. 따로 표시를 해주지 않아도 됩니다.',
+     before:['int a = 7;'], placeholder:['// TODO: a를 double 타입 b에 대입'],
+     after:['System.out.println(b);'],
+     expected:'7.0', answer:['double b = a;'], note:'',
+     regex:[/double\s*b\s*=\s*a\s*;?/]},
+
+    {id:'CAST2', level:0, title:'double → int 명시적 캐스팅',
+     concept:'반대로 더 큰 범위에서 더 작은 범위로 옮길 때는 정보 손실 가능성이 있어서, 괄호로 타입을 명시해 "이 손실을 감수하겠다"고 알려줘야 합니다.',
+     before:['double d = 3.9;'], placeholder:['// TODO: d를 int로 캐스팅해서 i에 저장'],
+     after:['System.out.println(i);'],
+     expected:'3', answer:['int i = (int) d;'],
+     note:'소수점 이하는 반올림되지 않고 그냥 버려집니다(truncation). 3.9가 4가 아니라 3이 되는 이유입니다.',
+     regex:[/int\s*i\s*=\s*\(\s*int\s*\)\s*d\s*;?/]},
+
+    {id:'CAST3', level:0, title:'⚠️ 함정: 정수 나눗셈의 소수점',
+     concept:'두 정수(int)를 나누면, 결과도 int로 계산되어 소수점 이하가 잘립니다. 둘 중 하나라도 double로 만들어야 소수점이 살아남습니다.',
+     before:['int a = 7, b = 2;'], placeholder:['// TODO: 정수 나눗셈의 소수점까지 살려서 result에 저장 (double)'],
+     after:['System.out.println(result);'],
+     expected:'3.5', answer:['double result = (double) a / b;'],
+     note:'(double) a / b처럼 둘 중 하나만 캐스팅해도 전체 연산이 double 연산으로 승격됩니다. 반대로 a / b를 먼저 계산한 뒤 double로 캐스팅하면 이미 정수 나눗셈이 끝난 뒤라 3.0이 됩니다.',
+     regex:[/double\s*result\s*=\s*\(\s*double\s*\)\s*a\s*\/\s*b\s*;?/]},
+
+    {id:'CAST4', level:0, title:'char 연산 결과를 다시 char로',
+     concept:'char는 사실 내부적으로 정수(유니코드 코드값)로 저장됩니다. char에 정수를 더하면 그 정수만큼 코드값이 이동한 결과가 int로 나오는데, 이를 다시 char로 받으려면 캐스팅이 필요합니다.',
+     before:['char c = \'a\';'], placeholder:['// TODO: c에서 알파벳 2칸 뒤 문자를 ch2에 저장 (char)'],
+     after:['System.out.println(ch2);'],
+     expected:'c', answer:['char ch2 = (char) (c + 2);'],
+     note:'char + int 연산 결과는 자동으로 int로 승격되기 때문에, 다시 char에 담으려면 명시적 캐스팅이 필요합니다.',
+     regex:[/char\s*ch2\s*=\s*\(\s*char\s*\)\s*\(\s*c\s*\+\s*2\s*\)\s*;?/]},
+
+    {id:'CAST5', level:0, title:'int → String 변환 (문자열 덧셈)',
+     concept:'숫자를 문자열로 바꾸는 가장 간단한 방법은, 빈 문자열을 더하는 것입니다. 자바가 자동으로 문자열 변환을 해줍니다.',
+     before:['int num = 42;'], placeholder:['// TODO: num을 문자열로 변환해 str에 저장 (빈 문자열 덧셈 이용)'],
+     after:['System.out.println(str);'],
+     expected:'42', answer:['String str = "" + num;'], note:'',
+     regex:[/String\s*str\s*=\s*""\s*\+\s*num\s*;?/]},
+
+    {id:'CAST6', level:0, title:'int → String 변환 (표준 메서드)',
+     concept:'""를 더하는 방식 말고, 의도가 더 명확하게 드러나는 표준 메서드가 따로 있습니다. 정적(static) 메서드라서 클래스 이름으로 바로 호출합니다.',
+     before:['int num = 42;'], placeholder:['// TODO: String.valueOf를 이용해 num을 문자열로 변환'],
+     after:['System.out.println(str);'],
+     expected:'42', answer:['String str = String.valueOf(num);'],
+     note:'Integer.toString(num)도 동일하게 동작합니다.',
+     regex:[/String\s*str\s*=\s*String\.valueOf\s*\(\s*num\s*\)\s*;?/]},
+
+    {id:'CAST7', level:0, title:'char → int (유니코드 코드값)',
+     concept:'반대로 char를 int로 캐스팅하면, 해당 문자의 유니코드 코드값을 숫자로 얻을 수 있습니다.',
+     before:['char c = \'A\';'], placeholder:['// TODO: c의 유니코드 코드값을 code에 저장 (int)'],
+     after:['System.out.println(code);'],
+     expected:'65', answer:['int code = (int) c;'], note:'',
+     regex:[/int\s*code\s*=\s*\(\s*int\s*\)\s*c\s*;?/]},
+
+    {id:'PARSE1', level:1, title:'String → int (Integer.parseInt)',
+     concept:'문자열로 들어온 숫자를 실제 계산에 쓰려면, 정수로 파싱(parsing)해야 합니다. 정적 메서드를 이용합니다.',
+     before:['String str = "123";'], placeholder:['// TODO: str을 정수로 변환해 num에 저장'],
+     after:['System.out.println(num + 1);'],
+     expected:'124', answer:['int num = Integer.parseInt(str);'], note:'',
+     regex:[/int\s*num\s*=\s*Integer\.parseInt\s*\(\s*str\s*\)\s*;?/]},
+
+    {id:'PARSE2', level:1, title:'String → double (Double.parseDouble)',
+     concept:'정수가 아니라 실수 형태의 문자열을 변환하고 싶을 때 쓰는, parseInt와 짝을 이루는 메서드가 있습니다.',
+     before:['String str = "3.14";'], placeholder:['// TODO: str을 double로 변환해 d에 저장'],
+     after:['System.out.println(d);'],
+     expected:'3.14', answer:['double d = Double.parseDouble(str);'], note:'',
+     regex:[/double\s*d\s*=\s*Double\.parseDouble\s*\(\s*str\s*\)\s*;?/]},
+
+    {id:'PARSE3', level:1, title:'char[] → String 변환',
+     concept:'char 배열을 하나의 문자열로 합치고 싶을 때 쓰는 생성자가 있습니다.',
+     before:['char[] chars = {\'h\',\'i\'};'], placeholder:['// TODO: chars를 합쳐서 String s로 만들기'],
+     after:['System.out.println(s);'],
+     expected:'hi', answer:['String s = new String(chars);'], note:'',
+     regex:[/String\s*s\s*=\s*new\s*String\s*\(\s*chars\s*\)\s*;?/]},
+
+    {id:'PARSE4', level:1, title:'String → char[] 변환',
+     concept:'반대로 문자열을 한 글자씩 다루고 싶을 때, char 배열로 쪼개주는 메서드가 있습니다.',
+     before:['String s = "hi";'], placeholder:['// TODO: s를 char 배열 chars로 변환'],
+     after:['System.out.println(chars.length);'],
+     expected:'2', answer:['char[] chars = s.toCharArray();'], note:'',
+     regex:[/char\s*\[\s*\]\s*chars\s*=\s*s\.toCharArray\s*\(\s*\)\s*;?/]},
+
+    {id:'PARSE5', level:1, title:'Wrapper 객체에서 기본형 꺼내기',
+     concept:'Integer 객체에서 int 값을 직접 꺼내는 메서드가 있습니다 (보통은 오토언박싱으로 자동 처리되지만, 메서드 이름 자체를 알아두면 좋습니다).',
+     before:['Integer obj = 100;'], placeholder:['// TODO: obj에서 int 값을 꺼내 num에 저장'],
+     after:['System.out.println(num);'],
+     expected:'100', answer:['int num = obj.intValue();'],
+     note:'int num = obj;로도 자동 언박싱되어 동일하게 동작합니다.',
+     regex:[/int\s*num\s*=\s*obj\.intValue\s*\(\s*\)\s*;?/]},
+
+    {id:'PARSE6', level:1, title:'⚠️ 함정: 문자열 덧셈의 연산 순서',
+     concept:'+ 연산자는 왼쪽부터 순서대로 계산됩니다. 숫자끼리 먼저 더해진 뒤에 문자열과 합쳐지는지, 아니면 문자열과 먼저 합쳐져 버리는지에 따라 결과가 완전히 달라집니다.',
+     before:['int a = 1, b = 2;'], placeholder:['// TODO: "Sum: 3"이 출력되도록, a+b를 먼저 계산해서 문자열에 붙이기'],
+     after:[],
+     expected:'Sum: 3', answer:['System.out.println("Sum: " + (a + b));'],
+     note:'System.out.println("Sum: " + a + b)라고 쓰면 "Sum: " + a가 먼저 문자열로 합쳐져 "Sum: 1"이 되고, 거기에 b가 또 문자열로 이어붙어서 "Sum: 12"라는 의도치 않은 결과가 나옵니다. 괄호로 a+b를 먼저 묶어야 합니다.',
+     regex:[/System\.out\.println\s*\(\s*"Sum:\s*"\s*\+\s*\(\s*a\s*\+\s*b\s*\)\s*\)\s*;?/]},
+
+    {id:'STR1', level:2, title:'문자열 길이 구하기',
+     concept:'문자열의 글자 수를 알고 싶을 때 쓰는 메서드입니다. 배열의 length 필드와 달리, String은 메서드 호출(괄호)이 필요합니다.',
+     before:['String s = "hello";'], placeholder:['// TODO: s의 길이를 len에 저장'],
+     after:['System.out.println(len);'],
+     expected:'5', answer:['int len = s.length();'],
+     note:'배열은 arr.length(필드), 문자열은 s.length()(메서드)라서 괄호 유무가 다릅니다.',
+     regex:[/int\s*len\s*=\s*s\.length\s*\(\s*\)\s*;?/]},
+
+    {id:'STR2', level:2, title:'⚠️ 함정: == 대신 equals()로 비교',
+     concept:'자바에서 ==는 두 변수가 "같은 객체를 가리키는지"를 비교하고, 문자열의 내용이 같은지는 별도의 메서드로 비교해야 합니다. 특히 new String()으로 만든 문자열은 내용이 같아도 ==가 false를 반환할 수 있습니다.',
+     before:['String a = new String("hi");','String b = "hi";'], placeholder:['// TODO: a와 b의 내용이 같은지 비교해 same에 저장'],
+     after:['System.out.println(same);'],
+     expected:'true', answer:['boolean same = a.equals(b);'],
+     note:'a == b는 false입니다 — new String()으로 만든 a는 b와 다른 객체이기 때문입니다. 내용 비교는 항상 equals()를 쓰세요.',
+     regex:[/boolean\s*same\s*=\s*a\.equals\s*\(\s*b\s*\)\s*;?/]},
+
+    {id:'STR3', level:2, title:'대소문자 무시 비교',
+     concept:'대소문자 차이를 무시하고 내용만 비교하고 싶을 때 쓰는 메서드가 따로 있습니다.',
+     before:['String a = "Hello";','String b = "HELLO";'], placeholder:['boolean same = /* TODO */;'],
+     after:['System.out.println(same);'],
+     expected:'true', answer:['boolean same = a.equalsIgnoreCase(b);'], note:'',
+     regex:[/boolean\s*same\s*=\s*a\.equalsIgnoreCase\s*\(\s*b\s*\)\s*;?/]},
+
+    {id:'STR4', level:2, title:'특정 문자열 포함 여부',
+     concept:'한 문자열 안에 다른 문자열이 포함되어 있는지 확인하는 메서드가 있습니다.',
+     before:['String s = "hello world";'], placeholder:['boolean has = /* TODO */;'],
+     after:['System.out.println(has);'],
+     expected:'true', answer:['boolean has = s.contains("world");'], note:'',
+     regex:[/boolean\s*has\s*=\s*s\.contains\s*\(\s*"world"\s*\)\s*;?/]},
+
+    {id:'STR5', level:2, title:'끝 문자열 확인',
+     concept:'문자열이 특정 접미사(suffix)로 끝나는지 확인하는 메서드가 있습니다. 시작 부분을 확인하는 메서드도 짝으로 존재합니다.',
+     before:['String s = "hello.txt";'], placeholder:['boolean isTxt = /* TODO */;'],
+     after:['System.out.println(isTxt);'],
+     expected:'true', answer:['boolean isTxt = s.endsWith(".txt");'], note:'시작 부분 확인은 startsWith()를 사용합니다.',
+     regex:[/boolean\s*isTxt\s*=\s*s\.endsWith\s*\(\s*"\.txt"\s*\)\s*;?/]},
+
+    {id:'STR6', level:2, title:'문자열 위치 찾기',
+     concept:'특정 부분 문자열이 처음 등장하는 위치(인덱스)를 찾는 메서드가 있습니다. 없으면 -1을 반환합니다.',
+     before:['String s = "hello world";'], placeholder:['// TODO: "world"가 시작하는 인덱스를 idx에 저장'],
+     after:['System.out.println(idx);'],
+     expected:'6', answer:['int idx = s.indexOf("world");'], note:'',
+     regex:[/int\s*idx\s*=\s*s\.indexOf\s*\(\s*"world"\s*\)\s*;?/]},
+
+    {id:'STR7', level:2, title:'특정 위치의 문자 가져오기',
+     concept:'문자열에서 특정 인덱스의 문자 하나만 꺼내오는 메서드가 있습니다. 반환 타입이 String이 아니라 char라는 점에 주의하세요.',
+     before:['String s = "hello";'], placeholder:['// TODO: 인덱스 1의 문자를 ch에 저장 (char)'],
+     after:['System.out.println(ch);'],
+     expected:'e', answer:['char ch = s.charAt(1);'], note:'',
+     regex:[/char\s*ch\s*=\s*s\.charAt\s*\(\s*1\s*\)\s*;?/]},
+
+    {id:'STR8', level:2, title:'사전순 비교',
+     concept:'두 문자열의 사전순(lexicographic) 순서를 비교해서, 음수/0/양수로 결과를 알려주는 메서드가 있습니다. 정렬 시 비교자(Comparator)를 직접 만들 때 자주 사용됩니다.',
+     before:['String a = "apple";','String b = "banana";'], placeholder:['// TODO: a와 b를 사전순으로 비교해 cmp에 저장 (int)'],
+     after:['System.out.println(cmp < 0);'],
+     expected:'true', answer:['int cmp = a.compareTo(b);'],
+     note:'a가 b보다 사전순으로 앞서면 음수가 반환됩니다.',
+     regex:[/int\s*cmp\s*=\s*a\.compareTo\s*\(\s*b\s*\)\s*;?/]},
+
+    {id:'SUB1', level:3, title:'부분 문자열 자르기 (한 인자)',
+     concept:'특정 인덱스부터 끝까지 잘라내는 메서드가 있습니다.',
+     before:['String s = "hello world";'], placeholder:['// TODO: 인덱스 6부터 끝까지 잘라서 sub에 저장'],
+     after:['System.out.println(sub);'],
+     expected:'world', answer:['String sub = s.substring(6);'], note:'',
+     regex:[/String\s*sub\s*=\s*s\.substring\s*\(\s*6\s*\)\s*;?/]},
+
+    {id:'SUB2', level:3, title:'부분 문자열 자르기 (두 인자)',
+     concept:'시작과 끝 인덱스를 둘 다 지정해서 자를 수도 있습니다. 끝 인덱스는 포함되지 않는다는 점에 주의하세요 (배열의 Arrays.fill과 같은 규칙입니다).',
+     before:['String s = "hello world";'], placeholder:['// TODO: 인덱스 0부터 5 직전까지 잘라서 sub에 저장'],
+     after:['System.out.println(sub);'],
+     expected:'hello', answer:['String sub = s.substring(0, 5);'], note:'',
+     regex:[/String\s*sub\s*=\s*s\.substring\s*\(\s*0\s*,\s*5\s*\)\s*;?/]},
+
+    {id:'SUB3', level:3, title:'구분자로 분리하기',
+     concept:'특정 구분자를 기준으로 문자열을 여러 조각으로 쪼개서 배열로 돌려주는 메서드가 있습니다.',
+     before:['String s = "a,b,c";'], placeholder:['// TODO: 쉼표(,) 기준으로 분리해 parts 배열에 저장'],
+     after:['System.out.println(parts.length);'],
+     expected:'3', answer:['String[] parts = s.split(",");'], note:'',
+     regex:[/String\s*\[\s*\]\s*parts\s*=\s*s\.split\s*\(\s*","\s*\)\s*;?/]},
+
+    {id:'SUB4', level:3, title:'문자열 치환',
+     concept:'문자열 안의 특정 부분을 다른 문자열로 바꿔주는 메서드가 있습니다. 원본은 바뀌지 않고, 바뀐 결과를 담은 새 문자열이 반환됩니다 — String은 불변(immutable)이라는 걸 기억하세요.',
+     before:['String s = "hello world";'], placeholder:['// TODO: "world"를 "java"로 바꿔서 result에 저장'],
+     after:['System.out.println(result);'],
+     expected:'hello java', answer:['String result = s.replace("world", "java");'], note:'',
+     regex:[/String\s*result\s*=\s*s\.replace\s*\(\s*"world"\s*,\s*"java"\s*\)\s*;?/]},
+
+    {id:'SUB5', level:3, title:'양 끝 공백 제거',
+     concept:'문자열 양 끝에 붙은 공백을 제거하는 메서드가 있습니다. 사이의 공백은 건드리지 않습니다.',
+     before:['String s = "  hi  ";'], placeholder:['// TODO: 양 끝 공백을 제거해 result에 저장'],
+     after:['System.out.println("[" + result + "]");'],
+     expected:'[hi]', answer:['String result = s.trim();'], note:'',
+     regex:[/String\s*result\s*=\s*s\.trim\s*\(\s*\)\s*;?/]},
+
+    {id:'SUB6', level:3, title:'대문자/소문자 변환',
+     concept:'문자열 전체를 대문자 또는 소문자로 바꿔주는 메서드가 있습니다.',
+     before:['String s = "Hello";'], placeholder:['// TODO: s를 모두 소문자로 바꿔 result에 저장'],
+     after:['System.out.println(result);'],
+     expected:'hello', answer:['String result = s.toLowerCase();'], note:'',
+     regex:[/String\s*result\s*=\s*s\.toLowerCase\s*\(\s*\)\s*;?/]},
+
+    {id:'SUB7', level:3, title:'여러 문자열을 구분자로 합치기',
+     concept:'여러 문자열을 정해진 구분자로 이어붙이는 정적 메서드가 있습니다. 반복문 없이 한 줄로 처리할 수 있습니다.',
+     before:[], placeholder:['// TODO: "a", "b", "c"를 "-"로 이어붙여 result에 저장'],
+     after:['System.out.println(result);'],
+     expected:'a-b-c', answer:['String result = String.join("-", "a", "b", "c");'], note:'',
+     regex:[/String\s*result\s*=\s*String\.join\s*\(\s*"-"\s*,\s*"a"\s*,\s*"b"\s*,\s*"c"\s*\)\s*;?/]},
+
+    {id:'SUB8', level:3, title:'⚠️ 함정: String은 불변(immutable)',
+     concept:'String의 메서드들은 원본을 수정하지 않고, 항상 "새로운 문자열"을 반환합니다. 반환값을 변수에 다시 담지 않으면 변경 사항이 사라집니다.',
+     before:['String s = "hello";'], placeholder:['// TODO: s를 대문자로 바꾸고, 그 결과를 다시 s에 저장'],
+     after:['System.out.println(s);'],
+     expected:'HELLO', answer:['s = s.toUpperCase();'],
+     note:'s.toUpperCase();라고만 쓰면 새 문자열이 만들어지기만 하고 어디에도 저장되지 않아서, s는 여전히 "hello"인 채로 남습니다. String이 불변(immutable)이기 때문에 항상 반환값을 받아서 재할당해야 합니다.',
+     regex:[/s\s*=\s*s\.toUpperCase\s*\(\s*\)\s*;?/]},
+
+    {id:'EXC1', level:4, title:'기본 try-catch 구조',
+     concept:'예외가 발생할 수 있는 코드는 try 블록 안에, 예외가 발생했을 때 실행할 코드는 catch 블록 안에 작성합니다. catch 옆 괄호에는 잡고 싶은 예외 타입을 적습니다.',
+     before:['int a = 10, b = 0;','int result;'],
+     placeholder:['// TODO: a를 b로 나누되, ArithmeticException이 발생하면 result에 -1 저장'], rows:4,
+     after:['System.out.println(result);'],
+     expected:'-1',
+     answer:['try {','    result = a / b;','} catch (ArithmeticException e) {','    result = -1;','}'],
+     note:'정수를 0으로 나누면 ArithmeticException("/ by zero")이 발생합니다. (참고: 0.0으로 나누면 예외 대신 Infinity가 나옵니다 — 정수와 실수의 차이입니다)',
+     regex:[/try\s*\{[\s\S]*result\s*=\s*a\s*\/\s*b\s*;[\s\S]*\}\s*catch\s*\(\s*ArithmeticException\s+\w+\s*\)\s*\{[\s\S]*result\s*=\s*-1\s*;[\s\S]*\}/]},
+
+    {id:'EXC2', level:4, title:'finally 블록',
+     concept:'try나 catch에서 무슨 일이 일어나든(예외가 나든 안 나든) 항상 마지막에 실행되는 블록이 있습니다. 자원 정리(파일 닫기 등)에 자주 쓰입니다.',
+     before:['try {','    int x = 10 / 0;','} catch (ArithmeticException e) {','    System.out.println("error");'],
+     placeholder:['// TODO: 위 catch 블록 뒤에, 항상 실행되는 finally 블록을 추가하고 "done" 출력'], rows:3,
+     after:[],
+     expected:'error, done',
+     answer:['} finally {','    System.out.println("done");','}'],
+     note:'finally는 catch 블록의 닫는 중괄호 바로 뒤에, 같은 try문의 일부로 이어붙여야 합니다.',
+     regex:[/\}\s*finally\s*\{[\s\S]*println\s*\(\s*"done"\s*\)[\s\S]*\}/]},
+
+    {id:'EXC3', level:4, title:'throw로 예외 직접 발생시키기',
+     concept:'특정 조건에서 일부러 예외를 발생시키고 싶을 때 쓰는 키워드가 있습니다. new로 예외 객체를 만들어서 던집니다.',
+     before:['int age = -5;','try {'],
+     placeholder:['    // TODO: age가 음수면 IllegalArgumentException 발생시키기 (메시지: "invalid age")'],
+     after:['} catch (IllegalArgumentException e) {','    System.out.println(e.getMessage());','}'],
+     expected:'invalid age',
+     answer:['if (age < 0) { throw new IllegalArgumentException("invalid age"); }'],
+     note:'throw는 예외를 직접 발생시키는 키워드입니다. 메서드 선언부에 붙는 throws와 혼동하지 마세요.',
+     regex:[/if\s*\(\s*age\s*<\s*0\s*\)\s*\{?\s*throw\s*new\s*IllegalArgumentException\s*\(\s*"invalid age"\s*\)\s*;?\s*\}?/]},
+
+    {id:'EXC4', level:4, title:'catch 블록 여러 개 (예외 타입별 처리)',
+     concept:'서로 다른 종류의 예외를 각각 다르게 처리하고 싶을 때는, catch 블록을 여러 개 나열합니다. 위에서부터 순서대로, 발생한 예외 타입과 일치하는 첫 번째 catch가 실행됩니다.',
+     before:['int[] arr = {1, 2, 3};','int idx = 5;'],
+     placeholder:['// TODO: arr[idx] 접근을 try로 감싸고, ArrayIndexOutOfBoundsException은 "index error",','//       그 외 Exception은 "other error"로 각각 출력'], rows:5,
+     after:[],
+     expected:'index error',
+     answer:['try {','    int x = arr[idx];','} catch (ArrayIndexOutOfBoundsException e) {','    System.out.println("index error");','} catch (Exception e) {','    System.out.println("other error");','}'],
+     note:'catch 블록은 위에서부터 순서대로 검사되므로, 더 구체적인 예외 타입을 먼저, 더 포괄적인 타입(Exception 등)을 나중에 적어야 합니다. 순서가 바뀌면 컴파일 에러가 납니다.',
+     regex:[/try\s*\{[\s\S]*arr\s*\[\s*idx\s*\][\s\S]*\}\s*catch\s*\(\s*ArrayIndexOutOfBoundsException\s+\w+\s*\)\s*\{[\s\S]*println\s*\(\s*"index error"\s*\)[\s\S]*\}\s*catch\s*\(\s*Exception\s+\w+\s*\)\s*\{[\s\S]*println\s*\(\s*"other error"\s*\)[\s\S]*\}/]},
+
+    {id:'EXC5', level:4, title:'throws로 떠넘긴 예외, 호출부에서 처리',
+     concept:'메서드가 예외를 직접 처리하지 않고 호출한 쪽으로 떠넘기겠다고 선언할 때 throws를 씁니다. 그러면 그 메서드를 호출하는 쪽에서 대신 처리해야 합니다.',
+     before:['// parseAge 메서드는 throws NumberFormatException으로 선언되어 있다고 가정','// public static int parseAge(String s) throws NumberFormatException { return Integer.parseInt(s); }','String input = "abc";'],
+     placeholder:['// TODO: parseAge(input) 호출을 try로 감싸고, NumberFormatException 발생 시 "invalid number" 출력'], rows:4,
+     after:[],
+     expected:'invalid number',
+     answer:['try {','    int age = parseAge(input);','} catch (NumberFormatException e) {','    System.out.println("invalid number");','}'],
+     note:'throws는 메서드가 "이 예외는 내가 처리 안 하고 호출한 쪽에 떠넘긴다"고 선언하는 키워드입니다. throw(예외를 직접 발생시키는 키워드)와 철자가 비슷하니 헷갈리지 마세요.',
+     regex:[/try\s*\{[\s\S]*parseAge\s*\(\s*input\s*\)[\s\S]*\}\s*catch\s*\(\s*NumberFormatException\s+\w+\s*\)\s*\{[\s\S]*println\s*\(\s*"invalid number"\s*\)[\s\S]*\}/]},
+
+    {id:'EXC6', level:4, title:'자주 만나는 예외: NullPointerException',
+     concept:'null인 객체의 메서드를 호출하려고 하면 발생하는, 코딩테스트에서 정말 자주 마주치는 예외입니다.',
+     before:['String s = null;','int len;'],
+     placeholder:['// TODO: s.length() 호출을 try로 감싸고, NullPointerException 발생 시 len에 0 저장'], rows:4,
+     after:['System.out.println(len);'],
+     expected:'0',
+     answer:['try {','    len = s.length();','} catch (NullPointerException e) {','    len = 0;','}'],
+     note:'null인 객체의 메서드를 호출하면 NullPointerException이 발생합니다. 코딩테스트에서 가장 자주 마주치는 런타임 예외 중 하나입니다.',
+     regex:[/try\s*\{[\s\S]*len\s*=\s*s\.length\s*\(\s*\)\s*;[\s\S]*\}\s*catch\s*\(\s*NullPointerException\s+\w+\s*\)\s*\{[\s\S]*len\s*=\s*0\s*;[\s\S]*\}/]},
+
+    {id:'EXC7', level:4, title:'예외 메시지 꺼내기 (getMessage)',
+     concept:'catch 블록 안에서, 예외 객체가 들고 있는 메시지를 직접 꺼내볼 수 있는 메서드가 있습니다. 디버깅하거나 사용자에게 보여줄 메시지를 만들 때 유용합니다.',
+     before:['try {','    int x = 10 / 0;','} catch (ArithmeticException e) {'],
+     placeholder:['    // TODO: 예외 메시지를 출력'],
+     after:['}'],
+     expected:'/ by zero', answer:['System.out.println(e.getMessage());'], note:'',
+     regex:[/System\.out\.println\s*\(\s*e\.getMessage\s*\(\s*\)\s*\)\s*;?/]},
+
+    {id:'CAST2b', level:5, title:'🔁 변형: double → int 캐스팅 (다른 데이터)',
+     concept:'더 큰 범위에서 더 작은 범위로 옮길 때는 괄호로 타입을 명시해야 합니다. (CAST2와 같은 패턴, 다른 데이터)',
+     before:['double d = 9.7;'], placeholder:['// TODO: d를 int로 캐스팅해서 i에 저장'],
+     after:['System.out.println(i);'],
+     expected:'9', answer:['int i = (int) d;'], note:'',
+     regex:[/int\s*i\s*=\s*\(\s*int\s*\)\s*d\s*;?/]},
+
+    {id:'CAST3b', level:5, title:'🔁 변형: 정수 나눗셈 소수점 살리기 (다른 데이터)',
+     concept:'둘 중 하나라도 double로 캐스팅해야 소수점이 살아남습니다. (CAST3과 같은 패턴, 다른 데이터)',
+     before:['int a = 9, b = 4;'], placeholder:['// TODO: 정수 나눗셈의 소수점까지 살려서 result에 저장 (double)'],
+     after:['System.out.println(result);'],
+     expected:'2.25', answer:['double result = (double) a / b;'], note:'',
+     regex:[/double\s*result\s*=\s*\(\s*double\s*\)\s*a\s*\/\s*b\s*;?/]},
+
+    {id:'PARSE1b', level:5, title:'🔁 변형: String → int 변환 (다른 데이터)',
+     concept:'문자열로 들어온 숫자를 정수로 파싱합니다. (PARSE1과 같은 패턴, 다른 데이터)',
+     before:['String str = "777";'], placeholder:['// TODO: str을 정수로 변환해 num에 저장'],
+     after:['System.out.println(num + 1);'],
+     expected:'778', answer:['int num = Integer.parseInt(str);'], note:'',
+     regex:[/int\s*num\s*=\s*Integer\.parseInt\s*\(\s*str\s*\)\s*;?/]},
+
+    {id:'STR2b', level:5, title:'🔁 변형: equals()로 문자열 비교 (다른 데이터)',
+     concept:'내용 비교는 ==가 아니라 equals()로 합니다. (STR2와 같은 패턴, 다른 데이터)',
+     before:['String a = new String("java");','String b = "java";'], placeholder:['// TODO: a와 b의 내용이 같은지 비교해 same에 저장'],
+     after:['System.out.println(same);'],
+     expected:'true', answer:['boolean same = a.equals(b);'], note:'',
+     regex:[/boolean\s*same\s*=\s*a\.equals\s*\(\s*b\s*\)\s*;?/]},
+
+    {id:'STR6b', level:5, title:'🔁 변형: 문자열 위치 찾기 (다른 데이터)',
+     concept:'특정 부분 문자열이 처음 등장하는 인덱스를 찾습니다. (STR6과 같은 패턴, 다른 데이터)',
+     before:['String s = "coding test";'], placeholder:['// TODO: "test"가 시작하는 인덱스를 idx에 저장'],
+     after:['System.out.println(idx);'],
+     expected:'7', answer:['int idx = s.indexOf("test");'], note:'',
+     regex:[/int\s*idx\s*=\s*s\.indexOf\s*\(\s*"test"\s*\)\s*;?/]},
+
+    {id:'SUB1b', level:5, title:'🔁 변형: 부분 문자열 자르기 (다른 데이터)',
+     concept:'특정 인덱스부터 끝까지 잘라냅니다. (SUB1과 같은 패턴, 다른 데이터)',
+     before:['String s = "coding test";'], placeholder:['// TODO: 인덱스 7부터 끝까지 잘라서 sub에 저장'],
+     after:['System.out.println(sub);'],
+     expected:'test', answer:['String sub = s.substring(7);'], note:'',
+     regex:[/String\s*sub\s*=\s*s\.substring\s*\(\s*7\s*\)\s*;?/]},
+
+    {id:'SUB4b', level:5, title:'🔁 변형: 문자열 치환 (다른 데이터)',
+     concept:'특정 부분 문자열을 다른 문자열로 바꿉니다. (SUB4와 같은 패턴, 다른 데이터)',
+     before:['String s = "coding test";'], placeholder:['// TODO: "test"를 "java"로 바꿔서 result에 저장'],
+     after:['System.out.println(result);'],
+     expected:'coding java', answer:['String result = s.replace("test", "java");'], note:'',
+     regex:[/String\s*result\s*=\s*s\.replace\s*\(\s*"test"\s*,\s*"java"\s*\)\s*;?/]},
+
+    {id:'SUB8b', level:5, title:'🔁 변형: String 불변(immutable) 함정 (다른 데이터)',
+     concept:'String 메서드의 반환값은 항상 다시 변수에 담아야 합니다. (SUB8과 같은 패턴, 다른 데이터)',
+     before:['String s = "world";'], placeholder:['// TODO: s를 대문자로 바꾸고, 그 결과를 다시 s에 저장'],
+     after:['System.out.println(s);'],
+     expected:'WORLD', answer:['s = s.toUpperCase();'], note:'',
+     regex:[/s\s*=\s*s\.toUpperCase\s*\(\s*\)\s*;?/]},
+
+    {id:'EXC1b', level:5, title:'🔁 변형: try-catch로 ArithmeticException 처리 (다른 데이터)',
+     concept:'0으로 나누면 발생하는 ArithmeticException을 try-catch로 처리합니다. (EXC1과 같은 패턴, 다른 데이터)',
+     before:['int a = 20, b = 0;','int result;'],
+     placeholder:['// TODO: a를 b로 나누되, ArithmeticException이 발생하면 result에 -1 저장'], rows:4,
+     after:['System.out.println(result);'],
+     expected:'-1',
+     answer:['try {','    result = a / b;','} catch (ArithmeticException e) {','    result = -1;','}'], note:'',
+     regex:[/try\s*\{[\s\S]*result\s*=\s*a\s*\/\s*b\s*;[\s\S]*\}\s*catch\s*\(\s*ArithmeticException\s+\w+\s*\)\s*\{[\s\S]*result\s*=\s*-1\s*;[\s\S]*\}/]},
+
+    {id:'EXC6b', level:5, title:'🔁 변형: NullPointerException 처리 (다른 데이터)',
+     concept:'null인 객체의 메서드 호출을 try-catch로 처리합니다. (EXC6과 같은 패턴, 다른 데이터)',
+     before:['String s = null;','int len;'],
+     placeholder:['// TODO: s.length() 호출을 try로 감싸고, NullPointerException 발생 시 len에 -1 저장'], rows:4,
+     after:['System.out.println(len);'],
+     expected:'-1',
+     answer:['try {','    len = s.length();','} catch (NullPointerException e) {','    len = -1;','}'], note:'',
+     regex:[/try\s*\{[\s\S]*len\s*=\s*s\.length\s*\(\s*\)\s*;[\s\S]*\}\s*catch\s*\(\s*NullPointerException\s+\w+\s*\)\s*\{[\s\S]*len\s*=\s*-1\s*;[\s\S]*\}/]}
+
+  ];
+
+  /* ============ 상태 ============ */
+  var state = {
+    loaded:false,
+    progress:{},      // {qid: {status:'pass'|'fail', input:'...'}}
+    inputs:{},         // 임시 입력값 (세션 내, qid별)
+    revealed:{},        // qid -> bool
+    bookmarks:{},        // qid -> bool, 즐겨찾기한 문제
+    level:0,
+    index:0,
+    log:[],
+    reviewMode:false,   // true면 레벨 무시하고 '틀린 문제'만 모아서 보여줌
+    bookmarkMode:false  // true면 레벨 무시하고 '즐겨찾기한 문제'만 모아서 보여줌
+  };
+
+  var STORAGE_KEY = 'ds2_quiz_progress_v1';
+  var BOOKMARK_KEY = 'ds2_quiz_bookmarks_v1';
+
+  function esc(s){
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  function questionsOfLevel(lv){
+    return QUESTIONS.filter(function(q){return q.level===lv;});
+  }
+
+  function failedQuestions(){
+    return QUESTIONS.filter(function(q){
+      return state.progress[q.id] && state.progress[q.id].status==='fail';
+    });
+  }
+
+  function bookmarkedQuestions(){
+    return QUESTIONS.filter(function(q){ return !!state.bookmarks[q.id]; });
+  }
+
+  function activeQuestionList(){
+    if(state.reviewMode) return failedQuestions();
+    if(state.bookmarkMode) return bookmarkedQuestions();
+    return questionsOfLevel(state.level);
+  }
+
+  function totalPassed(){
+    var n=0;
+    Object.keys(state.progress).forEach(function(k){
+      if(state.progress[k] && state.progress[k].status==='pass') n++;
+    });
+    return n;
+  }
+
+  function levelPassed(lv){
+    var n=0;
+    questionsOfLevel(lv).forEach(function(q){
+      if(state.progress[q.id] && state.progress[q.id].status==='pass') n++;
+    });
+    return n;
+  }
+
+  /* ============ 저장소 ============ */
+  async function loadProgress(){
+    try{
+      var res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value){
+        var parsed = JSON.parse(res.value);
+        state.progress = parsed || {};
+      }
+    }catch(e){
+      state.progress = {};
+    }
+    try{
+      var bres = await window.storage.get(BOOKMARK_KEY, false);
+      if(bres && bres.value){
+        var bparsed = JSON.parse(bres.value);
+        state.bookmarks = bparsed || {};
+      }
+    }catch(e){
+      state.bookmarks = {};
+    }
+    state.loaded = true;
+  }
+
+  async function saveProgress(){
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(state.progress), false);
+    }catch(e){
+      console.error('저장 실패', e);
+    }
+  }
+
+  async function saveBookmarks(){
+    try{
+      await window.storage.set(BOOKMARK_KEY, JSON.stringify(state.bookmarks), false);
+    }catch(e){
+      console.error('북마크 저장 실패', e);
+    }
+  }
+
+  /* ============ 채점 ============ */
+  function gradeQuestion(q, input){
+    return q.regex.every(function(r){ return r.test(input); });
+  }
+
+  function pushLog(qid, pass){
+    state.log.push({cmd:'check '+qid, pass:pass});
+    if(state.log.length>40) state.log.shift();
+  }
+
+  /* ============ 에디터 보조 기능 (괄호 자동완성 · 탭 들여쓰기) ============ */
+  var BRACKET_OPEN_CLOSE = {'(':')', '[':']', '{':'}'};
+  var BRACKET_CLOSE_CHARS = {')':true, ']':true, '}':true};
+  var INDENT_UNIT = '    '; // 4칸
+
+  function lineBoundsOf(value, start, end){
+    var lineStart = value.lastIndexOf('\n', start-1) + 1;
+    var lineEnd = value.indexOf('\n', end);
+    if(lineEnd === -1) lineEnd = value.length;
+    return {lineStart: lineStart, lineEnd: lineEnd};
+  }
+
+  function indentSelection(ta, q){
+    var value = ta.value;
+    var start = ta.selectionStart, end = ta.selectionEnd;
+    if(start === end){
+      ta.value = value.slice(0, start) + INDENT_UNIT + value.slice(start);
+      ta.selectionStart = ta.selectionEnd = start + INDENT_UNIT.length;
+      state.inputs[q.id] = ta.value;
+      return;
+    }
+    var b = lineBoundsOf(value, start, end);
+    var lines = value.slice(b.lineStart, b.lineEnd).split('\n');
+    var indented = lines.map(function(l){ return INDENT_UNIT + l; }).join('\n');
+    ta.value = value.slice(0, b.lineStart) + indented + value.slice(b.lineEnd);
+    ta.selectionStart = start + INDENT_UNIT.length;
+    ta.selectionEnd = end + INDENT_UNIT.length * lines.length;
+    state.inputs[q.id] = ta.value;
+  }
+
+  function outdentSelection(ta, q){
+    var value = ta.value;
+    var start = ta.selectionStart, end = ta.selectionEnd;
+    var b = lineBoundsOf(value, start, end);
+    var lines = value.slice(b.lineStart, b.lineEnd).split('\n');
+    var removed = [];
+    var outdented = lines.map(function(l){
+      var m = l.match(/^( {1,4}|\t)/);
+      var n = m ? m[0].length : 0;
+      removed.push(n);
+      return l.slice(n);
+    }).join('\n');
+    ta.value = value.slice(0, b.lineStart) + outdented + value.slice(b.lineEnd);
+    var firstRemoved = removed[0] || 0;
+    var totalRemoved = removed.reduce(function(a,c){return a+c;}, 0);
+    ta.selectionStart = Math.max(b.lineStart, start - firstRemoved);
+    ta.selectionEnd = Math.max(ta.selectionStart, end - totalRemoved);
+    state.inputs[q.id] = ta.value;
+  }
+
+  function autoIndentNewline(ta, q){
+    var value = ta.value;
+    var pos = ta.selectionStart;
+    var lineStart = value.lastIndexOf('\n', pos-1) + 1;
+    var currentLine = value.slice(lineStart, pos);
+    var indentMatch = currentLine.match(/^[ \t]*/);
+    var indent = indentMatch ? indentMatch[0] : '';
+    var lastNonSpace = value.slice(0, pos).replace(/\s+$/, '').slice(-1);
+    var extra = (lastNonSpace === '{') ? INDENT_UNIT : '';
+    var insertText = '\n' + indent + extra;
+    ta.value = value.slice(0, pos) + insertText + value.slice(pos);
+    var newPos = pos + insertText.length;
+    ta.selectionStart = ta.selectionEnd = newPos;
+    state.inputs[q.id] = ta.value;
+  }
+
+  function handleBracketKeydown(e, ta, q){
+    var key = e.key;
+    if(e.ctrlKey || e.metaKey || e.altKey) return false;
+
+    if(BRACKET_OPEN_CLOSE[key]){
+      var start = ta.selectionStart, end = ta.selectionEnd;
+      var value = ta.value;
+      var close = BRACKET_OPEN_CLOSE[key];
+      if(start !== end){
+        var selected = value.slice(start, end);
+        ta.value = value.slice(0, start) + key + selected + close + value.slice(end);
+        ta.selectionStart = start + 1;
+        ta.selectionEnd = end + 1;
+      }else{
+        ta.value = value.slice(0, start) + key + close + value.slice(start);
+        ta.selectionStart = ta.selectionEnd = start + 1;
+      }
+      state.inputs[q.id] = ta.value;
+      e.preventDefault();
+      return true;
+    }
+
+    if(BRACKET_CLOSE_CHARS[key]){
+      var pos = ta.selectionStart;
+      if(ta.selectionStart === ta.selectionEnd && ta.value[pos] === key){
+        ta.selectionStart = ta.selectionEnd = pos + 1;
+        e.preventDefault();
+        return true;
+      }
+      return false;
+    }
+
+    if(key === 'Backspace'){
+      var s = ta.selectionStart, en = ta.selectionEnd;
+      if(s === en && s > 0){
+        var prevChar = ta.value[s-1];
+        var nextChar = ta.value[s];
+        if(BRACKET_OPEN_CLOSE[prevChar] && BRACKET_OPEN_CLOSE[prevChar] === nextChar){
+          ta.value = ta.value.slice(0, s-1) + ta.value.slice(s+1);
+          ta.selectionStart = ta.selectionEnd = s-1;
+          state.inputs[q.id] = ta.value;
+          e.preventDefault();
+          return true;
+        }
+      }
+      return false;
+    }
+
+    return false;
+  }
+
+  function handleEditorKeydown(e, ta, q){
+    if(e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey){
+      e.preventDefault();
+      if(e.shiftKey) outdentSelection(ta, q); else indentSelection(ta, q);
+      return;
+    }
+    if(e.key === 'Enter' && !e.ctrlKey && !e.metaKey){
+      e.preventDefault();
+      autoIndentNewline(ta, q);
+      return;
+    }
+    handleBracketKeydown(e, ta, q);
+  }
+
+  /* ============ 렌더링 ============ */
+  function renderEmptySpecial(){
+    var app = document.getElementById('app');
+    var passed = totalPassed();
+    var isBookmark = state.bookmarkMode;
+    var title = isBookmark ? '🔖 아직 즐겨찾기한 문제가 없습니다' : '🎉 지금은 틀린 문제가 없습니다';
+    var html = '';
+    html += '<div class="topbar">';
+    html += '  <div>';
+    html += '    <div class="brand-eyebrow">$ run --suite java-basic-syntax</div>';
+    html += '    <h1 class="brand-title">기본 문법 자동채점</h1>';
+    html += '  </div>';
+    html += '  <div class="top-stats"><button class="reset-btn" data-action="reset">진행 초기화</button></div>';
+    html += '</div>';
+    html += '<div class="card" style="text-align:center;padding:50px 24px;">';
+    html += '  <div class="card-title">'+title+'</div>';
+    html += '  <p style="color:var(--muted);font-size:13.5px;margin:10px 0 18px;">전체 진행: '+passed+' / '+QUESTIONS.length+'</p>';
+    html += '  <button class="btn btn-grade" data-action="exit-review">전체 문제로 돌아가기</button>';
+    html += '</div>';
+    app.innerHTML = html;
+  }
+
+  function render(){
+    var app = document.getElementById('app');
+    if(!state.loaded){
+      app.innerHTML = '<div class="loading">진행 상황 불러오는 중...</div>';
+      return;
+    }
+    var levelQs = activeQuestionList();
+    if((state.reviewMode || state.bookmarkMode) && levelQs.length===0){
+      renderEmptySpecial();
+      return;
+    }
+    if(state.index >= levelQs.length) state.index = 0;
+    var q = levelQs[state.index];
+    var passed = totalPassed();
+
+    var html = '';
+
+    /* topbar */
+    html += '<div class="topbar">';
+    html += '  <div>';
+    html += '    <div class="brand-eyebrow">$ run --suite java-basic-syntax</div>';
+    html += '    <h1 class="brand-title">기본 문법 자동채점</h1>';
+    html += '    <div class="brand-sub">코드를 입력하고 채점하면, 정규식으로 문법을 검증합니다 (실제 자바 실행 X).</div>';
+    html += '    <div class="kbd-hint"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 문제 · <kbd>R</kbd> 정답 보기 · <kbd>Esc</kbd> 입력창 빠져나오기 · <kbd>Enter</kbd> 입력창 포커스</div>';
+    html += '  </div>';
+    html += '  <div class="top-stats">';
+    html += '    <div class="progress-wrap">';
+    html += '      <div class="progress-label"><span>전체 진행</span><b>'+passed+' / '+QUESTIONS.length+'</b></div>';
+    html += '      <div class="progress-track"><div class="progress-fill" style="width:'+Math.round(passed/QUESTIONS.length*100)+'%"></div></div>';
+    html += '    </div>';
+    html += '    <button class="reset-btn" data-action="reset">진행 초기화</button>';
+    html += '  </div>';
+    html += '</div>';
+
+    html += '<div class="layout">';
+
+    /* sidebar */
+    html += '  <div class="sidebar">';
+    var failCount = failedQuestions().length;
+    var bookmarkCount = Object.keys(state.bookmarks).filter(function(k){return state.bookmarks[k];}).length;
+    html += '    <button class="level-tab" data-action="toggle-review" style="border-color:'+(state.reviewMode?'var(--accent)':'var(--border)')+';background:'+(state.reviewMode?'var(--surface2)':'var(--surface)')+';">';
+    html += '      <div class="lt-name">📌 오답 노트</div>';
+    html += '      <div class="lt-sub">'+(state.reviewMode?'복습 모드 진행 중':'틀린 문제만 모아 다시 풀기')+'</div>';
+    html += '      <div class="lt-count">'+failCount+'개 대기 중</div>';
+    html += '    </button>';
+    html += '    <button class="level-tab" data-action="toggle-bookmark-mode" style="border-color:'+(state.bookmarkMode?'var(--accent)':'var(--border)')+';background:'+(state.bookmarkMode?'var(--surface2)':'var(--surface)')+';">';
+    html += '      <div class="lt-name">🔖 즐겨찾기</div>';
+    html += '      <div class="lt-sub">'+(state.bookmarkMode?'즐겨찾기 모드 진행 중':'북마크한 문제만 모아 보기')+'</div>';
+    html += '      <div class="lt-count">'+bookmarkCount+'개 저장됨</div>';
+    html += '    </button>';
+    html += '    <div class="level-tabs">';
+    LEVELS.forEach(function(lv){
+      var qs = questionsOfLevel(lv.id);
+      var p = levelPassed(lv.id);
+      html += '<div class="level-tab'+((!state.reviewMode && !state.bookmarkMode && state.level===lv.id)?' active':'')+'" data-action="select-level" data-level="'+lv.id+'">';
+      html += '  <div class="lt-name">'+esc(lv.name)+'</div>';
+      html += '  <div class="lt-sub">'+esc(lv.sub)+'</div>';
+      html += '  <div class="lt-count">'+p+' / '+qs.length+' 완료</div>';
+      html += '</div>';
+    });
+    html += '    </div>';
+
+    html += '    <div class="dot-grid">';
+    levelQs.forEach(function(qq, i){
+      var st = state.progress[qq.id] && state.progress[qq.id].status;
+      var cls = 'dot' + (i===state.index?' current':'') + (st==='pass'?' pass':st==='fail'?' fail':'') + (state.bookmarks[qq.id]?' bookmarked':'');
+      html += '<div class="'+cls+'" data-action="jump" data-index="'+i+'" title="'+esc(qq.id)+'">'+(st==='pass'?'✓':st==='fail'?'✗':(i+1))+'</div>';
+    });
+    html += '    </div>';
+    html += '  </div>';
+
+    /* main card */
+    html += '  <div class="content">';
+    html += '    <div class="card">';
+    var eyebrowText = state.reviewMode ? ('📌 오답 노트 (복습 모드)') : (state.bookmarkMode ? '🔖 즐겨찾기 모드' : esc(LEVELS[state.level].name));
+    html += '      <div class="card-eyebrow">'+eyebrowText+' · 문항 '+(state.index+1)+' / '+levelQs.length+' · '+esc(q.id)+'</div>';
+    html += '      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
+    html += '        <h2 class="card-title" style="margin:0;">'+esc(q.title)+'</h2>';
+    html += '        <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap;" data-action="toggle-bookmark" data-qid="'+esc(q.id)+'">'+(state.bookmarks[q.id]?'🔖 즐겨찾기 해제':'☆ 즐겨찾기 추가')+'</button>';
+    html += '      </div>';
+    if(state.reviewMode || state.bookmarkMode){
+      html += '      <button class="btn btn-ghost" style="align-self:flex-start;padding:5px 10px;font-size:12px;" data-action="exit-review">← 전체 문제로 돌아가기</button>';
+    }
+    html += '      <div class="concept"><b>핵심 개념</b> — '+esc(q.concept)+'</div>';
+
+    html += '      <div class="codebox">';
+    q.before.forEach(function(l){ html += '<div class="cl muted">'+esc(l)+'</div>'; });
+    q.placeholder.forEach(function(l){ html += '<div class="cl muted">'+esc(l)+'</div>'; });
+    var savedInput = (state.inputs[q.id] !== undefined) ? state.inputs[q.id] :
+                      ((state.progress[q.id] && state.progress[q.id].input) || '');
+    html += '<textarea class="blank" id="ans-input" rows="'+(q.rows||2)+'" placeholder="여기에 코드를 입력하세요"></textarea>';
+    q.after.forEach(function(l){ html += '<div class="cl muted">'+esc(l)+'</div>'; });
+    html += '      </div>';
+
+    html += '      <div class="expected">기대 출력: <code>'+esc(q.expected)+'</code></div>';
+
+    var fb = state.progress[q.id];
+    var fbClass = '', fbText = '';
+    if(fb && fb.status==='pass'){ fbClass='pass show'; fbText='✓ PASS — 정답입니다.'; }
+    else if(fb && fb.status==='fail'){ fbClass='fail show'; fbText='✗ FAIL — 문법을 다시 확인해보세요.'; }
+
+    html += '      <div class="actions">';
+    html += '        <button class="btn btn-grade" data-action="grade">채점</button>';
+    html += '        <button class="btn btn-ghost" data-action="reveal">'+(state.revealed[q.id]?'정답 숨기기':'정답 보기')+'</button>';
+    html += '      </div>';
+
+    html += '      <div class="feedback '+fbClass+'" id="fb-msg">'+fbText+'</div>';
+
+    html += '      <div class="answer-box'+(state.revealed[q.id]?' show':'')+'">';
+    html += '        <div class="lbl">🔍 정답</div>';
+    q.answer.forEach(function(l){ html += '<div class="al">'+esc(l)+'</div>'; });
+    if(q.note){ html += '<div class="note">'+esc(q.note)+'</div>'; }
+    html += '      </div>';
+
+    html += '      <div class="nav-row">';
+    html += '        <button class="btn btn-nav" data-action="prev" '+(state.index===0?'disabled':'')+'>← 이전</button>';
+    html += '        <span class="pos">'+(state.index+1)+' / '+levelQs.length+'</span>';
+    html += '        <button class="btn btn-nav" data-action="next" '+(state.index===levelQs.length-1?'disabled':'')+'>다음 →</button>';
+    html += '      </div>';
+
+    html += '    </div>';
+    html += '  </div>';
+    html += '</div>';
+
+    /* terminal log */
+    html += '<div class="terminal">';
+    html += '  <div class="terminal-head"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span>&nbsp;&nbsp;test-runner</div>';
+    html += '  <div class="terminal-body" id="term-body">';
+    if(state.log.length===0){
+      html += '<div class="ln">대기 중... 채점 버튼을 눌러보세요.</div>';
+    }else{
+      state.log.forEach(function(l){
+        html += '<div class="ln cmd">$ '+esc(l.cmd)+'</div>';
+        html += '<div class="ln '+(l.pass?'pass':'fail')+'">  '+(l.pass?'✓ PASS':'✗ FAIL')+'</div>';
+      });
+    }
+    html += '    <span class="cursor"></span>';
+    html += '  </div>';
+    html += '</div>';
+
+    app.innerHTML = html;
+
+    var ta = document.getElementById('ans-input');
+    if(ta){
+      ta.value = savedInput;
+      ta.addEventListener('input', function(){ state.inputs[q.id] = ta.value; });
+      ta.addEventListener('keydown', function(e){ handleEditorKeydown(e, ta, q); });
+    }
+    var term = document.getElementById('term-body');
+    if(term) term.scrollTop = term.scrollHeight;
+  }
+
+  /* ============ 액션 함수 (클릭 · 키보드 공용) ============ */
+  function doSelectLevel(lv){
+    state.reviewMode = false;
+    state.bookmarkMode = false;
+    state.level = lv;
+    state.index = 0;
+    render();
+  }
+  function doToggleReview(){
+    state.reviewMode = !state.reviewMode;
+    if(state.reviewMode) state.bookmarkMode = false;
+    state.index = 0;
+    render();
+  }
+  function doToggleBookmarkMode(){
+    state.bookmarkMode = !state.bookmarkMode;
+    if(state.bookmarkMode) state.reviewMode = false;
+    state.index = 0;
+    render();
+  }
+  function doExitSpecialMode(){
+    state.reviewMode = false;
+    state.bookmarkMode = false;
+    state.index = 0;
+    render();
+  }
+  function doJump(i){
+    state.index = i;
+    render();
+  }
+  function doPrev(){
+    if(state.index>0){ state.index--; render(); }
+  }
+  function doNext(){
+    var levelQs = activeQuestionList();
+    if(state.index<levelQs.length-1){ state.index++; render(); }
+  }
+  function doReveal(){
+    var levelQs = activeQuestionList();
+    var q = levelQs[state.index];
+    if(!q) return;
+    state.revealed[q.id] = !state.revealed[q.id];
+    render();
+  }
+  function doToggleBookmark(qid){
+    if(!qid) return;
+    if(state.bookmarks[qid]) delete state.bookmarks[qid];
+    else state.bookmarks[qid] = true;
+    saveBookmarks();
+    render();
+  }
+  function doGrade(){
+    var levelQs = activeQuestionList();
+    var q = levelQs[state.index];
+    if(!q) return;
+    var ta = document.getElementById('ans-input');
+    var val = ta ? ta.value : '';
+    var pass = gradeQuestion(q, val);
+    state.progress[q.id] = {status: pass?'pass':'fail', input: val};
+    pushLog(q.id, pass);
+    saveProgress();
+    render();
+  }
+  function doReset(){
+    if(window.confirm('모든 진행 상황을 초기화할까요? 되돌릴 수 없습니다.')){
+      state.progress = {};
+      state.inputs = {};
+      state.revealed = {};
+      state.log = [];
+      state.reviewMode = false;
+      saveProgress();
+      render();
+    }
+  }
+  function focusAnswerInput(){
+    var ta = document.getElementById('ans-input');
+    if(ta) ta.focus();
+  }
+
+  /* ============ 클릭 이벤트 ============ */
+  document.getElementById('app').addEventListener('click', function(e){
+    var el = e.target.closest('[data-action]');
+    if(!el) return;
+    var action = el.getAttribute('data-action');
+
+    if(action==='select-level'){
+      doSelectLevel(parseInt(el.getAttribute('data-level'),10));
+    }else if(action==='toggle-review'){
+      doToggleReview();
+    }else if(action==='toggle-bookmark-mode'){
+      doToggleBookmarkMode();
+    }else if(action==='exit-review'){
+      doExitSpecialMode();
+    }else if(action==='jump'){
+      doJump(parseInt(el.getAttribute('data-index'),10));
+    }else if(action==='prev'){
+      doPrev();
+    }else if(action==='next'){
+      doNext();
+    }else if(action==='reveal'){
+      doReveal();
+    }else if(action==='toggle-bookmark'){
+      doToggleBookmark(el.getAttribute('data-qid'));
+    }else if(action==='grade'){
+      doGrade();
+    }else if(action==='reset'){
+      doReset();
+    }
+  });
+
+  /* ============ 키보드 단축키 ============ */
+  document.addEventListener('keydown', function(e){
+    var ta = document.getElementById('ans-input');
+    var taFocused = document.activeElement === ta;
+
+    // Ctrl/Cmd + Enter : 입력창 포커스 여부와 상관없이 항상 채점
+    if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
+      e.preventDefault();
+      doGrade();
+      return;
+    }
+
+    if(taFocused){
+      // 입력창에 포커스가 있을 때는 Esc로 빠져나오는 것만 처리 (타이핑 방해 금지)
+      if(e.key === 'Escape'){
+        e.preventDefault();
+        ta.blur();
+      }
+      return;
+    }
+
+    // 입력창 포커스가 해제된 상태에서만 동작
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      focusAnswerInput();
+    }else if(e.key === 'ArrowLeft'){
+      e.preventDefault();
+      doPrev();
+    }else if(e.key === 'ArrowRight'){
+      e.preventDefault();
+      doNext();
+    }else if(e.key === 'r' || e.key === 'R'){
+      e.preventDefault();
+      doReveal();
+    }
+  });
+
+  /* ============ 시작 ============ */
+  render();
+  loadProgress().then(render);
+
+})();
+</script>
+</body>
+</html>
