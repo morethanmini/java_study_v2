@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java OOP &amp; 람다·Stream 자동채점</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#15120D;
+    --surface:#1E1912;
+    --surface2:#241D15;
+    --code-bg:#0F0D09;
+    --border:#332B20;
+    --border-soft:#2A2318;
+    --accent:#D98C3D;
+    --accent-soft:#E8A552;
+    --success:#6FD9A0;
+    --fail:#E2604F;
+    --text:#F3ECDD;
+    --muted:#9C9284;
+    --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    --display:'Space Grotesk', sans-serif;
+    --body:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    min-height:100vh;
+  }
+  #app{max-width:1180px;margin:0 auto;padding:28px 20px 60px;}
+
+  /* ---------- topbar ---------- */
+  .topbar{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    gap:20px;flex-wrap:wrap;margin-bottom:22px;
+  }
+  .brand-eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+    color:var(--accent-soft);text-transform:uppercase;margin-bottom:6px;
+  }
+  .brand-title{
+    font-family:var(--display);font-weight:700;font-size:28px;
+    letter-spacing:-0.01em;margin:0;
+  }
+  .brand-sub{color:var(--muted);font-size:13px;margin-top:4px;}
+  .top-stats{display:flex;align-items:center;gap:14px;}
+  .progress-wrap{min-width:220px;}
+  .progress-label{
+    display:flex;justify-content:space-between;font-family:var(--mono);
+    font-size:12px;color:var(--muted);margin-bottom:6px;
+  }
+  .progress-label b{color:var(--text);font-weight:600;}
+  .progress-track{
+    height:8px;border-radius:99px;background:var(--surface2);
+    border:1px solid var(--border);overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-soft));
+    transition:width .3s ease;
+  }
+  .reset-btn{
+    font-family:var(--mono);font-size:12px;color:var(--muted);
+    background:transparent;border:1px solid var(--border);border-radius:8px;
+    padding:8px 12px;cursor:pointer;transition:.15s;
+  }
+  .reset-btn:hover{border-color:var(--fail);color:var(--fail);}
+
+  /* ---------- layout ---------- */
+  .layout{display:grid;grid-template-columns:230px 1fr;gap:18px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+
+  .sidebar{display:flex;flex-direction:column;gap:14px;}
+  .level-tabs{display:flex;flex-direction:column;gap:6px;}
+  @media(max-width:760px){.level-tabs{flex-direction:row;overflow-x:auto;padding-bottom:4px;}}
+  .level-tab{
+    text-align:left;background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--text);
+    font-family:var(--body);transition:.15s;
+  }
+  @media(max-width:760px){.level-tab{flex:0 0 auto;min-width:150px;}}
+  .level-tab:hover{border-color:var(--accent-soft);}
+  .level-tab.active{border-color:var(--accent);background:var(--surface2);}
+  .level-tab .lt-name{font-weight:600;font-size:13px;}
+  .level-tab .lt-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+  .level-tab .lt-count{
+    font-family:var(--mono);font-size:11px;color:var(--accent-soft);margin-top:6px;
+  }
+
+  .dot-grid{
+    display:grid;grid-template-columns:repeat(6,1fr);gap:6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;
+  }
+  @media(max-width:760px){.dot-grid{grid-template-columns:repeat(10,1fr);}}
+  .dot{
+    aspect-ratio:1;border-radius:6px;border:1px solid var(--border);
+    background:var(--surface2);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;transition:.15s;
+  }
+  .dot:hover{border-color:var(--accent-soft);}
+  .dot.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+  .dot.pass{background:rgba(111,217,160,.14);border-color:var(--success);color:var(--success);}
+  .dot.fail{background:rgba(226,96,79,.14);border-color:var(--fail);color:var(--fail);}
+  .dot.bookmarked{outline:2px solid var(--accent-soft);outline-offset:1px;}
+
+  .kbd-hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px;}
+  .kbd-hint kbd{
+    background:var(--surface2);border:1px solid var(--border);border-radius:4px;
+    padding:1px 5px;font-family:var(--mono);font-size:10.5px;color:var(--text);
+  }
+
+  /* ---------- question card ---------- */
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:22px 24px;display:flex;flex-direction:column;gap:14px;
+  }
+  .card-eyebrow{
+    font-family:var(--mono);font-size:11px;color:var(--accent-soft);
+    letter-spacing:.08em;text-transform:uppercase;
+  }
+  .card-title{font-family:var(--display);font-size:21px;font-weight:600;margin:0;}
+  .concept{
+    background:var(--surface2);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:10px 14px;font-size:13.5px;line-height:1.6;color:var(--text);
+  }
+  .concept b{color:var(--accent-soft);}
+
+  .codebox{
+    background:var(--code-bg);border:1px solid var(--border-soft);border-radius:10px;
+    padding:14px 16px;font-family:var(--mono);font-size:13.5px;line-height:1.7;
+  }
+  .cl{white-space:pre-wrap;color:var(--text);}
+  .cl.muted{color:var(--muted);}
+  .blank{
+    width:100%;resize:vertical;background:#191309;border:1px dashed var(--accent-soft);
+    border-radius:6px;color:var(--accent-soft);font-family:var(--mono);font-size:13.5px;
+    padding:8px 10px;margin:4px 0;outline:none;
+  }
+  .blank:focus{border-style:solid;border-color:var(--accent);}
+  .expected{
+    font-family:var(--mono);font-size:12.5px;color:var(--muted);
+  }
+  .expected code{color:var(--accent-soft);background:none;}
+
+  .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .btn{
+    font-family:var(--body);font-weight:600;font-size:13px;border-radius:8px;
+    padding:9px 16px;cursor:pointer;border:1px solid var(--border);transition:.15s;
+  }
+  .btn-grade{background:var(--accent);border-color:var(--accent);color:#191309;}
+  .btn-grade:hover{background:var(--accent-soft);}
+  .btn-ghost{background:transparent;color:var(--muted);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--accent-soft);}
+  .btn-nav{background:var(--surface2);color:var(--text);}
+  .btn-nav:hover{border-color:var(--accent-soft);}
+  .btn-nav:disabled{opacity:.35;cursor:not-allowed;}
+
+  .feedback{
+    font-family:var(--mono);font-size:13px;border-radius:8px;padding:9px 12px;display:none;
+  }
+  .feedback.show{display:block;}
+  .feedback.pass{background:rgba(111,217,160,.12);color:var(--success);border:1px solid rgba(111,217,160,.3);}
+  .feedback.fail{background:rgba(226,96,79,.12);color:var(--fail);border:1px solid rgba(226,96,79,.3);}
+
+  .answer-box{
+    display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;
+  }
+  .answer-box.show{display:block;}
+  .answer-box .lbl{font-family:var(--mono);font-size:11px;color:var(--accent-soft);margin-bottom:8px;letter-spacing:.06em;}
+  .answer-box .al{font-family:var(--mono);font-size:13.5px;color:var(--text);white-space:pre-wrap;}
+  .answer-box .note{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6;}
+
+  .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:4px;}
+  .nav-row .pos{font-family:var(--mono);font-size:12px;color:var(--muted);}
+
+  /* ---------- terminal log ---------- */
+  .terminal{
+    margin-top:20px;background:var(--code-bg);border:1px solid var(--border-soft);
+    border-radius:12px;overflow:hidden;
+  }
+  .terminal-head{
+    display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--surface2);
+    border-bottom:1px solid var(--border-soft);font-family:var(--mono);font-size:11.5px;color:var(--muted);
+  }
+  .terminal-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
+  .terminal-body{
+    height:150px;overflow-y:auto;padding:12px 14px;font-family:var(--mono);
+    font-size:12.5px;line-height:1.7;color:var(--muted);
+  }
+  .terminal-body .ln{white-space:pre-wrap;}
+  .terminal-body .ln.pass{color:var(--success);}
+  .terminal-body .ln.fail{color:var(--fail);}
+  .terminal-body .ln.cmd{color:var(--accent-soft);}
+  .cursor{display:inline-block;width:7px;height:13px;background:var(--accent-soft);
+    animation:blink 1s steps(1) infinite;vertical-align:-2px;}
+  @keyframes blink{50%{opacity:0;}}
+
+  .loading{padding:60px 0;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px;}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">진행 상황 불러오는 중...</div></div>
+
+<script>
+(function(){
+
+  /* ============ 데이터 ============ */
+  var LEVELS = [
+    {id:0, name:'1장 클래스와 객체', sub:'생성자 · 필드 · 메서드 · static'},
+    {id:1, name:'2장 상속', sub:'extends · super · 오버라이딩 · 다형성'},
+    {id:2, name:'3장 인터페이스', sub:'implements · default · Comparable'},
+    {id:3, name:'4장 추상화 · 캡슐화', sub:'private/getter·setter · equals · toString'},
+    {id:4, name:'5장 람다 표현식', sub:'함수형 인터페이스 · 메서드 레퍼런스'},
+    {id:5, name:'6장 Stream API 기초', sub:'filter · map · collect · reduce'},
+    {id:6, name:'7장 변형 연습', sub:'같은 패턴, 다른 데이터로 반복'}
+  ];
+
+  var QUESTIONS = [
+    /* ---------------- 1장 클래스와 객체 ---------------- */
+    {id:'CL1', level:0, title:'생성자(Constructor) 정의',
+     concept:'생성자는 객체가 생성될 때 자동으로 호출되는, 클래스와 이름이 같은 특수한 메서드입니다. 반환 타입을 적지 않습니다.',
+     before:['class Person {','    String name;','    int age;'],
+     placeholder:['    // TODO: name과 age를 매개변수로 받아 필드를 초기화하는 생성자 작성'], rows:4,
+     after:['}','Person p = new Person("철수", 20);','System.out.println(p.name + " " + p.age);'],
+     expected:'철수 20',
+     answer:['    Person(String name, int age) {','        this.name = name;','        this.age = age;','    }'],
+     note:'this.name은 필드, name은 매개변수입니다. 이름이 같을 때 this를 안 붙이면 매개변수가 자기 자신에게 대입되어 필드는 그대로 null로 남습니다.',
+     regex:[/Person\s*\(\s*String\s+name\s*,\s*int\s+age\s*\)/, /this\.name\s*=\s*name/, /this\.age\s*=\s*age/]},
+
+    {id:'CL2', level:0, title:'값을 반환하는 메서드',
+     concept:'메서드는 클래스 안에 정의된 함수입니다. 반환 타입, 메서드 이름, 매개변수, return문으로 구성됩니다.',
+     before:['class Rectangle {','    int width, height;','    Rectangle(int width, int height) { this.width = width; this.height = height; }'],
+     placeholder:['    // TODO: 넓이(width*height)를 반환하는 area() 메서드 작성'], rows:3,
+     after:['}','Rectangle r = new Rectangle(3, 4);','System.out.println(r.area());'],
+     expected:'12',
+     answer:['    int area() {','        return width * height;','    }'], note:'',
+     regex:[/int\s+area\s*\(\s*\)\s*\{/, /return\s+width\s*\*\s*height/]},
+
+    {id:'CL3', level:0, title:'생성자 오버로딩',
+     concept:'생성자를 하나라도 직접 정의하면, 자바가 자동으로 제공하던 매개변수 없는 기본 생성자는 더 이상 제공되지 않습니다. 매개변수 없는 생성자도 필요하다면 직접 추가해야 합니다.',
+     before:['class Box {','    int size;','    Box(int size) { this.size = size; }'],
+     placeholder:['    // TODO: 매개변수 없이 size를 0으로 초기화하는 생성자(오버로딩) 추가'], rows:3,
+     after:['}','Box b = new Box();','System.out.println(b.size);'],
+     expected:'0',
+     answer:['    Box() {','        this.size = 0;','    }'],
+     note:'한 클래스에 매개변수 개수나 타입이 다른 생성자를 여러 개 두는 것을 생성자 오버로딩이라고 합니다.',
+     regex:[/Box\s*\(\s*\)\s*\{/, /this\.size\s*=\s*0/]},
+
+    {id:'CL4', level:0, title:'this()로 생성자끼리 호출',
+     concept:'한 생성자 안에서 같은 클래스의 다른 생성자를 호출할 수 있습니다. this(...)를 쓰면 되는데, 반드시 생성자의 첫 줄에서만 호출할 수 있습니다.',
+     before:['class Point {','    int x, y;','    Point(int x, int y) { this.x = x; this.y = y; }'],
+     placeholder:['    // TODO: 매개변수 없는 생성자에서 this(0, 0)을 호출하도록 작성'], rows:3,
+     after:['}','Point p = new Point();','System.out.println(p.x + "," + p.y);'],
+     expected:'0,0',
+     answer:['    Point() {','        this(0, 0);','    }'], note:'',
+     regex:[/Point\s*\(\s*\)\s*\{/, /this\s*\(\s*0\s*,\s*0\s*\)/]},
+
+    {id:'CL5', level:0, title:'static 필드 — 모든 인스턴스가 공유',
+     concept:'static이 붙은 필드는 인스턴스마다 따로 갖는 게 아니라, 클래스 전체에서 단 하나만 존재해서 모든 객체가 공유합니다. 객체를 만들 때마다 값을 누적하고 싶을 때 자주 씁니다.',
+     before:['class Counter {','    static int count = 0;','    Counter() {'],
+     placeholder:['        // TODO: 객체가 생성될 때마다 count를 1 증가'],
+     after:['    }','}','new Counter(); new Counter(); new Counter();','System.out.println(Counter.count);'],
+     expected:'3',
+     answer:['        count++;'],
+     note:'static 필드는 클래스 이름(Counter.count)으로 직접 접근할 수 있습니다.',
+     regex:[/count\+\+|count\s*=\s*count\s*\+\s*1/]},
+
+    {id:'CL6', level:0, title:'객체 배열 채우기',
+     concept:'객체 타입 배열을 선언하면, 각 칸은 처음에는 객체가 아니라 null로 채워집니다. new로 배열 공간을 만든 뒤, 각 칸마다 따로 객체를 생성해서 넣어야 합니다.',
+     before:['class Person {','    String name;','    Person(String name) { this.name = name; }','}','Person[] people = new Person[2];'],
+     placeholder:['// TODO','// (0번 칸에 "철수", 1번 칸에 "영희" 객체를 생성해서 넣기)'], rows:3,
+     after:['System.out.println(people[0].name + ", " + people[1].name);'],
+     expected:'철수, 영희',
+     answer:['people[0] = new Person("철수");','people[1] = new Person("영희");'], note:'',
+     regex:[/people\[\s*0\s*\]\s*=\s*new\s*Person\s*\(\s*"철수"\s*\)/, /people\[\s*1\s*\]\s*=\s*new\s*Person\s*\(\s*"영희"\s*\)/]},
+
+    /* ---------------- 2장 상속 ---------------- */
+    {id:'IH1', level:1, title:'extends로 상속',
+     concept:'한 클래스가 다른 클래스의 필드와 메서드를 물려받게 하려면 extends를 씁니다. 부모(상위) 클래스의 멤버를 자식(하위) 클래스에서도 그대로 쓸 수 있습니다.',
+     before:['class Animal {','    String name = "동물";','    void sound() { System.out.println("소리"); }','}'],
+     placeholder:['// TODO: Animal을 상속받는 Dog 클래스 선언 (빈 클래스)'],
+     after:['Dog d = new Dog();','System.out.println(d.name);','d.sound();'],
+     expected:'동물, 소리',
+     answer:['class Dog extends Animal {','}'], note:'',
+     regex:[/class\s+Dog\s+extends\s+Animal/]},
+
+    {id:'IH2', level:1, title:'super()로 부모 생성자 호출',
+     concept:'자식 클래스의 생성자는 항상 부모 클래스의 생성자를 먼저 실행합니다. 부모 생성자에 인자를 넘기고 싶다면 super(...)를 직접 호출해야 하고, 반드시 생성자의 첫 줄이어야 합니다.',
+     before:['class Animal {','    String name;','    Animal(String name) { this.name = name; }','}','class Dog extends Animal {'],
+     placeholder:['    // TODO: Dog(String name) 생성자에서 super(name) 호출'], rows:3,
+     after:['}','Dog d = new Dog("바둑이");','System.out.println(d.name);'],
+     expected:'바둑이',
+     answer:['    Dog(String name) {','        super(name);','    }'], note:'',
+     regex:[/Dog\s*\(\s*String\s+name\s*\)\s*\{/, /super\s*\(\s*name\s*\)/]},
+
+    {id:'IH3', level:1, title:'메서드 오버라이딩',
+     concept:'자식 클래스에서 부모와 같은 시그니처(이름·매개변수)의 메서드를 다시 정의하면, 부모의 동작을 덮어씁니다(오버라이딩). @Override 애너테이션은 필수는 아니지만 붙이는 게 관례입니다.',
+     before:['class Animal {','    void sound() { System.out.println("동물 소리"); }','}','class Cat extends Animal {'],
+     placeholder:['    // TODO: sound()를 오버라이딩해서 "야옹" 출력'], rows:4,
+     after:['}','Animal a = new Cat();','a.sound();'],
+     expected:'야옹',
+     answer:['    @Override','    void sound() {','        System.out.println("야옹");','    }'],
+     note:'Animal 타입 변수에 Cat 객체를 담아도(다형성), 실제 호출되는 건 Cat의 sound()입니다 — 이를 동적 바인딩(dynamic binding)이라 합니다.',
+     regex:[/void\s+sound\s*\(\s*\)\s*\{/, /야옹/]},
+
+    {id:'IH4', level:1, title:'super.method()로 부모 메서드 호출',
+     concept:'오버라이딩한 메서드 안에서도 부모의 원래 동작을 호출하고 싶을 때가 있습니다. super.메서드명()으로 부모 버전을 명시적으로 호출할 수 있습니다.',
+     before:['class Animal {','    void sound() { System.out.println("동물 소리"); }','}','class Cat extends Animal {','    @Override','    void sound() {'],
+     placeholder:['        // TODO: 부모의 sound()를 먼저 호출'],
+     after:['        System.out.println("야옹");','    }','}','new Cat().sound();'],
+     expected:'동물 소리, 야옹',
+     answer:['        super.sound();'], note:'',
+     regex:[/super\.sound\s*\(\s*\)/]},
+
+    {id:'IH5', level:1, title:'instanceof로 타입 확인',
+     concept:'다형적 참조 변수가 실제로 어떤 타입의 객체를 가리키고 있는지 확인하고 싶을 때 instanceof 연산자를 씁니다. 결과는 true/false입니다.',
+     before:['class Animal {}','class Dog extends Animal {}','Animal a = new Dog();'],
+     placeholder:['boolean isDog = /* TODO */;'],
+     after:['System.out.println(isDog);'],
+     expected:'true',
+     answer:['boolean isDog = a instanceof Dog;'], note:'',
+     regex:[/boolean\s+isDog\s*=\s*a\s+instanceof\s+Dog/]},
+
+    {id:'IH6', level:1, title:'다형적 배열로 한 번에 처리',
+     concept:'부모 타입 배열 하나에 서로 다른 자식 클래스의 객체들을 함께 담을 수 있습니다. 각 원소에서 호출하는 메서드는 실제 객체의 타입에 따라 다르게 동작합니다(다형성).',
+     before:['class Animal { void sound() { System.out.println("..."); } }','class Dog extends Animal { void sound() { System.out.println("멍멍"); } }','class Cat extends Animal { void sound() { System.out.println("야옹"); } }','Animal[] animals = {new Dog(), new Cat()};'],
+     placeholder:['// TODO','// (animals를 순회하며 각각 sound() 호출)'], rows:3,
+     after:[],
+     expected:'멍멍, 야옹',
+     answer:['for (Animal a : animals) {','    a.sound();','}'], note:'',
+     regex:[/for\s*\(\s*Animal\s+\w+\s*:\s*animals\s*\)/, /\.sound\s*\(\s*\)/]},
+
+    {id:'IH7', level:1, title:'final 메서드 — 오버라이딩 금지',
+     concept:'final이 붙은 메서드는 자식 클래스에서 더 이상 오버라이딩할 수 없습니다. "이 동작은 절대 바뀌면 안 된다"는 의도를 표현할 때 씁니다.',
+     before:['class Animal {'],
+     placeholder:['    // TODO: 절대 오버라이딩되면 안 되는 breathe() 메서드를 final로 선언하고 "숨쉬기" 출력'], rows:3,
+     after:['}','new Animal().breathe();'],
+     expected:'숨쉬기',
+     answer:['    final void breathe() {','        System.out.println("숨쉬기");','    }'],
+     note:'자식 클래스에서 같은 시그니처로 breathe()를 다시 정의하려고 하면 컴파일 에러가 납니다.',
+     regex:[/final\s+void\s+breathe\s*\(\s*\)\s*\{/, /숨쉬기/]},
+
+    /* ---------------- 3장 인터페이스 ---------------- */
+    {id:'IF1', level:2, title:'interface 정의와 구현',
+     concept:'인터페이스는 메서드의 이름과 시그니처만 정의하고, 본문(구현)은 갖지 않습니다. 클래스가 implements로 인터페이스를 구현할 때는, 선언된 모든 메서드를 반드시 직접 작성해야 합니다.',
+     before:['interface Flyable {','    void fly();','}','class Bird implements Flyable {'],
+     placeholder:['    // TODO: fly() 구현, "날아간다" 출력'], rows:3,
+     after:['}','new Bird().fly();'],
+     expected:'날아간다',
+     answer:['    public void fly() {','        System.out.println("날아간다");','    }'],
+     note:'인터페이스의 메서드를 구현할 때는 반드시 public을 붙여야 합니다 — 인터페이스의 메서드는 기본적으로 public이기 때문에, 구현부에서 접근 제한을 더 좁힐 수 없습니다.',
+     regex:[/public\s+void\s+fly\s*\(\s*\)\s*\{/, /날아간다/]},
+
+    {id:'IF2', level:2, title:'다중 인터페이스 구현',
+     concept:'클래스는 단 하나만 상속(extends)할 수 있지만, 인터페이스는 콤마로 나열해서 여러 개를 동시에 구현(implements)할 수 있습니다.',
+     before:['interface Flyable { void fly(); }','interface Swimmable { void swim(); }'],
+     placeholder:['// TODO: Flyable과 Swimmable을 모두 구현하는 Duck 클래스 선언','// (fly()는 "난다", swim()은 "헤엄친다" 출력)'], rows:6,
+     after:['Duck d = new Duck();','d.fly();','d.swim();'],
+     expected:'난다, 헤엄친다',
+     answer:['class Duck implements Flyable, Swimmable {','    public void fly() { System.out.println("난다"); }','    public void swim() { System.out.println("헤엄친다"); }','}'],
+     note:'extends는 하나만 가능하지만, implements는 콤마로 여러 인터페이스를 동시에 구현할 수 있습니다.',
+     regex:[/class\s+Duck\s+implements\s+Flyable\s*,\s*Swimmable/, /public\s+void\s+fly\s*\(\s*\)/, /public\s+void\s+swim\s*\(\s*\)/]},
+
+    {id:'IF3', level:2, title:'default 메서드',
+     concept:'인터페이스도 default 키워드를 붙이면 본문이 있는 메서드를 가질 수 있습니다. 구현 클래스가 따로 오버라이딩하지 않으면 이 기본 동작을 그대로 물려받습니다.',
+     before:['interface Greeter {'],
+     placeholder:['    // TODO: 본문이 있는 default 메서드 greet()을 작성, "안녕하세요" 출력'], rows:3,
+     after:['}','class Korean implements Greeter {}','new Korean().greet();'],
+     expected:'안녕하세요',
+     answer:['    default void greet() {','        System.out.println("안녕하세요");','    }'],
+     note:'구현 클래스가 greet()을 따로 정의하지 않아도 인터페이스의 기본 동작을 그대로 사용합니다.',
+     regex:[/default\s+void\s+greet\s*\(\s*\)\s*\{/, /안녕하세요/]},
+
+    {id:'IF4', level:2, title:'인터페이스 타입으로 참조',
+     concept:'인터페이스도 클래스처럼 참조 타입으로 쓸 수 있습니다. 왼쪽을 인터페이스 타입으로 선언하면, 나중에 다른 구현체로 바꿔도 나머지 코드는 그대로 둘 수 있습니다.',
+     before:['interface Shape { double area(); }','class Circle implements Shape {','    double r;','    Circle(double r) { this.r = r; }','    public double area() { return Math.PI * r * r; }','}'],
+     placeholder:['// TODO: Shape 타입으로 Circle(2) 객체를 가리키는 shape 변수 선언'],
+     after:['System.out.println(shape.area() > 12);'],
+     expected:'true',
+     answer:['Shape shape = new Circle(2);'], note:'',
+     regex:[/Shape\s+shape\s*=\s*new\s*Circle\s*\(\s*2\s*\)/]},
+
+    {id:'IF5', level:2, title:'abstract class — 필드와 일반 메서드를 가질 수 있음',
+     concept:'추상 클래스(abstract class)는 인터페이스와 달리 일반 필드와 생성자, 구현이 있는 일반 메서드를 가질 수 있습니다. abstract 메서드는 본문 없이 선언만 하고, 자식 클래스가 반드시 구현해야 합니다.',
+     before:['abstract class Shape {','    String name;','    Shape(String name) { this.name = name; }','    abstract double area();','}','class Square extends Shape {','    double side;','    Square(double side) { super("사각형"); this.side = side; }'],
+     placeholder:['    // TODO: area()를 구현 (side * side)'], rows:3,
+     after:['}','Shape s = new Square(4);','System.out.println(s.name + " " + s.area());'],
+     expected:'사각형 16.0',
+     answer:['    double area() {','        return side * side;','    }'],
+     note:'abstract class는 직접 new로 객체를 만들 수 없고, 반드시 자식 클래스를 통해서만 사용됩니다.',
+     regex:[/double\s+area\s*\(\s*\)\s*\{/, /return\s+side\s*\*\s*side/]},
+
+    {id:'IF6', level:2, title:'Comparable로 자연 순서 정의',
+     concept:'Comparable<T> 인터페이스를 구현하면 객체끼리 기본적으로 어떤 순서로 비교되어야 하는지를 직접 정의할 수 있습니다. compareTo()가 음수면 자신이 앞, 양수면 상대가 앞입니다. 한 번 구현해두면 별도 비교자 없이도 정렬이 가능해집니다.',
+     before:['class Person implements Comparable<Person> {','    String name; int age;','    Person(String name, int age) { this.name = name; this.age = age; }'],
+     placeholder:['    // TODO: age 기준 오름차순으로 비교하는 compareTo() 구현'], rows:3,
+     after:['}','List<Person> people = new ArrayList<>(Arrays.asList(new Person("A", 30), new Person("B", 20)));','Collections.sort(people);','System.out.println(people.get(0).name);'],
+     expected:'B',
+     answer:['    public int compareTo(Person other) {','        return this.age - other.age;','    }'], note:'',
+     regex:[/public\s+int\s+compareTo\s*\(\s*Person\s+\w+\s*\)/, /this\.age\s*-\s*\w+\.age|Integer\.compare\s*\(\s*this\.age\s*,\s*\w+\.age\s*\)/]},
+
+    /* ---------------- 4장 추상화 · 캡슐화 ---------------- */
+    {id:'AC1', level:3, title:'private 필드와 getter',
+     concept:'필드를 private으로 막아두면 클래스 바깥에서 직접 접근할 수 없습니다. 대신 값을 읽을 수 있는 getter 메서드를 공개(public)로 따로 제공하는 게 캡슐화(encapsulation)의 기본 패턴입니다.',
+     before:['class Account {','    private int balance = 1000;'],
+     placeholder:['    // TODO: balance를 반환하는 getBalance() 작성'], rows:3,
+     after:['}','Account acc = new Account();','System.out.println(acc.getBalance());'],
+     expected:'1000',
+     answer:['    public int getBalance() {','        return balance;','    }'], note:'',
+     regex:[/public\s+int\s+getBalance\s*\(\s*\)\s*\{/, /return\s+balance/]},
+
+    {id:'AC2', level:3, title:'setter에서 유효성 검사',
+     concept:'setter 메서드 안에서 조건을 검사해 잘못된 값이 들어오는 걸 막을 수 있습니다 — 이게 필드를 public으로 그냥 열어두는 것과 캡슐화의 가장 큰 차이입니다.',
+     before:['class Account {','    private int balance = 1000;','    public int getBalance() { return balance; }'],
+     placeholder:['    // TODO: amount가 0 이상일 때만 balance에 더하는 deposit(int amount) 작성'], rows:5,
+     after:['}','Account acc = new Account();','acc.deposit(-500);','acc.deposit(200);','System.out.println(acc.getBalance());'],
+     expected:'1200',
+     answer:['    public void deposit(int amount) {','        if (amount >= 0) {','            balance += amount;','        }','    }'], note:'',
+     regex:[/public\s+void\s+deposit\s*\(\s*int\s+amount\s*\)\s*\{/, /if\s*\(\s*amount\s*>=\s*0\s*\)/, /balance\s*\+=\s*amount/]},
+
+    {id:'AC3', level:3, title:'static 메서드',
+     concept:'static 메서드는 객체를 만들지 않고 클래스 이름으로 바로 호출할 수 있습니다. 인스턴스 필드(객체마다 다른 값)에는 접근할 수 없고, static 필드나 매개변수로 받은 값만 다룰 수 있습니다.',
+     before:['class MathUtil {'],
+     placeholder:['    // TODO: 두 정수를 더해 반환하는 static 메서드 add(int a, int b) 작성'], rows:3,
+     after:['}','System.out.println(MathUtil.add(3, 4));'],
+     expected:'7',
+     answer:['    static int add(int a, int b) {','        return a + b;','    }'], note:'',
+     regex:[/static\s+int\s+add\s*\(\s*int\s+a\s*,\s*int\s+b\s*\)\s*\{/, /return\s+a\s*\+\s*b/]},
+
+    {id:'AC4', level:3, title:'읽기 전용 필드 — getter만 제공',
+     concept:'필드를 private으로 막고 getter만 제공하면, 바깥에서 값을 읽을 수는 있지만 직접 바꿀 수는 없는 읽기 전용(read-only) 속성을 만들 수 있습니다. setter를 아예 제공하지 않으면 됩니다.',
+     before:['class Employee {','    private final String id;','    Employee(String id) { this.id = id; }'],
+     placeholder:['    // TODO: id를 반환하는 getId() 작성 (setId는 만들지 않음)'], rows:3,
+     after:['}','Employee e = new Employee("EMP01");','System.out.println(e.getId());'],
+     expected:'EMP01',
+     answer:['    public String getId() {','        return id;','    }'],
+     note:'final이 붙은 필드는 생성자에서 딱 한 번만 값을 정할 수 있고, 이후엔 절대 바꿀 수 없습니다.',
+     regex:[/public\s+String\s+getId\s*\(\s*\)\s*\{/, /return\s+id/]},
+
+    {id:'AC5', level:3, title:'equals() 오버라이딩 — 값으로 비교',
+     concept:'기본 equals()는 두 변수가 같은 객체를 가리키는지(참조 비교)만 검사합니다. 필드 값이 같으면 같은 객체로 취급하고 싶다면 equals()를 직접 오버라이딩해야 합니다.',
+     before:['class Point {','    int x, y;','    Point(int x, int y) { this.x = x; this.y = y; }','    @Override'],
+     placeholder:['    // TODO: x와 y가 모두 같으면 true를 반환하는 equals(Object o) 작성'], rows:5,
+     after:['}','Point p1 = new Point(1, 2);','Point p2 = new Point(1, 2);','System.out.println(p1.equals(p2));'],
+     expected:'true',
+     answer:['    public boolean equals(Object o) {','        if (!(o instanceof Point)) return false;','        Point p = (Point) o;','        return this.x == p.x && this.y == p.y;','    }'],
+     note:'equals()를 오버라이딩하면 보통 hashCode()도 함께 오버라이딩해야 HashSet/HashMap에서 일관되게 동작합니다.',
+     regex:[/public\s+boolean\s+equals\s*\(\s*Object\s+\w+\s*\)\s*\{/, /instanceof\s+Point/, /this\.x\s*==\s*\w+\.x/]},
+
+    {id:'AC6', level:3, title:'toString() 오버라이딩',
+     concept:'객체를 System.out.println()으로 바로 출력하면 기본적으로 의미 없는 문자열이 나옵니다. toString()을 오버라이딩하면 원하는 형태로 직접 표현을 정의할 수 있습니다.',
+     before:['class Point {','    int x, y;','    Point(int x, int y) { this.x = x; this.y = y; }'],
+     placeholder:['    // TODO: "(x, y)" 형태의 문자열을 반환하는 toString() 작성'], rows:4,
+     after:['}','Point p = new Point(1, 2);','System.out.println(p);'],
+     expected:'(1, 2)',
+     answer:['    @Override','    public String toString() {','        return "(" + x + ", " + y + ")";','    }'],
+     note:'System.out.println(객체)는 내부적으로 객체의 toString()을 자동으로 호출합니다.',
+     regex:[/public\s+String\s+toString\s*\(\s*\)\s*\{/, /return\s+"\("\s*\+\s*x\s*\+\s*",\s*"\s*\+\s*y\s*\+\s*"\)"/]},
+
+    /* ---------------- 5장 람다 표현식 ---------------- */
+    {id:'LM1', level:4, title:'함수형 인터페이스와 람다 기본 문법',
+     concept:'추상 메서드가 딱 하나뿐인 인터페이스를 함수형 인터페이스(functional interface)라고 합니다. 이런 인터페이스는 (매개변수) -> 본문 형태의 람다식으로 간단하게 구현체를 만들 수 있습니다.',
+     before:['interface Greeting {','    void say(String name);','}'],
+     placeholder:['// TODO: name을 받아 "안녕 " + name을 출력하는 람다로 Greeting 객체 greeting 만들기'], rows:3,
+     after:['greeting.say("철수");'],
+     expected:'안녕 철수',
+     answer:['Greeting greeting = (name) -> System.out.println("안녕 " + name);'],
+     note:'매개변수가 하나뿐이면 괄호를 생략하고 name -> ... 처럼 쓸 수도 있습니다.',
+     regex:[/Greeting\s+greeting\s*=\s*\(?\s*name\s*\)?\s*->\s*System\.out\.println\s*\(\s*"안녕\s*"\s*\+\s*name\s*\)/]},
+
+    {id:'LM2', level:4, title:'Runnable과 람다',
+     concept:'java.lang.Runnable은 매개변수도 반환값도 없는 run() 메서드 하나만 가진 대표적인 함수형 인터페이스입니다. 람다로 구현하면 () -> 본문 형태가 됩니다.',
+     before:[],
+     placeholder:['Runnable task = /* TODO */;'],
+     after:['task.run();'],
+     expected:'실행 중!',
+     answer:['Runnable task = () -> System.out.println("실행 중!");'], note:'',
+     regex:[/Runnable\s+task\s*=\s*\(\s*\)\s*->\s*System\.out\.println\s*\(\s*"실행\s*중!"\s*\)/]},
+
+    {id:'LM3', level:4, title:'Comparator를 람다로 작성',
+     concept:'Comparator<T>도 compare(T a, T b) 메서드 하나뿐인 함수형 인터페이스라서 람다로 간단히 쓸 수 있습니다. 정수를 오름차순으로 정렬하려면 a - b를 반환하면 됩니다.',
+     before:['List<Integer> list = new ArrayList<>(Arrays.asList(5, 1, 3));'],
+     placeholder:['// TODO: 오름차순 정렬을 위한 람다 Comparator로 list 정렬'],
+     after:['System.out.println(list);'],
+     expected:'[1, 3, 5]',
+     answer:['Collections.sort(list, (a, b) -> a - b);'], note:'',
+     regex:[/Collections\.sort\s*\(\s*list\s*,\s*\(\s*a\s*,\s*b\s*\)\s*->\s*a\s*-\s*b\s*\)/]},
+
+    {id:'LM4', level:4, title:'Predicate<T> — 참/거짓 판단',
+     concept:'Predicate<T>는 값을 하나 받아서 boolean을 반환하는 함수형 인터페이스입니다. test(T t) 메서드 하나를 람다로 구현해서 "이 값이 조건을 만족하는가"를 표현합니다.',
+     before:[],
+     placeholder:['Predicate<Integer> isEven = /* TODO */;'],
+     after:['System.out.println(isEven.test(4));','System.out.println(isEven.test(5));'],
+     expected:'true, false',
+     answer:['Predicate<Integer> isEven = (n) -> n % 2 == 0;'],
+     note:'java.util.function 패키지에는 Predicate, Function, Consumer, Supplier 같은 미리 만들어진 함수형 인터페이스가 있어서, 매번 새 인터페이스를 직접 정의하지 않아도 됩니다.',
+     regex:[/Predicate\s*<\s*Integer\s*>\s*isEven\s*=\s*\(?\s*n\s*\)?\s*->\s*n\s*%\s*2\s*==\s*0/]},
+
+    {id:'LM5', level:4, title:'Function<T,R> — 값을 변환',
+     concept:'Function<T, R>은 T 타입 값을 받아 R 타입 값으로 변환해서 반환하는 함수형 인터페이스입니다. apply(T t) 메서드를 람다로 구현합니다.',
+     before:[],
+     placeholder:['Function<Integer, Integer> square = /* TODO */;'],
+     after:['System.out.println(square.apply(5));'],
+     expected:'25',
+     answer:['Function<Integer, Integer> square = (n) -> n * n;'], note:'',
+     regex:[/Function\s*<\s*Integer\s*,\s*Integer\s*>\s*square\s*=\s*\(?\s*n\s*\)?\s*->\s*n\s*\*\s*n/]},
+
+    {id:'LM6', level:4, title:'Consumer<T> — 값을 받아 소비',
+     concept:'Consumer<T>는 값을 하나 받아서 처리만 하고 아무것도 반환하지 않는 함수형 인터페이스입니다. accept(T t) 메서드를 람다로 구현합니다.',
+     before:[],
+     placeholder:['Consumer<String> printer = /* TODO */;'],
+     after:['printer.accept("데이터");'],
+     expected:'받음: 데이터',
+     answer:['Consumer<String> printer = (s) -> System.out.println("받음: " + s);'], note:'',
+     regex:[/Consumer\s*<\s*String\s*>\s*printer\s*=\s*\(?\s*s\s*\)?\s*->\s*System\.out\.println\s*\(\s*"받음:\s*"\s*\+\s*s\s*\)/]},
+
+    {id:'LM7', level:4, title:'메서드 레퍼런스(Method Reference)',
+     concept:'람다가 단순히 이미 있는 메서드 하나를 그대로 호출만 하는 형태일 때는, 클래스명::메서드명으로 더 짧게 줄여 쓸 수 있습니다. 이를 메서드 레퍼런스라고 합니다.',
+     before:['List<String> names = Arrays.asList("banana", "apple", "cherry");'],
+     placeholder:['// TODO: 메서드 레퍼런스(System.out::println)로 각 이름 출력'],
+     after:[],
+     expected:'banana, apple, cherry',
+     answer:['names.forEach(System.out::println);'],
+     note:'(s) -> System.out.println(s) 와 완전히 같은 동작이지만 더 간결합니다.',
+     regex:[/names\.forEach\s*\(\s*System\.out::println\s*\)/]},
+
+    /* ---------------- 6장 Stream API 기초 ---------------- */
+    {id:'SM1', level:5, title:'stream() + filter() + forEach()',
+     concept:'컬렉션에서 .stream()을 호출하면 데이터를 가공하는 파이프라인을 시작할 수 있습니다. filter()는 조건을 만족하는 원소만 남기고, forEach()는 각 원소에 대해 동작을 실행합니다.',
+     before:['List<Integer> nums = Arrays.asList(1, 2, 3, 4, 5, 6);'],
+     placeholder:['// TODO: stream으로 짝수만 걸러서 출력'], rows:3,
+     after:[],
+     expected:'2, 4, 6',
+     answer:['nums.stream().filter(n -> n % 2 == 0).forEach(System.out::println);'], note:'',
+     regex:[/nums\.stream\s*\(\s*\)/, /filter\s*\(\s*\w+\s*->\s*\w+\s*%\s*2\s*==\s*0\s*\)/, /forEach\s*\(/]},
+
+    {id:'SM2', level:5, title:'map()으로 변환',
+     concept:'map()은 스트림의 각 원소를 다른 값으로 하나씩 변환합니다. 원소 개수는 그대로 유지되고, 값만 바뀝니다.',
+     before:['List<Integer> nums = Arrays.asList(1, 2, 3);'],
+     placeholder:['// TODO: 각 원소를 제곱한 뒤 출력'], rows:3,
+     after:[],
+     expected:'1, 4, 9',
+     answer:['nums.stream().map(n -> n * n).forEach(System.out::println);'], note:'',
+     regex:[/nums\.stream\s*\(\s*\)/, /map\s*\(\s*\w+\s*->\s*\w+\s*\*\s*\w+\s*\)/, /forEach\s*\(/]},
+
+    {id:'SM3', level:5, title:'collect(Collectors.toList())로 다시 리스트로',
+     concept:'filter나 map을 거친 스트림은 그 자체로는 List가 아닙니다. 다시 리스트로 모으려면 collect(Collectors.toList())를 마지막에 붙여야 합니다.',
+     before:['List<Integer> nums = Arrays.asList(1, 2, 3, 4, 5);'],
+     placeholder:['// TODO: 3보다 큰 값만 걸러서 List<Integer> result로 모으기'], rows:3,
+     after:['System.out.println(result);'],
+     expected:'[4, 5]',
+     answer:['List<Integer> result = nums.stream().filter(n -> n > 3).collect(Collectors.toList());'], note:'',
+     regex:[/List\s*<\s*Integer\s*>\s*result\s*=\s*nums\.stream\s*\(\s*\)/, /filter\s*\(\s*\w+\s*->\s*\w+\s*>\s*3\s*\)/, /collect\s*\(\s*Collectors\.toList\s*\(\s*\)\s*\)/]},
+
+    {id:'SM4', level:5, title:'count()로 개수 세기',
+     concept:'스트림을 거친 뒤 남은 원소 개수만 알고 싶다면, 리스트로 모을 필요 없이 count()를 바로 호출하면 됩니다. 반환 타입은 long입니다.',
+     before:['List<Integer> nums = Arrays.asList(1, 2, 3, 4, 5, 6, 7);'],
+     placeholder:['// TODO: 짝수 개수를 세어 cnt에 저장'], rows:3,
+     after:['System.out.println(cnt);'],
+     expected:'3',
+     answer:['long cnt = nums.stream().filter(n -> n % 2 == 0).count();'], note:'',
+     regex:[/long\s+cnt\s*=\s*nums\.stream\s*\(\s*\)/, /filter\s*\(\s*\w+\s*->\s*\w+\s*%\s*2\s*==\s*0\s*\)/, /\.count\s*\(\s*\)/]},
+
+    {id:'SM5', level:5, title:'sorted()로 정렬',
+     concept:'sorted()는 스트림의 원소를 정렬합니다. 인자 없이 호출하면 자연 순서(오름차순)로, Comparator를 넘기면 그 기준으로 정렬됩니다.',
+     before:['List<Integer> nums = Arrays.asList(5, 1, 4, 2, 3);'],
+     placeholder:['// TODO: 오름차순 정렬한 뒤 출력'], rows:3,
+     after:[],
+     expected:'1, 2, 3, 4, 5',
+     answer:['nums.stream().sorted().forEach(System.out::println);'], note:'',
+     regex:[/nums\.stream\s*\(\s*\)/, /\.sorted\s*\(\s*\)/, /forEach\s*\(/]},
+
+    {id:'SM6', level:5, title:'reduce()로 누적 계산',
+     concept:'reduce()는 스트림의 모든 원소를 하나의 값으로 누적해서 합칩니다. 초깃값과, 누적된 값과 다음 원소를 어떻게 합칠지를 정의하는 람다를 함께 넘겨줍니다.',
+     before:['List<Integer> nums = Arrays.asList(1, 2, 3, 4);'],
+     placeholder:['// TODO: reduce로 모든 원소의 합을 sum에 저장 (초깃값 0)'], rows:3,
+     after:['System.out.println(sum);'],
+     expected:'10',
+     answer:['int sum = nums.stream().reduce(0, (a, b) -> a + b);'], note:'',
+     regex:[/int\s+sum\s*=\s*nums\.stream\s*\(\s*\)/, /reduce\s*\(\s*0\s*,\s*\(\s*a\s*,\s*b\s*\)\s*->\s*a\s*\+\s*b\s*\)/]},
+
+    {id:'SM7', level:5, title:'mapToInt + sum()으로 합계',
+     concept:'Stream<Integer>를 기본형 스트림인 IntStream으로 바꾸면, sum()처럼 숫자 전용 집계 메서드를 바로 쓸 수 있습니다. mapToInt()로 변환합니다.',
+     before:['List<Integer> nums = Arrays.asList(1, 2, 3, 4, 5);'],
+     placeholder:['// TODO: mapToInt로 변환 후 sum()으로 합계를 total에 저장'], rows:3,
+     after:['System.out.println(total);'],
+     expected:'15',
+     answer:['int total = nums.stream().mapToInt(n -> n).sum();'],
+     note:'reduce(0, (a,b)->a+b)와 같은 결과지만, 숫자 합계만 구할 땐 mapToInt().sum()이 더 짧고 의도도 명확합니다.',
+     regex:[/nums\.stream\s*\(\s*\)\.mapToInt\s*\(/, /\.sum\s*\(\s*\)/]},
+
+    {id:'SM8', level:5, title:'Collectors.joining()으로 문자열 합치기',
+     concept:'문자열 스트림을 구분자로 이어붙여 하나의 문자열로 만들고 싶다면 collect(Collectors.joining(구분자))를 씁니다.',
+     before:['List<String> names = Arrays.asList("철수", "영희", "민수");'],
+     placeholder:['// TODO: ", "로 구분해서 하나의 문자열로 합쳐 result에 저장'], rows:3,
+     after:['System.out.println(result);'],
+     expected:'철수, 영희, 민수',
+     answer:['String result = names.stream().collect(Collectors.joining(", "));'], note:'',
+     regex:[/String\s+result\s*=\s*names\.stream\s*\(\s*\)/, /Collectors\.joining\s*\(\s*",\s*"\s*\)/]},
+
+    /* ---------------- 7장 변형 연습 ---------------- */
+    {id:'V1', level:6, title:'🔁 변형: 생성자 (다른 데이터)',
+     concept:'CL1과 같은 패턴입니다. 생성자에서 this로 필드를 초기화합니다.',
+     before:['class Book {','    String title;','    int pages;'],
+     placeholder:['    // TODO: title과 pages를 매개변수로 받아 필드를 초기화하는 생성자 작성'], rows:4,
+     after:['}','Book b = new Book("자바의 정석", 700);','System.out.println(b.title + " " + b.pages);'],
+     expected:'자바의 정석 700',
+     answer:['    Book(String title, int pages) {','        this.title = title;','        this.pages = pages;','    }'], note:'',
+     regex:[/Book\s*\(\s*String\s+title\s*,\s*int\s+pages\s*\)/, /this\.title\s*=\s*title/, /this\.pages\s*=\s*pages/]},
+
+    {id:'V2', level:6, title:'🔁 변형: 메서드 오버라이딩 (다른 데이터)',
+     concept:'IH3과 같은 메서드 오버라이딩 패턴입니다. 출력 문구만 다릅니다.',
+     before:['class Animal { void sound() { System.out.println("동물 소리"); } }','class Dog extends Animal {'],
+     placeholder:['    // TODO: sound()를 오버라이딩해서 "멍멍" 출력'], rows:4,
+     after:['}','Animal a = new Dog();','a.sound();'],
+     expected:'멍멍',
+     answer:['    @Override','    void sound() {','        System.out.println("멍멍");','    }'], note:'',
+     regex:[/void\s+sound\s*\(\s*\)\s*\{/, /멍멍/]},
+
+    {id:'V3', level:6, title:'🔁 변형: 인터페이스 구현 (다른 데이터)',
+     concept:'IF1과 같은 인터페이스 구현 패턴입니다.',
+     before:['interface Movable {','    void move();','}','class Car implements Movable {'],
+     placeholder:['    // TODO: move() 구현, "달린다" 출력'], rows:3,
+     after:['}','new Car().move();'],
+     expected:'달린다',
+     answer:['    public void move() {','        System.out.println("달린다");','    }'], note:'',
+     regex:[/public\s+void\s+move\s*\(\s*\)\s*\{/, /달린다/]},
+
+    {id:'V4', level:6, title:'🔁 변형: setter 유효성 검사 (다른 데이터)',
+     concept:'AC2와 같은 유효성 검사 setter 패턴입니다.',
+     before:['class Account {','    private int balance = 0;','    public int getBalance() { return balance; }'],
+     placeholder:['    // TODO: amount가 0 이상일 때만 balance에 더하는 deposit(int amount) 작성'], rows:5,
+     after:['}','Account acc = new Account();','acc.deposit(1000);','acc.deposit(-300);','System.out.println(acc.getBalance());'],
+     expected:'1000',
+     answer:['    public void deposit(int amount) {','        if (amount >= 0) {','            balance += amount;','        }','    }'], note:'',
+     regex:[/public\s+void\s+deposit\s*\(\s*int\s+amount\s*\)\s*\{/, /if\s*\(\s*amount\s*>=\s*0\s*\)/, /balance\s*\+=\s*amount/]},
+
+    {id:'V5', level:6, title:'🔁 변형: 람다 Comparator (내림차순)',
+     concept:'LM3과 같은 람다 Comparator 패턴이지만, 이번엔 내림차순입니다.',
+     before:['List<Integer> list = new ArrayList<>(Arrays.asList(5, 1, 3));'],
+     placeholder:['// TODO: 내림차순 정렬을 위한 람다 Comparator로 list 정렬'],
+     after:['System.out.println(list);'],
+     expected:'[5, 3, 1]',
+     answer:['Collections.sort(list, (a, b) -> b - a);'], note:'',
+     regex:[/Collections\.sort\s*\(\s*list\s*,\s*\(\s*a\s*,\s*b\s*\)\s*->\s*b\s*-\s*a\s*\)/]},
+
+    {id:'V6', level:6, title:'🔁 변형: Predicate (다른 조건)',
+     concept:'LM4와 같은 Predicate 패턴이지만, 이번엔 양수 판별입니다.',
+     before:[],
+     placeholder:['Predicate<Integer> isPositive = /* TODO */;'],
+     after:['System.out.println(isPositive.test(3));','System.out.println(isPositive.test(-2));'],
+     expected:'true, false',
+     answer:['Predicate<Integer> isPositive = (n) -> n > 0;'], note:'',
+     regex:[/Predicate\s*<\s*Integer\s*>\s*isPositive\s*=\s*\(?\s*n\s*\)?\s*->\s*n\s*>\s*0/]},
+
+    {id:'V7', level:6, title:'🔁 변형: Stream filter+map 조합',
+     concept:'SM1, SM2와 같은 stream 패턴을 한 번에 연결한 변형입니다 — filter로 거르고 map으로 변환한 뒤 출력합니다.',
+     before:['List<Integer> nums = Arrays.asList(1, 2, 3, 4, 5, 6);'],
+     placeholder:['// TODO: 짝수만 걸러서 각각 10을 곱한 뒤 출력'], rows:3,
+     after:[],
+     expected:'20, 40, 60',
+     answer:['nums.stream().filter(n -> n % 2 == 0).map(n -> n * 10).forEach(System.out::println);'], note:'',
+     regex:[/nums\.stream\s*\(\s*\)/, /filter\s*\(\s*\w+\s*->\s*\w+\s*%\s*2\s*==\s*0\s*\)/, /map\s*\(\s*\w+\s*->\s*\w+\s*\*\s*10\s*\)/, /forEach\s*\(/]},
+
+    {id:'V8', level:6, title:'🔁 변형: Stream collect (다른 조건)',
+     concept:'SM3과 같은 collect(Collectors.toList()) 패턴이지만, 이번엔 조건과 데이터가 다릅니다.',
+     before:['List<Integer> nums = Arrays.asList(10, 20, 30, 40, 50);'],
+     placeholder:['// TODO: 25보다 작은 값만 걸러서 List<Integer> result로 모으기'], rows:3,
+     after:['System.out.println(result);'],
+     expected:'[10, 20]',
+     answer:['List<Integer> result = nums.stream().filter(n -> n < 25).collect(Collectors.toList());'], note:'',
+     regex:[/List\s*<\s*Integer\s*>\s*result\s*=\s*nums\.stream\s*\(\s*\)/, /filter\s*\(\s*\w+\s*->\s*\w+\s*<\s*25\s*\)/, /collect\s*\(\s*Collectors\.toList\s*\(\s*\)\s*\)/]}
+
+  ];
+
+  /* ============ 상태 ============ */
+  var state = {
+    loaded:false,
+    progress:{},      // {qid: {status:'pass'|'fail', input:'...'}}
+    inputs:{},         // 임시 입력값 (세션 내, qid별)
+    revealed:{},        // qid -> bool
+    bookmarks:{},        // qid -> bool, 즐겨찾기한 문제
+    level:0,
+    index:0,
+    log:[],
+    reviewMode:false,   // true면 레벨 무시하고 '틀린 문제'만 모아서 보여줌
+    bookmarkMode:false  // true면 레벨 무시하고 '즐겨찾기한 문제'만 모아서 보여줌
+  };
+
+  var STORAGE_KEY = 'ds_quiz_progress_v4_oop_lambda_stream';
+  var BOOKMARK_KEY = 'ds_quiz_bookmarks_v4_oop_lambda_stream';
+
+  function esc(s){
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  function questionsOfLevel(lv){
+    return QUESTIONS.filter(function(q){return q.level===lv;});
+  }
+
+  function failedQuestions(){
+    return QUESTIONS.filter(function(q){
+      return state.progress[q.id] && state.progress[q.id].status==='fail';
+    });
+  }
+
+  function bookmarkedQuestions(){
+    return QUESTIONS.filter(function(q){ return !!state.bookmarks[q.id]; });
+  }
+
+  function activeQuestionList(){
+    if(state.reviewMode) return failedQuestions();
+    if(state.bookmarkMode) return bookmarkedQuestions();
+    return questionsOfLevel(state.level);
+  }
+
+  function totalPassed(){
+    var n=0;
+    Object.keys(state.progress).forEach(function(k){
+      if(state.progress[k] && state.progress[k].status==='pass') n++;
+    });
+    return n;
+  }
+
+  function levelPassed(lv){
+    var n=0;
+    questionsOfLevel(lv).forEach(function(q){
+      if(state.progress[q.id] && state.progress[q.id].status==='pass') n++;
+    });
+    return n;
+  }
+
+  /* ============ 저장소 ============ */
+  async function loadProgress(){
+    try{
+      var res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value){
+        var parsed = JSON.parse(res.value);
+        state.progress = parsed || {};
+      }
+    }catch(e){
+      state.progress = {};
+    }
+    try{
+      var bres = await window.storage.get(BOOKMARK_KEY, false);
+      if(bres && bres.value){
+        var bparsed = JSON.parse(bres.value);
+        state.bookmarks = bparsed || {};
+      }
+    }catch(e){
+      state.bookmarks = {};
+    }
+    state.loaded = true;
+  }
+
+  async function saveProgress(){
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(state.progress), false);
+    }catch(e){
+      console.error('저장 실패', e);
+    }
+  }
+
+  async function saveBookmarks(){
+    try{
+      await window.storage.set(BOOKMARK_KEY, JSON.stringify(state.bookmarks), false);
+    }catch(e){
+      console.error('북마크 저장 실패', e);
+    }
+  }
+
+  /* ============ 채점 ============ */
+  function gradeQuestion(q, input){
+    return q.regex.every(function(r){ return r.test(input); });
+  }
+
+  function pushLog(qid, pass){
+    state.log.push({cmd:'check '+qid, pass:pass});
+    if(state.log.length>40) state.log.shift();
+  }
+
+  /* ============ 에디터 보조 기능 (괄호 자동완성 · 탭 들여쓰기) ============ */
+  var BRACKET_OPEN_CLOSE = {'(':')', '[':']', '{':'}'};
+  var BRACKET_CLOSE_CHARS = {')':true, ']':true, '}':true};
+  var INDENT_UNIT = '    '; // 4칸
+
+  function lineBoundsOf(value, start, end){
+    var lineStart = value.lastIndexOf('\n', start-1) + 1;
+    var lineEnd = value.indexOf('\n', end);
+    if(lineEnd === -1) lineEnd = value.length;
+    return {lineStart: lineStart, lineEnd: lineEnd};
+  }
+
+  function indentSelection(ta, q){
+    var value = ta.value;
+    var start = ta.selectionStart, end = ta.selectionEnd;
+    if(start === end){
+      ta.value = value.slice(0, start) + INDENT_UNIT + value.slice(start);
+      ta.selectionStart = ta.selectionEnd = start + INDENT_UNIT.length;
+      state.inputs[q.id] = ta.value;
+      return;
+    }
+    var b = lineBoundsOf(value, start, end);
+    var lines = value.slice(b.lineStart, b.lineEnd).split('\n');
+    var indented = lines.map(function(l){ return INDENT_UNIT + l; }).join('\n');
+    ta.value = value.slice(0, b.lineStart) + indented + value.slice(b.lineEnd);
+    ta.selectionStart = start + INDENT_UNIT.length;
+    ta.selectionEnd = end + INDENT_UNIT.length * lines.length;
+    state.inputs[q.id] = ta.value;
+  }
+
+  function outdentSelection(ta, q){
+    var value = ta.value;
+    var start = ta.selectionStart, end = ta.selectionEnd;
+    var b = lineBoundsOf(value, start, end);
+    var lines = value.slice(b.lineStart, b.lineEnd).split('\n');
+    var removed = [];
+    var outdented = lines.map(function(l){
+      var m = l.match(/^( {1,4}|\t)/);
+      var n = m ? m[0].length : 0;
+      removed.push(n);
+      return l.slice(n);
+    }).join('\n');
+    ta.value = value.slice(0, b.lineStart) + outdented + value.slice(b.lineEnd);
+    var firstRemoved = removed[0] || 0;
+    var totalRemoved = removed.reduce(function(a,c){return a+c;}, 0);
+    ta.selectionStart = Math.max(b.lineStart, start - firstRemoved);
+    ta.selectionEnd = Math.max(ta.selectionStart, end - totalRemoved);
+    state.inputs[q.id] = ta.value;
+  }
+
+  function autoIndentNewline(ta, q){
+    var value = ta.value;
+    var pos = ta.selectionStart;
+    var lineStart = value.lastIndexOf('\n', pos-1) + 1;
+    var currentLine = value.slice(lineStart, pos);
+    var indentMatch = currentLine.match(/^[ \t]*/);
+    var indent = indentMatch ? indentMatch[0] : '';
+    var lastNonSpace = value.slice(0, pos).replace(/\s+$/, '').slice(-1);
+    var extra = (lastNonSpace === '{') ? INDENT_UNIT : '';
+    var insertText = '\n' + indent + extra;
+    ta.value = value.slice(0, pos) + insertText + value.slice(pos);
+    var newPos = pos + insertText.length;
+    ta.selectionStart = ta.selectionEnd = newPos;
+    state.inputs[q.id] = ta.value;
+  }
+
+  function handleBracketKeydown(e, ta, q){
+    var key = e.key;
+    if(e.ctrlKey || e.metaKey || e.altKey) return false;
+
+    if(BRACKET_OPEN_CLOSE[key]){
+      var start = ta.selectionStart, end = ta.selectionEnd;
+      var value = ta.value;
+      var close = BRACKET_OPEN_CLOSE[key];
+      if(start !== end){
+        var selected = value.slice(start, end);
+        ta.value = value.slice(0, start) + key + selected + close + value.slice(end);
+        ta.selectionStart = start + 1;
+        ta.selectionEnd = end + 1;
+      }else{
+        ta.value = value.slice(0, start) + key + close + value.slice(start);
+        ta.selectionStart = ta.selectionEnd = start + 1;
+      }
+      state.inputs[q.id] = ta.value;
+      e.preventDefault();
+      return true;
+    }
+
+    if(BRACKET_CLOSE_CHARS[key]){
+      var pos = ta.selectionStart;
+      if(ta.selectionStart === ta.selectionEnd && ta.value[pos] === key){
+        ta.selectionStart = ta.selectionEnd = pos + 1;
+        e.preventDefault();
+        return true;
+      }
+      return false;
+    }
+
+    if(key === 'Backspace'){
+      var s = ta.selectionStart, en = ta.selectionEnd;
+      if(s === en && s > 0){
+        var prevChar = ta.value[s-1];
+        var nextChar = ta.value[s];
+        if(BRACKET_OPEN_CLOSE[prevChar] && BRACKET_OPEN_CLOSE[prevChar] === nextChar){
+          ta.value = ta.value.slice(0, s-1) + ta.value.slice(s+1);
+          ta.selectionStart = ta.selectionEnd = s-1;
+          state.inputs[q.id] = ta.value;
+          e.preventDefault();
+          return true;
+        }
+      }
+      return false;
+    }
+
+    return false;
+  }
+
+  function handleEditorKeydown(e, ta, q){
+    if(e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey){
+      e.preventDefault();
+      if(e.shiftKey) outdentSelection(ta, q); else indentSelection(ta, q);
+      return;
+    }
+    if(e.key === 'Enter' && !e.ctrlKey && !e.metaKey){
+      e.preventDefault();
+      autoIndentNewline(ta, q);
+      return;
+    }
+    handleBracketKeydown(e, ta, q);
+  }
+
+  /* ============ 렌더링 ============ */
+  function renderEmptySpecial(){
+    var app = document.getElementById('app');
+    var passed = totalPassed();
+    var isBookmark = state.bookmarkMode;
+    var title = isBookmark ? '🔖 아직 즐겨찾기한 문제가 없습니다' : '🎉 지금은 틀린 문제가 없습니다';
+    var html = '';
+    html += '<div class="topbar">';
+    html += '  <div>';
+    html += '    <div class="brand-eyebrow">$ run --suite java-oop-lambda-stream</div>';
+    html += '    <h1 class="brand-title">OOP &amp; 람다·Stream 자동채점</h1>';
+    html += '  </div>';
+    html += '  <div class="top-stats"><button class="reset-btn" data-action="reset">진행 초기화</button></div>';
+    html += '</div>';
+    html += '<div class="card" style="text-align:center;padding:50px 24px;">';
+    html += '  <div class="card-title">'+title+'</div>';
+    html += '  <p style="color:var(--muted);font-size:13.5px;margin:10px 0 18px;">전체 진행: '+passed+' / '+QUESTIONS.length+'</p>';
+    html += '  <button class="btn btn-grade" data-action="exit-review">전체 문제로 돌아가기</button>';
+    html += '</div>';
+    app.innerHTML = html;
+  }
+
+  function render(){
+    var app = document.getElementById('app');
+    if(!state.loaded){
+      app.innerHTML = '<div class="loading">진행 상황 불러오는 중...</div>';
+      return;
+    }
+    var levelQs = activeQuestionList();
+    if((state.reviewMode || state.bookmarkMode) && levelQs.length===0){
+      renderEmptySpecial();
+      return;
+    }
+    if(state.index >= levelQs.length) state.index = 0;
+    var q = levelQs[state.index];
+    var passed = totalPassed();
+
+    var html = '';
+
+    /* topbar */
+    html += '<div class="topbar">';
+    html += '  <div>';
+    html += '    <div class="brand-eyebrow">$ run --suite java-oop-lambda-stream</div>';
+    html += '    <h1 class="brand-title">OOP &amp; 람다·Stream 자동채점</h1>';
+    html += '    <div class="brand-sub">코드를 입력하고 채점하면, 정규식으로 문법을 검증합니다 (실제 자바 실행 X).</div>';
+    html += '    <div class="kbd-hint"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 문제 · <kbd>R</kbd> 정답 보기 · <kbd>Esc</kbd> 입력창 빠져나오기 · <kbd>Enter</kbd> 입력창 포커스</div>';
+    html += '  </div>';
+    html += '  <div class="top-stats">';
+    html += '    <div class="progress-wrap">';
+    html += '      <div class="progress-label"><span>전체 진행</span><b>'+passed+' / '+QUESTIONS.length+'</b></div>';
+    html += '      <div class="progress-track"><div class="progress-fill" style="width:'+Math.round(passed/QUESTIONS.length*100)+'%"></div></div>';
+    html += '    </div>';
+    html += '    <button class="reset-btn" data-action="reset">진행 초기화</button>';
+    html += '  </div>';
+    html += '</div>';
+
+    html += '<div class="layout">';
+
+    /* sidebar */
+    html += '  <div class="sidebar">';
+    var failCount = failedQuestions().length;
+    var bookmarkCount = Object.keys(state.bookmarks).filter(function(k){return state.bookmarks[k];}).length;
+    html += '    <button class="level-tab" data-action="toggle-review" style="border-color:'+(state.reviewMode?'var(--accent)':'var(--border)')+';background:'+(state.reviewMode?'var(--surface2)':'var(--surface)')+';">';
+    html += '      <div class="lt-name">📌 오답 노트</div>';
+    html += '      <div class="lt-sub">'+(state.reviewMode?'복습 모드 진행 중':'틀린 문제만 모아 다시 풀기')+'</div>';
+    html += '      <div class="lt-count">'+failCount+'개 대기 중</div>';
+    html += '    </button>';
+    html += '    <button class="level-tab" data-action="toggle-bookmark-mode" style="border-color:'+(state.bookmarkMode?'var(--accent)':'var(--border)')+';background:'+(state.bookmarkMode?'var(--surface2)':'var(--surface)')+';">';
+    html += '      <div class="lt-name">🔖 즐겨찾기</div>';
+    html += '      <div class="lt-sub">'+(state.bookmarkMode?'즐겨찾기 모드 진행 중':'북마크한 문제만 모아 보기')+'</div>';
+    html += '      <div class="lt-count">'+bookmarkCount+'개 저장됨</div>';
+    html += '    </button>';
+    html += '    <div class="level-tabs">';
+    LEVELS.forEach(function(lv){
+      var qs = questionsOfLevel(lv.id);
+      var p = levelPassed(lv.id);
+      html += '<div class="level-tab'+((!state.reviewMode && !state.bookmarkMode && state.level===lv.id)?' active':'')+'" data-action="select-level" data-level="'+lv.id+'">';
+      html += '  <div class="lt-name">'+esc(lv.name)+'</div>';
+      html += '  <div class="lt-sub">'+esc(lv.sub)+'</div>';
+      html += '  <div class="lt-count">'+p+' / '+qs.length+' 완료</div>';
+      html += '</div>';
+    });
+    html += '    </div>';
+
+    html += '    <div class="dot-grid">';
+    levelQs.forEach(function(qq, i){
+      var st = state.progress[qq.id] && state.progress[qq.id].status;
+      var cls = 'dot' + (i===state.index?' current':'') + (st==='pass'?' pass':st==='fail'?' fail':'') + (state.bookmarks[qq.id]?' bookmarked':'');
+      html += '<div class="'+cls+'" data-action="jump" data-index="'+i+'" title="'+esc(qq.id)+'">'+(st==='pass'?'✓':st==='fail'?'✗':(i+1))+'</div>';
+    });
+    html += '    </div>';
+    html += '  </div>';
+
+    /* main card */
+    html += '  <div class="content">';
+    html += '    <div class="card">';
+    var eyebrowText = state.reviewMode ? ('📌 오답 노트 (복습 모드)') : (state.bookmarkMode ? '🔖 즐겨찾기 모드' : esc(LEVELS[state.level].name));
+    html += '      <div class="card-eyebrow">'+eyebrowText+' · 문항 '+(state.index+1)+' / '+levelQs.length+' · '+esc(q.id)+'</div>';
+    html += '      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
+    html += '        <h2 class="card-title" style="margin:0;">'+esc(q.title)+'</h2>';
+    html += '        <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap;" data-action="toggle-bookmark" data-qid="'+esc(q.id)+'">'+(state.bookmarks[q.id]?'🔖 즐겨찾기 해제':'☆ 즐겨찾기 추가')+'</button>';
+    html += '      </div>';
+    if(state.reviewMode || state.bookmarkMode){
+      html += '      <button class="btn btn-ghost" style="align-self:flex-start;padding:5px 10px;font-size:12px;" data-action="exit-review">← 전체 문제로 돌아가기</button>';
+    }
+    html += '      <div class="concept"><b>핵심 개념</b> — '+esc(q.concept)+'</div>';
+
+    html += '      <div class="codebox">';
+    q.before.forEach(function(l){ html += '<div class="cl muted">'+esc(l)+'</div>'; });
+    q.placeholder.forEach(function(l){ html += '<div class="cl muted">'+esc(l)+'</div>'; });
+    var savedInput = (state.inputs[q.id] !== undefined) ? state.inputs[q.id] :
+                      ((state.progress[q.id] && state.progress[q.id].input) || '');
+    html += '<textarea class="blank" id="ans-input" rows="'+(q.rows||2)+'" placeholder="여기에 코드를 입력하세요"></textarea>';
+    q.after.forEach(function(l){ html += '<div class="cl muted">'+esc(l)+'</div>'; });
+    html += '      </div>';
+
+    html += '      <div class="expected">기대 출력: <code>'+esc(q.expected)+'</code></div>';
+
+    var fb = state.progress[q.id];
+    var fbClass = '', fbText = '';
+    if(fb && fb.status==='pass'){ fbClass='pass show'; fbText='✓ PASS — 정답입니다.'; }
+    else if(fb && fb.status==='fail'){ fbClass='fail show'; fbText='✗ FAIL — 문법을 다시 확인해보세요.'; }
+
+    html += '      <div class="actions">';
+    html += '        <button class="btn btn-grade" data-action="grade">채점</button>';
+    html += '        <button class="btn btn-ghost" data-action="reveal">'+(state.revealed[q.id]?'정답 숨기기':'정답 보기')+'</button>';
+    html += '      </div>';
+
+    html += '      <div class="feedback '+fbClass+'" id="fb-msg">'+fbText+'</div>';
+
+    html += '      <div class="answer-box'+(state.revealed[q.id]?' show':'')+'">';
+    html += '        <div class="lbl">🔍 정답</div>';
+    q.answer.forEach(function(l){ html += '<div class="al">'+esc(l)+'</div>'; });
+    if(q.note){ html += '<div class="note">'+esc(q.note)+'</div>'; }
+    html += '      </div>';
+
+    html += '      <div class="nav-row">';
+    html += '        <button class="btn btn-nav" data-action="prev" '+(state.index===0?'disabled':'')+'>← 이전</button>';
+    html += '        <span class="pos">'+(state.index+1)+' / '+levelQs.length+'</span>';
+    html += '        <button class="btn btn-nav" data-action="next" '+(state.index===levelQs.length-1?'disabled':'')+'>다음 →</button>';
+    html += '      </div>';
+
+    html += '    </div>';
+    html += '  </div>';
+    html += '</div>';
+
+    /* terminal log */
+    html += '<div class="terminal">';
+    html += '  <div class="terminal-head"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span>&nbsp;&nbsp;test-runner</div>';
+    html += '  <div class="terminal-body" id="term-body">';
+    if(state.log.length===0){
+      html += '<div class="ln">대기 중... 채점 버튼을 눌러보세요.</div>';
+    }else{
+      state.log.forEach(function(l){
+        html += '<div class="ln cmd">$ '+esc(l.cmd)+'</div>';
+        html += '<div class="ln '+(l.pass?'pass':'fail')+'">  '+(l.pass?'✓ PASS':'✗ FAIL')+'</div>';
+      });
+    }
+    html += '    <span class="cursor"></span>';
+    html += '  </div>';
+    html += '</div>';
+
+    app.innerHTML = html;
+
+    var ta = document.getElementById('ans-input');
+    if(ta){
+      ta.value = savedInput;
+      ta.addEventListener('input', function(){ state.inputs[q.id] = ta.value; });
+      ta.addEventListener('keydown', function(e){ handleEditorKeydown(e, ta, q); });
+    }
+    var term = document.getElementById('term-body');
+    if(term) term.scrollTop = term.scrollHeight;
+  }
+
+  /* ============ 액션 함수 (클릭 · 키보드 공용) ============ */
+  function doSelectLevel(lv){
+    state.reviewMode = false;
+    state.bookmarkMode = false;
+    state.level = lv;
+    state.index = 0;
+    render();
+  }
+  function doToggleReview(){
+    state.reviewMode = !state.reviewMode;
+    if(state.reviewMode) state.bookmarkMode = false;
+    state.index = 0;
+    render();
+  }
+  function doToggleBookmarkMode(){
+    state.bookmarkMode = !state.bookmarkMode;
+    if(state.bookmarkMode) state.reviewMode = false;
+    state.index = 0;
+    render();
+  }
+  function doExitSpecialMode(){
+    state.reviewMode = false;
+    state.bookmarkMode = false;
+    state.index = 0;
+    render();
+  }
+  function doJump(i){
+    state.index = i;
+    render();
+  }
+  function doPrev(){
+    if(state.index>0){ state.index--; render(); }
+  }
+  function doNext(){
+    var levelQs = activeQuestionList();
+    if(state.index<levelQs.length-1){ state.index++; render(); }
+  }
+  function doReveal(){
+    var levelQs = activeQuestionList();
+    var q = levelQs[state.index];
+    if(!q) return;
+    state.revealed[q.id] = !state.revealed[q.id];
+    render();
+  }
+  function doToggleBookmark(qid){
+    if(!qid) return;
+    if(state.bookmarks[qid]) delete state.bookmarks[qid];
+    else state.bookmarks[qid] = true;
+    saveBookmarks();
+    render();
+  }
+  function doGrade(){
+    var levelQs = activeQuestionList();
+    var q = levelQs[state.index];
+    if(!q) return;
+    var ta = document.getElementById('ans-input');
+    var val = ta ? ta.value : '';
+    var pass = gradeQuestion(q, val);
+    state.progress[q.id] = {status: pass?'pass':'fail', input: val};
+    pushLog(q.id, pass);
+    saveProgress();
+    render();
+  }
+  function doReset(){
+    if(window.confirm('모든 진행 상황을 초기화할까요? 되돌릴 수 없습니다.')){
+      state.progress = {};
+      state.inputs = {};
+      state.revealed = {};
+      state.log = [];
+      state.reviewMode = false;
+      saveProgress();
+      render();
+    }
+  }
+  function focusAnswerInput(){
+    var ta = document.getElementById('ans-input');
+    if(ta) ta.focus();
+  }
+
+  /* ============ 클릭 이벤트 ============ */
+  document.getElementById('app').addEventListener('click', function(e){
+    var el = e.target.closest('[data-action]');
+    if(!el) return;
+    var action = el.getAttribute('data-action');
+
+    if(action==='select-level'){
+      doSelectLevel(parseInt(el.getAttribute('data-level'),10));
+    }else if(action==='toggle-review'){
+      doToggleReview();
+    }else if(action==='toggle-bookmark-mode'){
+      doToggleBookmarkMode();
+    }else if(action==='exit-review'){
+      doExitSpecialMode();
+    }else if(action==='jump'){
+      doJump(parseInt(el.getAttribute('data-index'),10));
+    }else if(action==='prev'){
+      doPrev();
+    }else if(action==='next'){
+      doNext();
+    }else if(action==='reveal'){
+      doReveal();
+    }else if(action==='toggle-bookmark'){
+      doToggleBookmark(el.getAttribute('data-qid'));
+    }else if(action==='grade'){
+      doGrade();
+    }else if(action==='reset'){
+      doReset();
+    }
+  });
+
+  /* ============ 키보드 단축키 ============ */
+  document.addEventListener('keydown', function(e){
+    var ta = document.getElementById('ans-input');
+    var taFocused = document.activeElement === ta;
+
+    // Ctrl/Cmd + Enter : 입력창 포커스 여부와 상관없이 항상 채점
+    if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
+      e.preventDefault();
+      doGrade();
+      return;
+    }
+
+    if(taFocused){
+      // 입력창에 포커스가 있을 때는 Esc로 빠져나오는 것만 처리 (타이핑 방해 금지)
+      if(e.key === 'Escape'){
+        e.preventDefault();
+        ta.blur();
+      }
+      return;
+    }
+
+    // 입력창 포커스가 해제된 상태에서만 동작
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      focusAnswerInput();
+    }else if(e.key === 'ArrowLeft'){
+      e.preventDefault();
+      doPrev();
+    }else if(e.key === 'ArrowRight'){
+      e.preventDefault();
+      doNext();
+    }else if(e.key === 'r' || e.key === 'R'){
+      e.preventDefault();
+      doReveal();
+    }
+  });
+
+  /* ============ 시작 ============ */
+  render();
+  loadProgress().then(render);
+
+})();
+</script>
+</body>
+</html>
