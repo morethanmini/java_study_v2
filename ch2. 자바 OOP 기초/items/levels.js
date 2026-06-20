@@ -3,5 +3,6 @@ window.LEVELS = [
   {id:1, name:'2장 상속', sub:'extends · super · 오버라이딩 · 다형성'},
   {id:2, name:'3장 인터페이스', sub:'implements · default · Comparable'},
   {id:3, name:'4장 추상화 · 캡슐화', sub:'private/getter·setter · equals · toString'},
-  {id:4, name:'5장 변형 연습', sub:'같은 패턴, 다른 데이터로 반복'}
+  {id:4, name:'5장 변형 연습', sub:'같은 패턴, 다른 데이터로 반복'},
+  {id:5, name:'6장 Comparator · enum', sub:'정렬 기준 커스터마이징 · 열거형'}
 ];

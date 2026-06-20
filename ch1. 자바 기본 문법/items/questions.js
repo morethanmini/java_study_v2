@@ -352,6 +352,67 @@
      after:['System.out.println(len);'],
      expected:'-1',
      answer:['try {','    len = s.length();','} catch (NullPointerException e) {','    len = -1;','}'], note:'',
-     regex:[/try\s*\{[\s\S]*len\s*=\s*s\.length\s*\(\s*\)\s*;[\s\S]*\}\s*catch\s*\(\s*NullPointerException\s+\w+\s*\)\s*\{[\s\S]*len\s*=\s*-1\s*;[\s\S]*\}/]}
+     regex:[/try\s*\{[\s\S]*len\s*=\s*s\.length\s*\(\s*\)\s*;[\s\S]*\}\s*catch\s*\(\s*NullPointerException\s+\w+\s*\)\s*\{[\s\S]*len\s*=\s*-1\s*;[\s\S]*\}/]},
+
+    {id:'CTRL1', level:6, title:'for문 — 1부터 5까지 합계',
+     concept:'for문은 (초기화; 조건; 증감) 세 부분으로 반복 횟수를 제어합니다. 코테에서 배열 순회·누적·카운팅 등 거의 모든 반복에 씁니다.',
+     before:['int sum = 0;'], placeholder:['// TODO: for문으로 1~5를 sum에 누적'],
+     after:['System.out.println(sum);'],
+     expected:'15', answer:['for (int i = 1; i <= 5; i++) sum += i;'], note:'',
+     regex:[/for\s*\(\s*int\s+i\s*=\s*1\s*;\s*i\s*<=\s*5\s*;/, /sum\s*\+=\s*i\s*;?/]},
+
+    {id:'CTRL2', level:6, title:'향상된 for문 (for-each) — 배열 순회',
+     concept:'배열·컬렉션의 원소를 처음부터 끝까지 꺼낼 때 인덱스 없이 쓸 수 있는 문법입니다. 인덱스가 필요 없는 순회에는 이쪽이 더 읽기 좋습니다.',
+     before:['int[] nums = {2, 4, 6};', 'int sum = 0;'],
+     placeholder:['// TODO: for-each로 nums를 순회해 sum에 누적'],
+     after:['System.out.println(sum);'],
+     expected:'12', answer:['for (int n : nums) sum += n;'], note:'',
+     regex:[/for\s*\(\s*int\s+\w+\s*:\s*nums\s*\)/, /sum\s*\+=\s*\w+\s*;?/]},
+
+    {id:'CTRL3', level:6, title:'while + break — 조건 탈출 패턴',
+     concept:'while은 조건이 true인 동안 반복하며, break를 만나면 즉시 루프를 탈출합니다. 종료 조건을 미리 알기 어렵거나 특정 값을 찾으면 멈추는 탐색 로직에 씁니다.',
+     before:['int[] arr = {-3, -1, 4, 2};', 'int result = -1;', 'int i = 0;'],
+     placeholder:['// TODO: arr에서 첫 번째 양수를 result에 저장하고 break'],
+     after:['System.out.println(result);'],
+     expected:'4', answer:['while (i < arr.length) {', '    if (arr[i] > 0) { result = arr[i]; break; }', '    i++;', '}'],
+     note:'break 없이 계속 돌면 마지막 양수 2가 result에 덮어씌워집니다.',
+     regex:[/while\s*\(\s*i\s*<\s*arr\.length\s*\)/, /result\s*=\s*arr\s*\[\s*i\s*\]/, /break\s*;/]},
+
+    {id:'MATH1', level:6, title:'Math.max — 두 값 중 더 큰 값',
+     concept:'두 값을 비교해 더 큰 쪽을 반환합니다. if문 없이 최댓값을 한 줄로 구할 수 있어 코테에서 자주 씁니다.',
+     before:['int a = 7, b = 3;'], placeholder:['// TODO: a와 b 중 큰 값을 max에 저장'],
+     after:['System.out.println(max);'],
+     expected:'7', answer:['int max = Math.max(a, b);'], note:'',
+     regex:[/int\s+max\s*=\s*Math\.max\s*\(\s*a\s*,\s*b\s*\)\s*;?/]},
+
+    {id:'MATH2', level:6, title:'Math.min — 두 값 중 더 작은 값',
+     concept:'두 값을 비교해 더 작은 쪽을 반환합니다. Math.max와 함께 범위 클램핑·경계 처리에 많이 씁니다.',
+     before:['int a = 7, b = 3;'], placeholder:['// TODO: a와 b 중 작은 값을 min에 저장'],
+     after:['System.out.println(min);'],
+     expected:'3', answer:['int min = Math.min(a, b);'], note:'',
+     regex:[/int\s+min\s*=\s*Math\.min\s*\(\s*a\s*,\s*b\s*\)\s*;?/]},
+
+    {id:'MATH3', level:6, title:'Math.abs — 절댓값',
+     concept:'음수를 양수로 바꿔 절댓값을 반환합니다. 두 값의 차이·거리 계산 시 부호에 관계없이 크기만 구할 때 씁니다.',
+     before:['int n = -5;'], placeholder:['// TODO: n의 절댓값을 abs에 저장'],
+     after:['System.out.println(abs);'],
+     expected:'5', answer:['int abs = Math.abs(n);'], note:'',
+     regex:[/int\s+abs\s*=\s*Math\.abs\s*\(\s*n\s*\)\s*;?/]},
+
+    {id:'CONST1', level:6, title:'Integer.MAX_VALUE — 최솟값 초기화 패턴',
+     concept:'배열에서 최솟값을 찾을 때 비교 기준 초기값으로 Integer.MAX_VALUE를 씁니다. 어떤 값과 첫 번째로 비교해도 반드시 갱신되어 올바른 최솟값이 남습니다.',
+     before:['int[] arr = {3, 1, 4, 1, 5};'],
+     placeholder:['// TODO: min을 Integer.MAX_VALUE로 초기화하고, for-each로 실제 최솟값을 구하기'],
+     after:['System.out.println(min);'], rows:3,
+     expected:'1', answer:['int min = Integer.MAX_VALUE;', 'for (int v : arr) if (v < min) min = v;'],
+     note:'최댓값을 찾을 때는 반대로 Integer.MIN_VALUE로 초기화합니다.',
+     regex:[/Integer\.MAX_VALUE/, /for\s*\(/, /min\s*=\s*\w+|Math\.min\s*\(\s*min/]},
+
+    {id:'TERN1', level:6, title:'삼항 연산자 — 조건 ? 참값 : 거짓값',
+     concept:'if-else를 한 줄 표현식으로 줄입니다. 조건이 true이면 ? 뒤의 값, false이면 : 뒤의 값을 반환합니다. 변수 초기화와 동시에 분기할 때 깔끔합니다.',
+     before:['int n = 7;'], placeholder:['// TODO: n이 짝수면 "even", 홀수면 "odd"를 result에 저장 (삼항 연산자)'],
+     after:['System.out.println(result);'],
+     expected:'odd', answer:['String result = (n % 2 == 0) ? "even" : "odd";'], note:'',
+     regex:[/String\s+result\s*=/, /\?\s*"even"\s*:\s*"odd"|n\s*%\s*2\s*!=\s*0.*\?\s*"odd"/]}
 
   ];

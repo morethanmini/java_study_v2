@@ -250,5 +250,41 @@ window.QUESTIONS = [
      after:['}','Account acc = new Account();','acc.deposit(1000);','acc.deposit(-300);','System.out.println(acc.getBalance());'],
      expected:'1000',
      answer:['    public void deposit(int amount) {','        if (amount >= 0) {','            balance += amount;','        }','    }'], note:'',
-     regex:[/public\s+void\s+deposit\s*\(\s*int\s+amount\s*\)\s*\{/, /if\s*\(\s*amount\s*>=\s*0\s*\)/, /balance\s*\+=\s*amount/]}
+     regex:[/public\s+void\s+deposit\s*\(\s*int\s+amount\s*\)\s*\{/, /if\s*\(\s*amount\s*>=\s*0\s*\)/, /balance\s*\+=\s*amount/]},
+
+  {id:'COMP1', level:5, title:'Comparator.comparingInt — 정수 기준 오름차순 정렬',
+   concept:'Comparator는 정렬 기준을 외부에서 주입할 때 씁니다. comparingInt(키 추출 람다)가 가장 많이 쓰이는 패턴으로, 객체 리스트를 특정 int 속성 기준으로 정렬합니다.',
+   before:['List<String> words = new ArrayList<>(Arrays.asList("banana", "kiwi", "apple", "fig"));'],
+   placeholder:['// TODO: words를 문자열 길이 오름차순으로 정렬'],
+   after:['System.out.println(words.get(0));'],
+   expected:'fig',
+   answer:['words.sort(Comparator.comparingInt(String::length));'], note:'',
+   regex:[/words\.sort\s*\(/, /Comparator\.comparingInt\s*\(/]},
+
+  {id:'COMP2', level:5, title:'Comparator — .reversed()로 내림차순',
+   concept:'.reversed()를 체이닝하면 기준을 뒤집어 내림차순이 됩니다. 오름차순 Comparator를 만든 뒤 뒤집는 것이 일반적인 패턴입니다.',
+   before:['List<String> words = new ArrayList<>(Arrays.asList("banana", "kiwi", "apple", "fig"));'],
+   placeholder:['// TODO: words를 문자열 길이 내림차순으로 정렬'],
+   after:['System.out.println(words.get(0));'],
+   expected:'banana',
+   answer:['words.sort(Comparator.comparingInt(String::length).reversed());'], note:'',
+   regex:[/words\.sort\s*\(/, /Comparator\.comparingInt\s*\(/, /\.reversed\s*\(\s*\)/]},
+
+  {id:'ENUM1', level:5, title:'enum — 열거형 선언과 상수 참조',
+   concept:'enum은 정해진 상수 집합을 타입으로 묶을 때 씁니다. String이나 int 대신 쓰면 오타나 범위 오류를 컴파일 시점에 잡을 수 있습니다. 방향, 상태, 카테고리 표현에 자주 씁니다.',
+   before:['// enum Direction { UP, DOWN, LEFT, RIGHT } 이미 선언되어 있음'],
+   placeholder:['// TODO: dir을 UP으로, next를 DOWN으로 선언'],
+   after:['System.out.println(dir + " " + next);'],
+   expected:'UP DOWN',
+   answer:['Direction dir = Direction.UP;', 'Direction next = Direction.DOWN;'], note:'',
+   regex:[/Direction\s+dir\s*=\s*Direction\.UP/, /Direction\s+next\s*=\s*Direction\.DOWN/]},
+
+  {id:'ENUM2', level:5, title:'enum — values()로 모든 상수 순회',
+   concept:'enum.values()는 선언된 모든 상수를 배열로 반환합니다. for-each와 조합해 모든 상태를 처리할 때 씁니다.',
+   before:['// enum Season { SPRING, SUMMER, FALL, WINTER } 이미 선언되어 있음'],
+   placeholder:['// TODO: 모든 Season을 한 줄씩 출력 (values() + for-each)'],
+   after:[''],
+   expected:'SPRING\nSUMMER\nFALL\nWINTER',
+   answer:['for (Season s : Season.values()) System.out.println(s);'], note:'',
+   regex:[/Season\.values\s*\(\s*\)/, /for\s*\(\s*Season\s+\w+\s*:/]}
 ];

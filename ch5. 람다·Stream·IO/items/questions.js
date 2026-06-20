@@ -221,5 +221,31 @@ window.QUESTIONS = [
    expected:'apple\\nbanana\\ncherry\\n',
    answer:['sb.append(w).append("\\n");'],
    note:'append()는 자기 자신을 반환하므로 메서드 체이닝이 가능합니다.',
-   regex:[/sb\.append\s*\(\s*w\s*\).*\.append\s*\(\s*"\\n"\s*\)\s*;?/]}
+   regex:[/sb\.append\s*\(\s*w\s*\).*\.append\s*\(\s*"\\n"\s*\)\s*;?/]},
+
+  {id:'STREAM9', level:1, title:'distinct() — 중복 제거',
+   concept:'스트림에서 중복 원소를 제거합니다. Set 변환 없이 원래 순서를 유지한 채 중복을 걸러낼 때 씁니다.',
+   before:['List<Integer> nums = Arrays.asList(1, 2, 2, 3, 3, 3);'],
+   placeholder:['// TODO: 중복을 제거한 뒤 List로 수집해 result에 저장'],
+   after:['System.out.println(result);'],
+   expected:'[1, 2, 3]', answer:['List<Integer> result = nums.stream().distinct().collect(Collectors.toList());'], note:'',
+   regex:[/\.distinct\s*\(\s*\)/, /Collectors\.toList\s*\(\s*\)/]},
+
+  {id:'STREAM10', level:1, title:'Collectors.groupingBy — 그룹핑',
+   concept:'기준 함수의 반환값이 같은 원소끼리 묶어 Map<키, List<원소>>를 만듭니다. 카테고리별·길이별 분류 등에 씁니다.',
+   before:['List<String> words = Arrays.asList("apple", "kiwi", "fig", "pear", "mango");'],
+   placeholder:['// TODO: 단어 길이를 키로 그룹핑해 grouped에 저장'],
+   after:['System.out.println(grouped.get(4).size());'],
+   expected:'2', answer:['Map<Integer,List<String>> grouped = words.stream().collect(Collectors.groupingBy(String::length));'],
+   note:'"kiwi"(4자), "pear"(4자) 두 단어가 길이 4 그룹에 묶입니다.',
+   regex:[/Collectors\.groupingBy\s*\(/, /grouped\s*=.*stream|Map.*grouped/]},
+
+  {id:'IO9', level:2, title:'PrintWriter — 빠른 출력',
+   concept:'System.out.println을 루프 안에서 수천 번 호출하면 느려 시간 초과가 납니다. PrintWriter로 출력을 버퍼에 모았다가 flush()로 한꺼번에 내보내면 속도를 크게 줄일 수 있습니다.',
+   before:['PrintWriter pw = new PrintWriter(new BufferedWriter(new OutputStreamWriter(System.out)));'],
+   placeholder:['// TODO: pw로 "hello"와 "world"를 각각 한 줄씩 출력하고, flush()로 버퍼 비우기'],
+   after:[''],
+   expected:'hello\nworld', answer:['pw.println("hello");', 'pw.println("world");', 'pw.flush();'],
+   note:'마지막에 flush()를 호출하지 않으면 버퍼에 내용이 남아 출력되지 않습니다.',
+   regex:[/pw\.println\s*\(\s*"hello"\s*\)/, /pw\.println\s*\(\s*"world"\s*\)/, /pw\.flush\s*\(\s*\)/]}
 ];
