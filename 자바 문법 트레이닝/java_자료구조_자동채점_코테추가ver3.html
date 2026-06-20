@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java 자료구조 자동채점</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#15120D;
+    --surface:#1E1912;
+    --surface2:#241D15;
+    --code-bg:#0F0D09;
+    --border:#332B20;
+    --border-soft:#2A2318;
+    --accent:#D98C3D;
+    --accent-soft:#E8A552;
+    --success:#6FD9A0;
+    --fail:#E2604F;
+    --text:#F3ECDD;
+    --muted:#9C9284;
+    --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    --display:'Space Grotesk', sans-serif;
+    --body:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    min-height:100vh;
+  }
+  #app{max-width:1180px;margin:0 auto;padding:28px 20px 60px;}
+
+  /* ---------- topbar ---------- */
+  .topbar{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    gap:20px;flex-wrap:wrap;margin-bottom:22px;
+  }
+  .brand-eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+    color:var(--accent-soft);text-transform:uppercase;margin-bottom:6px;
+  }
+  .brand-title{
+    font-family:var(--display);font-weight:700;font-size:28px;
+    letter-spacing:-0.01em;margin:0;
+  }
+  .brand-sub{color:var(--muted);font-size:13px;margin-top:4px;}
+  .top-stats{display:flex;align-items:center;gap:14px;}
+  .progress-wrap{min-width:220px;}
+  .progress-label{
+    display:flex;justify-content:space-between;font-family:var(--mono);
+    font-size:12px;color:var(--muted);margin-bottom:6px;
+  }
+  .progress-label b{color:var(--text);font-weight:600;}
+  .progress-track{
+    height:8px;border-radius:99px;background:var(--surface2);
+    border:1px solid var(--border);overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-soft));
+    transition:width .3s ease;
+  }
+  .reset-btn{
+    font-family:var(--mono);font-size:12px;color:var(--muted);
+    background:transparent;border:1px solid var(--border);border-radius:8px;
+    padding:8px 12px;cursor:pointer;transition:.15s;
+  }
+  .reset-btn:hover{border-color:var(--fail);color:var(--fail);}
+
+  /* ---------- layout ---------- */
+  .layout{display:grid;grid-template-columns:230px 1fr;gap:18px;}
+  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
+
+  .sidebar{display:flex;flex-direction:column;gap:14px;}
+  .level-tabs{display:flex;flex-direction:column;gap:6px;}
+  @media(max-width:760px){.level-tabs{flex-direction:row;overflow-x:auto;padding-bottom:4px;}}
+  .level-tab{
+    text-align:left;background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--text);
+    font-family:var(--body);transition:.15s;
+  }
+  @media(max-width:760px){.level-tab{flex:0 0 auto;min-width:150px;}}
+  .level-tab:hover{border-color:var(--accent-soft);}
+  .level-tab.active{border-color:var(--accent);background:var(--surface2);}
+  .level-tab .lt-name{font-weight:600;font-size:13px;}
+  .level-tab .lt-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+  .level-tab .lt-count{
+    font-family:var(--mono);font-size:11px;color:var(--accent-soft);margin-top:6px;
+  }
+
+  .dot-grid{
+    display:grid;grid-template-columns:repeat(6,1fr);gap:6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;
+  }
+  @media(max-width:760px){.dot-grid{grid-template-columns:repeat(10,1fr);}}
+  .dot{
+    aspect-ratio:1;border-radius:6px;border:1px solid var(--border);
+    background:var(--surface2);display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;transition:.15s;
+  }
+  .dot:hover{border-color:var(--accent-soft);}
+  .dot.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+  .dot.pass{background:rgba(111,217,160,.14);border-color:var(--success);color:var(--success);}
+  .dot.fail{background:rgba(226,96,79,.14);border-color:var(--fail);color:var(--fail);}
+  .dot.bookmarked{outline:2px solid var(--accent-soft);outline-offset:1px;}
+
+  .kbd-hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px;}
+  .kbd-hint kbd{
+    background:var(--surface2);border:1px solid var(--border);border-radius:4px;
+    padding:1px 5px;font-family:var(--mono);font-size:10.5px;color:var(--text);
+  }
+
+  /* ---------- question card ---------- */
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:22px 24px;display:flex;flex-direction:column;gap:14px;
+  }
+  .card-eyebrow{
+    font-family:var(--mono);font-size:11px;color:var(--accent-soft);
+    letter-spacing:.08em;text-transform:uppercase;
+  }
+  .card-title{font-family:var(--display);font-size:21px;font-weight:600;margin:0;}
+  .concept{
+    background:var(--surface2);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:10px 14px;font-size:13.5px;line-height:1.6;color:var(--text);
+  }
+  .concept b{color:var(--accent-soft);}
+
+  .codebox{
+    background:var(--code-bg);border:1px solid var(--border-soft);border-radius:10px;
+    padding:14px 16px;font-family:var(--mono);font-size:13.5px;line-height:1.7;
+  }
+  .cl{white-space:pre-wrap;color:var(--text);}
+  .cl.muted{color:var(--muted);}
+  .blank{
+    width:100%;resize:vertical;background:#191309;border:1px dashed var(--accent-soft);
+    border-radius:6px;color:var(--accent-soft);font-family:var(--mono);font-size:13.5px;
+    padding:8px 10px;margin:4px 0;outline:none;
+  }
+  .blank:focus{border-style:solid;border-color:var(--accent);}
+  .expected{
+    font-family:var(--mono);font-size:12.5px;color:var(--muted);
+  }
+  .expected code{color:var(--accent-soft);background:none;}
+
+  .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .btn{
+    font-family:var(--body);font-weight:600;font-size:13px;border-radius:8px;
+    padding:9px 16px;cursor:pointer;border:1px solid var(--border);transition:.15s;
+  }
+  .btn-grade{background:var(--accent);border-color:var(--accent);color:#191309;}
+  .btn-grade:hover{background:var(--accent-soft);}
+  .btn-ghost{background:transparent;color:var(--muted);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--accent-soft);}
+  .btn-nav{background:var(--surface2);color:var(--text);}
+  .btn-nav:hover{border-color:var(--accent-soft);}
+  .btn-nav:disabled{opacity:.35;cursor:not-allowed;}
+
+  .feedback{
+    font-family:var(--mono);font-size:13px;border-radius:8px;padding:9px 12px;display:none;
+  }
+  .feedback.show{display:block;}
+  .feedback.pass{background:rgba(111,217,160,.12);color:var(--success);border:1px solid rgba(111,217,160,.3);}
+  .feedback.fail{background:rgba(226,96,79,.12);color:var(--fail);border:1px solid rgba(226,96,79,.3);}
+
+  .answer-box{
+    display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;
+  }
+  .answer-box.show{display:block;}
+  .answer-box .lbl{font-family:var(--mono);font-size:11px;color:var(--accent-soft);margin-bottom:8px;letter-spacing:.06em;}
+  .answer-box .al{font-family:var(--mono);font-size:13.5px;color:var(--text);white-space:pre-wrap;}
+  .answer-box .note{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6;}
+
+  .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:4px;}
+  .nav-row .pos{font-family:var(--mono);font-size:12px;color:var(--muted);}
+
+  /* ---------- terminal log ---------- */
+  .terminal{
+    margin-top:20px;background:var(--code-bg);border:1px solid var(--border-soft);
+    border-radius:12px;overflow:hidden;
+  }
+  .terminal-head{
+    display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--surface2);
+    border-bottom:1px solid var(--border-soft);font-family:var(--mono);font-size:11.5px;color:var(--muted);
+  }
+  .terminal-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
+  .terminal-body{
+    height:150px;overflow-y:auto;padding:12px 14px;font-family:var(--mono);
+    font-size:12.5px;line-height:1.7;color:var(--muted);
+  }
+  .terminal-body .ln{white-space:pre-wrap;}
+  .terminal-body .ln.pass{color:var(--success);}
+  .terminal-body .ln.fail{color:var(--fail);}
+  .terminal-body .ln.cmd{color:var(--accent-soft);}
+  .cursor{display:inline-block;width:7px;height:13px;background:var(--accent-soft);
+    animation:blink 1s steps(1) infinite;vertical-align:-2px;}
+  @keyframes blink{50%{opacity:0;}}
+
+  .loading{padding:60px 0;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px;}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading">진행 상황 불러오는 중...</div></div>
+
+<script>
+(function(){
+
+  /* ============ 데이터 ============ */
+  var LEVELS = [
+    {id:0, name:'Lv.0 진짜 기초', sub:'선언 · 초기화'},
+    {id:1, name:'Lv.1 기초', sub:'CRUD'},
+    {id:2, name:'Lv.2 활용', sub:'검색 · 정렬 · 집합'},
+    {id:3, name:'Lv.3 응용 · 함정', sub:'autoboxing 등'},
+    {id:4, name:'🔁 변형 연습', sub:'다른 데이터로 반복'}
+  ];
+
+  var QUESTIONS = [
+    {id:'Q0-1', level:0, title:'크기로 배열 선언하기',
+     concept:'값을 아직 모를 때도, 칸 수만 먼저 정해서 배열 공간을 미리 잡아둘 수 있는 방법이 있습니다. 이렇게 만들면 각 칸은 자동으로 기본값(default value)으로 채워집니다 — int는 0, boolean은 false, 참조 타입은 null. 크기만 알고 있을 때 배열을 어떻게 선언해야 할지 떠올려보세요.',
+     before:[], placeholder:['// TODO: 크기 5인 int 배열 arr 선언'],
+     after:['System.out.println(Arrays.toString(arr));'],
+     expected:'[0, 0, 0, 0, 0]', answer:['int[] arr = new int[5];'], note:'',
+     regex:[/int\s*\[\s*\]\s*arr\s*=\s*new\s*int\s*\[\s*5\s*\]\s*;?/]},
+
+    {id:'Q0-2', level:0, title:'값을 알 때 배열 선언하기 (리터럴)',
+     concept:'값을 이미 알고 있다면, 빈 배열을 만들고 하나씩 채우는 대신 선언과 동시에 한 번에 초기화하는 축약형이 있습니다. 단, 이 축약형은 선언 줄에서만 쓸 수 있습니다 — 변수를 먼저 선언해두고 나중에 따로 대입하려고 하면 컴파일 에러가 납니다.',
+     before:[], placeholder:['// TODO: 1, 2, 3 값을 가진 int 배열 arr 선언'],
+     after:['System.out.println(Arrays.toString(arr));'],
+     expected:'[1, 2, 3]', answer:['int[] arr = {1, 2, 3};'], note:'',
+     regex:[/int\s*\[\s*\]\s*arr\s*=\s*(?:new\s*int\s*\[\s*\])?\{\s*1\s*,\s*2\s*,\s*3\s*\}\s*;?/]},
+
+    {id:'Q0-3', level:0, title:'2차원 배열 선언하기',
+     concept:'2차원 배열은 사실 "배열을 원소로 담은 배열"입니다. 바깥쪽 길이와 안쪽 길이를 각각 따로 지정해서 선언할 수 있는데, 두 길이를 어떤 순서로 표기해야 할지 생각해보세요.',
+     before:[], placeholder:['// TODO: 3행 2열짜리 int 2차원 배열 grid 선언'],
+     after:['System.out.println(Arrays.deepToString(grid));'],
+     expected:'[[0, 0], [0, 0], [0, 0]]', answer:['int[][] grid = new int[3][2];'], note:'',
+     regex:[/int\s*\[\s*\]\s*\[\s*\]\s*grid\s*=\s*new\s*int\s*\[\s*3\s*\]\s*\[\s*2\s*\]\s*;?/]},
+
+    {id:'Q0-4', level:0, title:'ArrayList 선언하기 (인터페이스 타입으로)',
+     concept:'자바에서 컬렉션(collection)을 다룰 때는, 구체적인 구현 클래스보다 더 넓은 인터페이스 타입으로 변수를 선언해두는 관례가 있습니다. 나중에 구현체만 바꿔도 나머지 코드는 그대로 둘 수 있습니다 — 다형성(polymorphism)의 실용적 이유입니다. 왼쪽엔 어떤 타입을, 오른쪽엔 어떤 타입을 써야 할지 생각해보세요.',
+     before:[], placeholder:['// TODO: 빈 정수 ArrayList list 선언'],
+     after:['System.out.println(list.size());'],
+     expected:'0', answer:['List<Integer> list = new ArrayList<>();'],
+     note:'ArrayList<Integer> list = new ArrayList<>();도 동작은 같지만, 다형성을 살리려면 왼쪽을 인터페이스 타입으로 쓰는 게 관례입니다.',
+     regex:[/(?:List|ArrayList)\s*<\s*Integer\s*>\s*list\s*=\s*new\s*ArrayList\s*<\s*>\s*\(\s*\)\s*;?/]},
+
+    {id:'Q0-5', level:0, title:'래퍼 클래스(Wrapper Class)로 선언하기',
+     concept:'제네릭(generics)을 쓰는 컬렉션은 원시 타입(primitive)을 직접 담을 수 없고, 반드시 객체 타입만 담을 수 있습니다. 그래서 int 대신 그에 대응하는 래퍼 클래스(wrapper class)를 써야 합니다. add(10)처럼 int 값을 넣으면 자바가 자동으로 객체로 변환해주는데, 이를 오토박싱(autoboxing)이라 합니다. (이 개념이 나중에 Q8 함정의 원인이 됩니다.)',
+     before:[], placeholder:['// TODO: Integer를 담을 빈 ArrayList numbers 선언'],
+     after:['numbers.add(10);','numbers.add(20);','System.out.println(numbers);'],
+     expected:'[10, 20]', answer:['List<Integer> numbers = new ArrayList<>();'], note:'',
+     regex:[/(?:List|ArrayList)\s*<\s*Integer\s*>\s*numbers\s*=\s*new\s*ArrayList\s*<\s*>\s*\(\s*\)\s*;?/]},
+
+    {id:'Q0-6', level:0, title:'HashMap 선언하기 (타입 파라미터 2개)',
+     concept:'Map은 key 타입과 value 타입, 총 두 개의 타입 파라미터를 받습니다. <KeyType, ValueType> 순서를 지켜야 합니다.',
+     before:[], placeholder:['// TODO: String을 key로, Integer를 value로 갖는 빈 HashMap scores 선언'],
+     after:['System.out.println(scores.size());'],
+     expected:'0', answer:['Map<String, Integer> scores = new HashMap<>();'], note:'',
+     regex:[/(?:Map|HashMap)\s*<\s*String\s*,\s*Integer\s*>\s*scores\s*=\s*new\s*HashMap\s*<\s*>\s*\(\s*\)\s*;?/]},
+
+    {id:'Q1', level:1, title:'배열 오름차순 정렬',
+     concept:'원시 타입(primitive) 배열을 정렬할 때는 비교자(Comparator)를 따로 지정할 수 없고, 항상 오름차순으로만 정렬하는 방법이 있습니다. (Q2의 객체 배열과 비교해보세요)',
+     before:['int[] arr = {5, 3, 1, 4, 2};'], placeholder:['// TODO'],
+     after:['System.out.println(Arrays.toString(arr));'],
+     expected:'[1, 2, 3, 4, 5]', answer:['Arrays.sort(arr);'],
+     note:'원시 타입 배열 정렬은 내부적으로 Dual-Pivot Quicksort를 사용하며, 항상 오름차순입니다.',
+     regex:[/Arrays\.sort\s*\(\s*arr\s*\)\s*;?/]},
+
+    {id:'Q6', level:1, title:'리스트 인덱스로 값 읽기',
+     concept:'리스트에서 특정 위치의 값을 읽어오는 연산은 인덱스(index) 기반 접근이라 O(1)입니다.',
+     before:['List<Integer> list = new ArrayList<>(Arrays.asList(10, 20, 30, 40, 50));'], placeholder:['// TODO'],
+     after:['System.out.println("val6: " + val6);'],
+     expected:'val6: 30', answer:['int val6 = list.get(2);'], note:'',
+     regex:[/int\s*val6\s*=\s*list\.get\s*\(\s*2\s*\)\s*;?/]},
+
+    {id:'Q7', level:1, title:'리스트 인덱스 값 수정',
+     concept:'리스트의 특정 위치 값을 ‘교체’하는 연산과 ‘새로 끼워넣는’ 연산은 서로 다른 메서드입니다. 교체는 리스트의 길이를 바꾸지 않는다는 점에 주목하세요.',
+     before:['// list = [10, 20, 30, 40, 50]'], placeholder:['// TODO'],
+     after:['System.out.println(list);'],
+     expected:'[10, 99, 30, 40, 50]', answer:['list.set(1, 99);'], note:'',
+     regex:[/list\.set\s*\(\s*1\s*,\s*99\s*\)\s*;?/]},
+
+    {id:'Q11', level:1, title:'HashSet 선언과 중복 제거',
+     concept:'HashSet은 중복을 허용하지 않고, 입력 순서를 보장하지 않습니다.',
+     before:[], placeholder:['Set<Integer> set11 = /* TODO */;'],
+     after:['set11.add(1);','set11.add(2);','set11.add(3);','set11.add(2); // 중복 — 무시됨','System.out.println(set11.size());'],
+     expected:'3', answer:['Set<Integer> set11 = new HashSet<>();'], note:'',
+     regex:[/(?:Set|HashSet)\s*<\s*Integer\s*>\s*set11\s*=\s*new\s*HashSet\s*<\s*>\s*\(\s*\)\s*;?/]},
+
+    {id:'Q16', level:1, title:'Map에 key-value 추가',
+     concept:'맵에 키-값 쌍을 넣는 연산은, 키가 이미 있으면 기존 값을 덮어씁니다(overwrite). 즉 ‘추가’와 ‘수정’이 사실 같은 동작으로 처리됩니다.',
+     before:['Map<String, Integer> map = new HashMap<>();'], placeholder:['// TODO'],
+     after:['System.out.println(map.get("apple"));'],
+     expected:'5', answer:['map.put("apple", 5);'], note:'',
+     regex:[/map\.put\s*\(\s*"apple"\s*,\s*5\s*\)\s*;?/]},
+
+    {id:'Q20', level:1, title:'Map에서 key 삭제',
+     concept:'맵에서 특정 키를 지우는 연산은, 그 키가 원래 없었어도 예외 없이 조용히 넘어갑니다.',
+     before:['// map에 "apple"=5가 들어있는 상태'], placeholder:['// TODO'],
+     after:['System.out.println(map.size());'],
+     expected:'0', answer:['map.remove("apple");'], note:'',
+     regex:[/map\.remove\s*\(\s*"apple"\s*\)\s*;?/]},
+
+    {id:'Q9', level:2, title:'값으로 인덱스 찾기',
+     concept:'리스트에서 특정 값이 몇 번째 위치에 있는지 찾는 연산이 있습니다. 값이 없으면 -1을 반환합니다.',
+     before:['// list = [10, 99, 30, 40, 50]'], placeholder:['// TODO'],
+     after:['System.out.println(idx9);'],
+     expected:'1', answer:['int idx9 = list.indexOf(99);'], note:'',
+     regex:[/int\s*idx9\s*=\s*list\.indexOf\s*\(\s*99\s*\)\s*;?/]},
+
+    {id:'Q12', level:2, title:'Set에 값 존재 여부 확인',
+     concept:'Set에 특정 값이 들어있는지 확인하는 연산은 해시(hash) 기반 탐색이라 평균 O(1)입니다. (List에서 같은 종류의 확인은 O(n)이라는 점과 비교해두면 좋습니다.)',
+     before:['// set11 = {1, 2, 3}'], placeholder:['boolean has2 = /* TODO */;'],
+     after:['System.out.println(has2);'],
+     expected:'true', answer:['boolean has2 = set11.contains(2);'], note:'',
+     regex:[/boolean\s*has2\s*=\s*set11\.contains\s*\(\s*2\s*\)\s*;?/]},
+
+    {id:'Q19', level:2, title:'Map의 key/value 존재 여부 확인',
+     concept:'맵에서 ‘이 키가 있는지’ 확인하는 것과 ‘이 값이 있는지’ 확인하는 것은 비용이 다릅니다. 하나는 해시로 바로 찾아가고, 다른 하나는 모든 값을 하나씩 순회해야 합니다.',
+     before:['map.put("apple", 5);'],
+     placeholder:['boolean hasKey = /* TODO */;','boolean hasVal = /* TODO */;'],
+     after:[], rows:3,
+     expected:'hasKey = true, hasVal = true',
+     answer:['boolean hasKey = map.containsKey("apple");','boolean hasVal = map.containsValue(5);'], note:'',
+     regex:[/containsKey\s*\(\s*"apple"\s*\)/, /containsValue\s*\(\s*5\s*\)/]},
+
+    {id:'Q2', level:2, title:'Integer 배열 내림차순 정렬',
+     concept:'비교자(Comparator)를 지정해서 정렬 방향을 바꾸는 기능은 객체 배열(Integer[])에서만 쓸 수 있습니다. 원시 타입 int[]에는 이 옵션이 아예 없습니다 (Q1과 대조). 자바 표준 라이브러리에는 정렬 순서를 거꾸로 뒤집어주는 미리 만들어진 비교자가 있습니다.',
+     before:['Integer[] arr2 = {5, 3, 1, 4, 2};'], placeholder:['// TODO'],
+     after:['System.out.println(Arrays.toString(arr2));'],
+     expected:'[5, 4, 3, 2, 1]', answer:['Arrays.sort(arr2, Collections.reverseOrder());'], note:'',
+     regex:[/Arrays\.sort\s*\(\s*arr2\s*,\s*Collections\.reverseOrder\s*\(\s*\)\s*\)\s*;?/]},
+
+    {id:'Q10', level:2, title:'List 내림차순 정렬',
+     concept:'배열을 정렬하는 기능과 리스트를 정렬하는 기능은, 사실 서로 다른 클래스에 속해 있습니다. 이름이 비슷해서 헷갈리기 쉬우니 어느 클래스 소속인지 구분해서 기억해두세요.',
+     before:['List<Integer> list10 = new ArrayList<>(Arrays.asList(3, 1, 4, 1, 5));'], placeholder:['// TODO'],
+     after:['System.out.println(list10);'],
+     expected:'[5, 4, 3, 1, 1]', answer:['Collections.sort(list10, Collections.reverseOrder());'], note:'',
+     regex:[/Collections\.sort\s*\(\s*list10\s*,\s*Collections\.reverseOrder\s*\(\s*\)\s*\)\s*;?/]},
+
+    {id:'Q3', level:2, title:'배열 특정 범위 채우기',
+     concept:'배열의 일부 구간만 골라서 값으로 채우는 기능이 있습니다. 시작 인덱스는 포함되지만, 끝 인덱스는 미포함(exclusive)이라는 점에 주의하세요.',
+     before:['int[] arr3 = {0, 0, 0, 0, 0};'], placeholder:['// TODO'],
+     after:['System.out.println(Arrays.toString(arr3));'],
+     expected:'[0, -1, -1, 0, 0]', answer:['Arrays.fill(arr3, 1, 3, -1);'],
+     note:'인덱스 1, 2만 채워지고 인덱스 3은 채워지지 않습니다.',
+     regex:[/Arrays\.fill\s*\(\s*arr3\s*,\s*1\s*,\s*3\s*,\s*-1\s*\)\s*;?/]},
+
+    {id:'Q13', level:2, title:'교집합 (Set)',
+     concept:'두 집합에서 공통으로 들어있는 원소만 남기고 싶을 때 쓰는 연산이 있습니다. 이 연산은 새 결과를 따로 반환하지 않고, 호출한 집합 자체를 직접 바꿔버립니다(in-place).',
+     before:['Set<Integer> setA = new HashSet<>(Arrays.asList(1, 2, 3, 4));','Set<Integer> setB = new HashSet<>(Arrays.asList(3, 4, 5, 6));'],
+     placeholder:['// TODO'], after:['System.out.println(setA);'],
+     expected:'[3, 4]', answer:['setA.retainAll(setB);'], note:'',
+     regex:[/setA\.retainAll\s*\(\s*setB\s*\)\s*;?/]},
+
+    {id:'Q14', level:2, title:'합집합 (Set)',
+     concept:'두 집합을 하나로 합치고 싶을 때 쓰는 연산이 있습니다. 중복된 원소는 자동으로 한 번만 남습니다.',
+     before:['Set<Integer> setC = new HashSet<>(Arrays.asList(1, 2, 3));','Set<Integer> setD = new HashSet<>(Arrays.asList(3, 4, 5));'],
+     placeholder:['// TODO'], after:['System.out.println(setC);'],
+     expected:'[1, 2, 3, 4, 5]', answer:['setC.addAll(setD);'], note:'',
+     regex:[/setC\.addAll\s*\(\s*setD\s*\)\s*;?/]},
+
+    {id:'Q15', level:2, title:'차집합 (Set)',
+     concept:'한 집합에서, 다른 집합과 겹치는 원소들만 골라 제거하고 싶을 때 쓰는 연산이 있습니다.',
+     before:['Set<Integer> setE = new HashSet<>(Arrays.asList(1, 2, 3, 4));','Set<Integer> setF = new HashSet<>(Arrays.asList(3, 4, 5));'],
+     placeholder:['// TODO'], after:['System.out.println(setE);'],
+     expected:'[1, 2]', answer:['setE.removeAll(setF);'], note:'',
+     regex:[/setE\.removeAll\s*\(\s*setF\s*\)\s*;?/]},
+
+    {id:'Q17', level:2, title:'key 없을 때 기본값 반환 (저장은 안 됨)',
+     concept:'맵에 없는 키를 조회할 때, 예외 대신 미리 정해둔 기본값을 돌려받고 싶을 때 쓰는 연산이 있습니다. 중요한 건, 이 연산이 맵에 그 키를 실제로 저장하지는 않는다는 점입니다 — 이 부분이 가장 헷갈리기 쉽습니다.',
+     before:[], placeholder:['int val17 = /* TODO */;'],
+     after:['System.out.println(val17);','System.out.println(map.containsKey("banana"));'],
+     expected:'0, false', answer:['int val17 = map.getOrDefault("banana", 0);'], note:'',
+     regex:[/int\s*val17\s*=\s*map\.getOrDefault\s*\(\s*"banana"\s*,\s*0\s*\)\s*;?/]},
+
+    {id:'Q5', level:3, title:'배열 → ArrayList 변환',
+     concept:'배열을 리스트로 감싸주는 기능이 있는데, 이걸로 바로 만든 리스트는 사실 배열을 그대로 감싼 고정 크기(fixed-size) 리스트라서 add/remove가 불가능합니다(UnsupportedOperationException). 진짜 자유롭게 추가·삭제 가능한 리스트가 필요하다면 한 단계를 더 거쳐야 합니다.',
+     before:['Integer[] arr5 = {10, 20, 30};'], placeholder:['// TODO'],
+     after:['System.out.println(list5);'],
+     expected:'[10, 20, 30]', answer:['List<Integer> list5 = new ArrayList<>(Arrays.asList(arr5));'],
+     note:'new ArrayList<>()로 한 번 더 감싸지 않으면 이후 add()/remove() 호출 시 런타임 예외가 발생합니다.',
+     regex:[/List\s*<\s*Integer\s*>\s*list5\s*=\s*new\s*ArrayList\s*<\s*>\s*\(\s*Arrays\.asList\s*\(\s*arr5\s*\)\s*\)\s*;?/]},
+
+    {id:'Q8', level:3, title:'인덱스 삭제 vs 값 삭제',
+     concept:'리스트의 삭제 연산은 오버로딩(overloading)된 메서드라서, 인덱스로 지우는 버전과 값으로 지우는 버전이 따로 존재합니다. 정수를 그대로 넣으면 컴파일러는 그걸 인덱스로 받아들입니다. 그렇다면 "값으로 지우고 싶다"는 의도를 컴파일러에게 어떻게 전달해야 할까요? (Q0-5의 오토박싱 개념을 다시 떠올려보세요)',
+     before:['// list = [10, 99, 30, 40, 50]'], placeholder:['// TODO  (값 30을 삭제하고 싶음)'],
+     after:['System.out.println(list);'],
+     expected:'[10, 99, 40, 50]', answer:['list.remove(Integer.valueOf(30));'],
+     note:'list.remove(30)이라고 쓰면 인덱스 30번째 원소를 지우려다 IndexOutOfBoundsException이 납니다.',
+     regex:[/list\.remove\s*\(\s*Integer\.valueOf\s*\(\s*30\s*\)\s*\)\s*;?/]},
+
+    {id:'Q18', level:3, title:'빈도수 카운팅 패턴',
+     concept:'각 단어가 몇 번 등장했는지 세고 싶을 때 자주 쓰는 전형적인 패턴이 있습니다. 처음 보는 단어는 0부터 시작해서 1을 더하고, 이미 본 단어는 기존 횟수에 1을 더하면 됩니다 — 이 두 경우를 한 줄로 동시에 처리하려면 어떻게 해야 할까요? 코딩테스트에서 거의 항상 등장하는 패턴이니 꼭 손에 익혀두세요.',
+     before:['String[] words = {"a", "b", "a", "c", "a", "b"};','Map<String, Integer> freq = new HashMap<>();','for (String w : words) {'],
+     placeholder:['    // TODO'],
+     after:['}','System.out.println(freq.get("a"));','System.out.println(freq.get("b"));'],
+     expected:'3, 2', answer:['freq.put(w, freq.getOrDefault(w, 0) + 1);'],
+     note:'첫 등장 시 getOrDefault가 0을 반환해 1로 시작하고, 이후 등장할 때마다 기존 값에 1씩 더해집니다.',
+     regex:[/freq\.put\s*\(\s*w\s*,\s*freq\.getOrDefault\s*\(\s*w\s*,\s*0\s*\)\s*\+\s*1\s*\)\s*;?/]},
+
+    {id:'Q4', level:3, title:'2차원 배열 정렬 (람다 비교자)',
+     concept:'2차원 배열은 사실 1차원 배열들을 원소로 담은 객체 배열입니다. 그래서 1차원 int[](Q1)와 달리, 정렬 기준을 직접 정해줄 수 있는 방법이 있습니다. 각 행의 0번째 값을 기준으로 두 행을 비교하려면 어떤 식을 써야 할지 생각해보세요.',
+     before:['int[][] arr4 = {{3, 1}, {1, 5}, {2, 3}};'], placeholder:['// TODO  (0번 인덱스 기준 오름차순)'],
+     after:['System.out.println(Arrays.deepToString(arr4));'],
+     expected:'[[1, 5], [2, 3], [3, 1]]', answer:['Arrays.sort(arr4, (a, b) -> a[0] - b[0]);'],
+     note:'a[0] - b[0]이 음수면 a가 앞, 양수면 b가 앞으로 정렬됩니다.',
+     regex:[/Arrays\.sort\s*\(\s*arr4\s*,\s*\(\s*a\s*,\s*b\s*\)\s*->\s*(?:a\[0\]\s*-\s*b\[0\]|Integer\.compare\s*\(\s*a\[0\]\s*,\s*b\[0\]\s*\))\s*\)\s*;?/]},
+
+    {id:'Q13b', level:4, title:'🔁 변형: 교집합 (다른 데이터)',
+     concept:'두 집합에서 공통으로 들어있는 원소만 남기고 싶을 때 쓰는 연산이 있습니다. 이 연산은 새 결과를 따로 반환하지 않고, 호출한 집합 자체를 직접 바꿔버립니다(in-place). (Q13과 같은 패턴, 다른 데이터)',
+     before:['Set<Integer> setA = new HashSet<>(Arrays.asList(10, 20, 30, 40));','Set<Integer> setB = new HashSet<>(Arrays.asList(20, 40, 50));'],
+     placeholder:['// TODO'], after:['System.out.println(setA);'],
+     expected:'[20, 40]', answer:['setA.retainAll(setB);'], note:'',
+     regex:[/setA\.retainAll\s*\(\s*setB\s*\)\s*;?/]},
+
+    {id:'Q14b', level:4, title:'🔁 변형: 합집합 (다른 데이터)',
+     concept:'두 집합을 하나로 합치고 싶을 때 쓰는 연산이 있습니다. 중복된 원소는 자동으로 한 번만 남습니다. (Q14와 같은 패턴, 다른 데이터)',
+     before:['Set<Integer> setC = new HashSet<>(Arrays.asList(1, 3, 5));','Set<Integer> setD = new HashSet<>(Arrays.asList(2, 3, 4));'],
+     placeholder:['// TODO'], after:['System.out.println(setC);'],
+     expected:'[1, 2, 3, 4, 5]', answer:['setC.addAll(setD);'], note:'',
+     regex:[/setC\.addAll\s*\(\s*setD\s*\)\s*;?/]},
+
+    {id:'Q15b', level:4, title:'🔁 변형: 차집합 (다른 데이터)',
+     concept:'한 집합에서, 다른 집합과 겹치는 원소들만 골라 제거하고 싶을 때 쓰는 연산이 있습니다. (Q15와 같은 패턴, 다른 데이터)',
+     before:['Set<Integer> setE = new HashSet<>(Arrays.asList(1, 2, 3, 4, 5));','Set<Integer> setF = new HashSet<>(Arrays.asList(2, 4));'],
+     placeholder:['// TODO'], after:['System.out.println(setE);'],
+     expected:'[1, 3, 5]', answer:['setE.removeAll(setF);'], note:'',
+     regex:[/setE\.removeAll\s*\(\s*setF\s*\)\s*;?/]},
+
+    {id:'Q17b', level:4, title:'🔁 변형: 기본값 반환 (다른 데이터)',
+     concept:'맵에 없는 키를 조회할 때, 예외 대신 미리 정해둔 기본값을 돌려받고 싶을 때 쓰는 연산이 있습니다. 이 연산은 맵에 그 키를 실제로 저장하지는 않습니다. (Q17과 같은 패턴, 다른 데이터)',
+     before:['Map<String, Integer> map = new HashMap<>();','map.put("apple", 5);'],
+     placeholder:['int val = /* TODO */;'], after:['System.out.println(val);'],
+     expected:'-1', answer:['int val = map.getOrDefault("kiwi", -1);'], note:'',
+     regex:[/int\s*val\s*=\s*map\.getOrDefault\s*\(\s*"kiwi"\s*,\s*-1\s*\)\s*;?/]},
+
+    {id:'Q8b', level:4, title:'🔁 변형: 인덱스 삭제 vs 값 삭제 (다른 데이터)',
+     concept:'리스트의 삭제 연산은 오버로딩(overloading)된 메서드라서, 인덱스로 지우는 버전과 값으로 지우는 버전이 따로 존재합니다. 정수를 그대로 넣으면 인덱스로 해석된다는 점을 떠올려보세요. (Q8과 같은 패턴, 다른 데이터)',
+     before:['List<Integer> list = new ArrayList<>(Arrays.asList(5, 15, 25, 35));'],
+     placeholder:['// TODO (값 25를 삭제하고 싶음)'], after:['System.out.println(list);'],
+     expected:'[5, 15, 35]', answer:['list.remove(Integer.valueOf(25));'], note:'',
+     regex:[/list\.remove\s*\(\s*Integer\.valueOf\s*\(\s*25\s*\)\s*\)\s*;?/]},
+
+    {id:'Q18b', level:4, title:'🔁 변형: 빈도수 카운팅 (다른 데이터)',
+     concept:'각 항목이 몇 번 등장했는지 셀 때 쓰는 전형적인 패턴이 있습니다. 처음 보는 항목은 0부터 시작해서 1을 더하고, 이미 본 항목은 기존 횟수에 1을 더합니다. (Q18과 같은 패턴, 다른 데이터)',
+     before:['String[] fruits = {"apple", "banana", "apple", "apple", "banana", "cherry"};','Map<String, Integer> freq = new HashMap<>();','for (String f : fruits) {'],
+     placeholder:['    // TODO'],
+     after:['}','System.out.println(freq.get("apple"));','System.out.println(freq.get("banana"));'],
+     expected:'3, 2', answer:['freq.put(f, freq.getOrDefault(f, 0) + 1);'], note:'',
+     regex:[/freq\.put\s*\(\s*f\s*,\s*freq\.getOrDefault\s*\(\s*f\s*,\s*0\s*\)\s*\+\s*1\s*\)\s*;?/]},
+
+    {id:'Q2b', level:4, title:'🔁 변형: 객체 배열 내림차순 (다른 데이터)',
+     concept:'비교자(Comparator)를 지정해서 정렬 방향을 바꾸는 기능은 객체 배열에서만 쓸 수 있습니다. 자바 표준 라이브러리에는 정렬 순서를 거꾸로 뒤집어주는 미리 만들어진 비교자가 있습니다. (Q2와 같은 패턴, 다른 데이터)',
+     before:['Integer[] nums = {7, 2, 9, 4, 1};'], placeholder:['// TODO (내림차순)'],
+     after:['System.out.println(Arrays.toString(nums));'],
+     expected:'[9, 7, 4, 2, 1]', answer:['Arrays.sort(nums, Collections.reverseOrder());'], note:'',
+     regex:[/Arrays\.sort\s*\(\s*nums\s*,\s*Collections\.reverseOrder\s*\(\s*\)\s*\)\s*;?/]},
+
+    {id:'Q10b', level:4, title:'🔁 변형: 리스트 내림차순 (다른 데이터)',
+     concept:'배열을 정렬하는 기능과 리스트를 정렬하는 기능은 서로 다른 클래스에 속해 있습니다. 이름이 비슷해서 헷갈리기 쉬우니 어느 클래스 소속인지 떠올려보세요. (Q10과 같은 패턴, 다른 데이터)',
+     before:['List<Integer> list2 = new ArrayList<>(Arrays.asList(8, 2, 6, 4));'], placeholder:['// TODO (내림차순)'],
+     after:['System.out.println(list2);'],
+     expected:'[8, 6, 4, 2]', answer:['Collections.sort(list2, Collections.reverseOrder());'], note:'',
+     regex:[/Collections\.sort\s*\(\s*list2\s*,\s*Collections\.reverseOrder\s*\(\s*\)\s*\)\s*;?/]},
+
+    {id:'Q9b', level:4, title:'🔁 변형: 값으로 인덱스 찾기 (다른 데이터)',
+     concept:'리스트에서 특정 값이 몇 번째 위치에 있는지 찾는 연산이 있습니다. 값이 없으면 -1을 반환합니다. (Q9와 같은 패턴, 다른 데이터)',
+     before:['List<Integer> list3 = new ArrayList<>(Arrays.asList(7, 14, 21, 28));'], placeholder:['// TODO'],
+     after:['System.out.println(idx);'],
+     expected:'2', answer:['int idx = list3.indexOf(21);'], note:'',
+     regex:[/int\s*idx\s*=\s*list3\.indexOf\s*\(\s*21\s*\)\s*;?/]},
+
+    {id:'Q5b', level:4, title:'🔁 변형: 배열 → ArrayList 변환 (다른 데이터)',
+     concept:'배열을 리스트로 감싸주는 기능이 있는데, 그걸로 바로 만든 리스트는 고정 크기(fixed-size)라서 add/remove가 불가능합니다. 진짜 자유롭게 추가·삭제 가능한 리스트가 필요하다면 한 단계를 더 거쳐야 합니다. (Q5와 같은 패턴, 다른 데이터)',
+     before:['Integer[] src = {100, 200, 300};'], placeholder:['// TODO'],
+     after:['System.out.println(result);'],
+     expected:'[100, 200, 300]', answer:['List<Integer> result = new ArrayList<>(Arrays.asList(src));'], note:'',
+     regex:[/List\s*<\s*Integer\s*>\s*result\s*=\s*new\s*ArrayList\s*<\s*>\s*\(\s*Arrays\.asList\s*\(\s*src\s*\)\s*\)\s*;?/]},
+    {id:'CT1', level:1, title:'코테: 배열 길이 구하기',
+     concept:'배열의 길이는 length 필드로 확인합니다.',
+     before:['int[] arr = {1,2,3,4,5};'], placeholder:['// TODO'],
+     after:['System.out.println(len);'],
+     expected:'5', answer:['int len = arr.length;'], note:'',
+     regex:[/int\s*len\s*=\s*arr\.length\s*;?/]},
+
+    {id:'CT2', level:1, title:'코테: List 크기 구하기',
+     concept:'List의 원소 개수는 size() 메서드로 확인합니다.',
+     before:['List<Integer> list = Arrays.asList(1,2,3);'], placeholder:['// TODO'],
+     after:['System.out.println(size);'],
+     expected:'3', answer:['int size = list.size();'], note:'',
+     regex:[/int\s*size\s*=\s*list\.size\s*\(\s*\)\s*;?/]},
+
+    {id:'CT3', level:1, title:'코테: 배열 출력하기',
+     concept:'배열 내용을 확인할 때는 Arrays.toString()을 사용합니다.',
+     before:['int[] arr = {1,2,3};'], placeholder:['// TODO'],
+     after:[],
+     expected:'[1, 2, 3]', answer:['System.out.println(Arrays.toString(arr));'], note:'',
+     regex:[/Arrays\.toString\s*\(\s*arr\s*\)/]},
+
+    {id:'CT4', level:2, title:'코테: 배열 합계 구하기',
+     concept:'배열 합계는 Stream API로 빠르게 계산할 수 있습니다.',
+     before:['int[] arr = {1,2,3,4,5};'], placeholder:['// TODO'],
+     after:['System.out.println(sum);'],
+     expected:'15', answer:['int sum = Arrays.stream(arr).sum();'], note:'',
+     regex:[/Arrays\.stream\s*\(\s*arr\s*\)\.sum\s*\(\s*\)/]},
+
+    {id:'CT5', level:2, title:'코테: 배열 최대값',
+     concept:'배열의 최대값을 찾습니다.',
+     before:['int[] arr = {5,3,9,1};'], placeholder:['// TODO'],
+     after:['System.out.println(max);'],
+     expected:'9', answer:['int max = Arrays.stream(arr).max().getAsInt();'], note:'',
+     regex:[/int\s*max\s*=\s*Arrays\.stream\s*\(\s*arr\s*\)\.max\s*\(\s*\)\.getAsInt\s*\(\s*\)\s*;?/]},
+
+    {id:'CT6', level:2, title:'코테: 배열 최소값',
+     concept:'배열의 최소값을 찾습니다.',
+     before:['int[] arr = {5,3,9,1};'], placeholder:['// TODO'],
+     after:['System.out.println(min);'],
+     expected:'1', answer:['int min = Arrays.stream(arr).min().getAsInt();'], note:'',
+     regex:[/int\s*min\s*=\s*Arrays\.stream\s*\(\s*arr\s*\)\.min\s*\(\s*\)\.getAsInt\s*\(\s*\)\s*;?/]},
+
+    {id:'CT7', level:2, title:'코테: 리스트 → 배열 변환',
+     concept:'List를 배열로 변환합니다.',
+     before:['List<Integer> list = Arrays.asList(1,2,3);'], placeholder:['// TODO'],
+     after:['System.out.println(Arrays.toString(arr));'],
+     expected:'[1, 2, 3]', answer:['Integer[] arr = list.toArray(new Integer[0]);'], note:'',
+     regex:[/Integer\s*\[\s*\]\s*arr\s*=\s*list\.toArray\s*\(\s*new\s*Integer\s*\[\s*0\s*\]\s*\)\s*;?/]},
+
+    {id:'CT8', level:2, title:'코테: List → Set 중복 제거',
+     concept:'Set 생성자를 이용해 중복을 제거합니다.',
+     before:['List<Integer> list = Arrays.asList(1,2,2,3,3);'], placeholder:['// TODO'],
+     after:['System.out.println(set.size());'],
+     expected:'3', answer:['Set<Integer> set = new HashSet<>(list);'], note:'',
+     regex:[/(?:Set|HashSet)\s*<\s*Integer\s*>\s*set\s*=\s*new\s*HashSet\s*<\s*>\s*\(\s*list\s*\)\s*;?/]},
+
+    {id:'CT9', level:2, title:'코테: Set → List 변환',
+     concept:'Set을 List로 변환합니다.',
+     before:['Set<Integer> set = new HashSet<>(Arrays.asList(1,2,3));'], placeholder:['// TODO'],
+     after:['System.out.println(list.size());'],
+     expected:'3', answer:['List<Integer> list = new ArrayList<>(set);'], note:'',
+     regex:[/(?:List|ArrayList)\s*<\s*Integer\s*>\s*list\s*=\s*new\s*ArrayList\s*<\s*>\s*\(\s*set\s*\)\s*;?/]},
+
+    {id:'CT10', level:3, title:'코테: 배열 복사',
+     concept:'참조 공유가 아닌 실제 복사를 수행합니다.',
+     before:['int[] arr = {1,2,3};'], placeholder:['// TODO'],
+     after:['System.out.println(copy.length);'],
+     expected:'3', answer:['int[] copy = Arrays.copyOf(arr, arr.length);'], note:'',
+     regex:[/Arrays\.copyOf\s*\(\s*arr\s*,\s*arr\.length\s*\)/]},
+
+    {id:'CT11', level:3, title:'코테: Map에 없으면 추가',
+     concept:'키가 이미 있으면 값을 바꾸지 않고, 키가 없을 때만 값을 넣습니다.',
+     before:['Map<String,Integer> map = new HashMap<>();','map.put("apple", 5);'], placeholder:['// TODO'],
+     after:['System.out.println(map.get("apple"));'],
+     expected:'5', answer:['map.putIfAbsent("apple", 0);'],
+     note:'"apple" 키가 이미 있으므로 0으로 덮어써지지 않고 기존 값 5가 그대로 유지됩니다. map.put("apple", 0)이었다면 5가 0으로 바뀌었을 것입니다.',
+     regex:[/map\.putIfAbsent\s*\(\s*"apple"\s*,\s*0\s*\)\s*;?/]},
+
+    {id:'CT12', level:3, title:'코테: Map entrySet 순회',
+     concept:'Map을 순회할 때 가장 많이 사용하는 패턴입니다. entrySet()으로 key와 value를 동시에 꺼내올 수 있습니다.',
+     before:['Map<String,Integer> map = new HashMap<>();','map.put("apple", 3);','map.put("banana", 5);','int total = 0;'],
+     placeholder:['// TODO: entrySet으로 순회하며 total에 value를 더하기'],
+     after:['System.out.println(total);'], rows:3,
+     expected:'8',
+     answer:['for (Map.Entry<String,Integer> e : map.entrySet()) { total += e.getValue(); }'], note:'',
+     regex:[/for\s*\(\s*Map\.Entry\s*<\s*String\s*,\s*Integer\s*>\s*\w+\s*:\s*map\.entrySet\s*\(\s*\)\s*\)/, /total\s*\+=\s*\w+\.getValue\s*\(\s*\)/]}
+
+  ];
+
+  /* ============ 상태 ============ */
+  var state = {
+    loaded:false,
+    progress:{},      // {qid: {status:'pass'|'fail', input:'...'}}
+    inputs:{},         // 임시 입력값 (세션 내, qid별)
+    revealed:{},        // qid -> bool
+    bookmarks:{},        // qid -> bool, 즐겨찾기한 문제
+    level:0,
+    index:0,
+    log:[],
+    reviewMode:false,   // true면 레벨 무시하고 '틀린 문제'만 모아서 보여줌
+    bookmarkMode:false  // true면 레벨 무시하고 '즐겨찾기한 문제'만 모아서 보여줌
+  };
+
+  var STORAGE_KEY = 'ds_quiz_progress_v1';
+  var BOOKMARK_KEY = 'ds_quiz_bookmarks_v1';
+
+  function esc(s){
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+
+  function questionsOfLevel(lv){
+    return QUESTIONS.filter(function(q){return q.level===lv;});
+  }
+
+  function failedQuestions(){
+    return QUESTIONS.filter(function(q){
+      return state.progress[q.id] && state.progress[q.id].status==='fail';
+    });
+  }
+
+  function bookmarkedQuestions(){
+    return QUESTIONS.filter(function(q){ return !!state.bookmarks[q.id]; });
+  }
+
+  function activeQuestionList(){
+    if(state.reviewMode) return failedQuestions();
+    if(state.bookmarkMode) return bookmarkedQuestions();
+    return questionsOfLevel(state.level);
+  }
+
+  function totalPassed(){
+    var n=0;
+    Object.keys(state.progress).forEach(function(k){
+      if(state.progress[k] && state.progress[k].status==='pass') n++;
+    });
+    return n;
+  }
+
+  function levelPassed(lv){
+    var n=0;
+    questionsOfLevel(lv).forEach(function(q){
+      if(state.progress[q.id] && state.progress[q.id].status==='pass') n++;
+    });
+    return n;
+  }
+
+  /* ============ 저장소 ============ */
+  async function loadProgress(){
+    try{
+      var res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value){
+        var parsed = JSON.parse(res.value);
+        state.progress = parsed || {};
+      }
+    }catch(e){
+      state.progress = {};
+    }
+    try{
+      var bres = await window.storage.get(BOOKMARK_KEY, false);
+      if(bres && bres.value){
+        var bparsed = JSON.parse(bres.value);
+        state.bookmarks = bparsed || {};
+      }
+    }catch(e){
+      state.bookmarks = {};
+    }
+    state.loaded = true;
+  }
+
+  async function saveProgress(){
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(state.progress), false);
+    }catch(e){
+      console.error('저장 실패', e);
+    }
+  }
+
+  async function saveBookmarks(){
+    try{
+      await window.storage.set(BOOKMARK_KEY, JSON.stringify(state.bookmarks), false);
+    }catch(e){
+      console.error('북마크 저장 실패', e);
+    }
+  }
+
+  /* ============ 채점 ============ */
+  function gradeQuestion(q, input){
+    return q.regex.every(function(r){ return r.test(input); });
+  }
+
+  function pushLog(qid, pass){
+    state.log.push({cmd:'check '+qid, pass:pass});
+    if(state.log.length>40) state.log.shift();
+  }
+
+  /* ============ 렌더링 ============ */
+  function renderEmptySpecial(){
+    var app = document.getElementById('app');
+    var passed = totalPassed();
+    var isBookmark = state.bookmarkMode;
+    var title = isBookmark ? '🔖 아직 즐겨찾기한 문제가 없습니다' : '🎉 지금은 틀린 문제가 없습니다';
+    var html = '';
+    html += '<div class="topbar">';
+    html += '  <div>';
+    html += '    <div class="brand-eyebrow">$ run --suite java-data-structures</div>';
+    html += '    <h1 class="brand-title">자료구조 자동채점</h1>';
+    html += '  </div>';
+    html += '  <div class="top-stats"><button class="reset-btn" data-action="reset">진행 초기화</button></div>';
+    html += '</div>';
+    html += '<div class="card" style="text-align:center;padding:50px 24px;">';
+    html += '  <div class="card-title">'+title+'</div>';
+    html += '  <p style="color:var(--muted);font-size:13.5px;margin:10px 0 18px;">전체 진행: '+passed+' / '+QUESTIONS.length+'</p>';
+    html += '  <button class="btn btn-grade" data-action="exit-review">전체 문제로 돌아가기</button>';
+    html += '</div>';
+    app.innerHTML = html;
+  }
+
+  function render(){
+    var app = document.getElementById('app');
+    if(!state.loaded){
+      app.innerHTML = '<div class="loading">진행 상황 불러오는 중...</div>';
+      return;
+    }
+    var levelQs = activeQuestionList();
+    if((state.reviewMode || state.bookmarkMode) && levelQs.length===0){
+      renderEmptySpecial();
+      return;
+    }
+    if(state.index >= levelQs.length) state.index = 0;
+    var q = levelQs[state.index];
+    var passed = totalPassed();
+
+    var html = '';
+
+    /* topbar */
+    html += '<div class="topbar">';
+    html += '  <div>';
+    html += '    <div class="brand-eyebrow">$ run --suite java-data-structures</div>';
+    html += '    <h1 class="brand-title">자료구조 자동채점</h1>';
+    html += '    <div class="brand-sub">코드를 입력하고 채점하면, 정규식으로 문법을 검증합니다 (실제 자바 실행 X).</div>';
+    html += '    <div class="kbd-hint"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 문제 · <kbd>R</kbd> 정답 보기 · <kbd>Esc</kbd> 입력창 빠져나오기 · <kbd>Enter</kbd> 입력창 포커스</div>';
+    html += '  </div>';
+    html += '  <div class="top-stats">';
+    html += '    <div class="progress-wrap">';
+    html += '      <div class="progress-label"><span>전체 진행</span><b>'+passed+' / '+QUESTIONS.length+'</b></div>';
+    html += '      <div class="progress-track"><div class="progress-fill" style="width:'+Math.round(passed/QUESTIONS.length*100)+'%"></div></div>';
+    html += '    </div>';
+    html += '    <button class="reset-btn" data-action="reset">진행 초기화</button>';
+    html += '  </div>';
+    html += '</div>';
+
+    html += '<div class="layout">';
+
+    /* sidebar */
+    html += '  <div class="sidebar">';
+    var failCount = failedQuestions().length;
+    var bookmarkCount = Object.keys(state.bookmarks).filter(function(k){return state.bookmarks[k];}).length;
+    html += '    <button class="level-tab" data-action="toggle-review" style="border-color:'+(state.reviewMode?'var(--accent)':'var(--border)')+';background:'+(state.reviewMode?'var(--surface2)':'var(--surface)')+';">';
+    html += '      <div class="lt-name">📌 오답 노트</div>';
+    html += '      <div class="lt-sub">'+(state.reviewMode?'복습 모드 진행 중':'틀린 문제만 모아 다시 풀기')+'</div>';
+    html += '      <div class="lt-count">'+failCount+'개 대기 중</div>';
+    html += '    </button>';
+    html += '    <button class="level-tab" data-action="toggle-bookmark-mode" style="border-color:'+(state.bookmarkMode?'var(--accent)':'var(--border)')+';background:'+(state.bookmarkMode?'var(--surface2)':'var(--surface)')+';">';
+    html += '      <div class="lt-name">🔖 즐겨찾기</div>';
+    html += '      <div class="lt-sub">'+(state.bookmarkMode?'즐겨찾기 모드 진행 중':'북마크한 문제만 모아 보기')+'</div>';
+    html += '      <div class="lt-count">'+bookmarkCount+'개 저장됨</div>';
+    html += '    </button>';
+    html += '    <div class="level-tabs">';
+    LEVELS.forEach(function(lv){
+      var qs = questionsOfLevel(lv.id);
+      var p = levelPassed(lv.id);
+      html += '<div class="level-tab'+((!state.reviewMode && !state.bookmarkMode && state.level===lv.id)?' active':'')+'" data-action="select-level" data-level="'+lv.id+'">';
+      html += '  <div class="lt-name">'+esc(lv.name)+'</div>';
+      html += '  <div class="lt-sub">'+esc(lv.sub)+'</div>';
+      html += '  <div class="lt-count">'+p+' / '+qs.length+' 완료</div>';
+      html += '</div>';
+    });
+    html += '    </div>';
+
+    html += '    <div class="dot-grid">';
+    levelQs.forEach(function(qq, i){
+      var st = state.progress[qq.id] && state.progress[qq.id].status;
+      var cls = 'dot' + (i===state.index?' current':'') + (st==='pass'?' pass':st==='fail'?' fail':'') + (state.bookmarks[qq.id]?' bookmarked':'');
+      html += '<div class="'+cls+'" data-action="jump" data-index="'+i+'" title="'+esc(qq.id)+'">'+(st==='pass'?'✓':st==='fail'?'✗':(i+1))+'</div>';
+    });
+    html += '    </div>';
+    html += '  </div>';
+
+    /* main card */
+    html += '  <div class="content">';
+    html += '    <div class="card">';
+    var eyebrowText = state.reviewMode ? ('📌 오답 노트 (복습 모드)') : (state.bookmarkMode ? '🔖 즐겨찾기 모드' : esc(LEVELS[state.level].name));
+    html += '      <div class="card-eyebrow">'+eyebrowText+' · 문항 '+(state.index+1)+' / '+levelQs.length+' · '+esc(q.id)+'</div>';
+    html += '      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
+    html += '        <h2 class="card-title" style="margin:0;">'+esc(q.title)+'</h2>';
+    html += '        <button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap;" data-action="toggle-bookmark" data-qid="'+esc(q.id)+'">'+(state.bookmarks[q.id]?'🔖 즐겨찾기 해제':'☆ 즐겨찾기 추가')+'</button>';
+    html += '      </div>';
+    if(state.reviewMode || state.bookmarkMode){
+      html += '      <button class="btn btn-ghost" style="align-self:flex-start;padding:5px 10px;font-size:12px;" data-action="exit-review">← 전체 문제로 돌아가기</button>';
+    }
+    html += '      <div class="concept"><b>핵심 개념</b> — '+esc(q.concept)+'</div>';
+
+    html += '      <div class="codebox">';
+    q.before.forEach(function(l){ html += '<div class="cl muted">'+esc(l)+'</div>'; });
+    q.placeholder.forEach(function(l){ html += '<div class="cl muted">'+esc(l)+'</div>'; });
+    var savedInput = (state.inputs[q.id] !== undefined) ? state.inputs[q.id] :
+                      ((state.progress[q.id] && state.progress[q.id].input) || '');
+    html += '<textarea class="blank" id="ans-input" rows="'+(q.rows||2)+'" placeholder="여기에 코드를 입력하세요"></textarea>';
+    q.after.forEach(function(l){ html += '<div class="cl muted">'+esc(l)+'</div>'; });
+    html += '      </div>';
+
+    html += '      <div class="expected">기대 출력: <code>'+esc(q.expected)+'</code></div>';
+
+    var fb = state.progress[q.id];
+    var fbClass = '', fbText = '';
+    if(fb && fb.status==='pass'){ fbClass='pass show'; fbText='✓ PASS — 정답입니다.'; }
+    else if(fb && fb.status==='fail'){ fbClass='fail show'; fbText='✗ FAIL — 문법을 다시 확인해보세요.'; }
+
+    html += '      <div class="actions">';
+    html += '        <button class="btn btn-grade" data-action="grade">채점</button>';
+    html += '        <button class="btn btn-ghost" data-action="reveal">'+(state.revealed[q.id]?'정답 숨기기':'정답 보기')+'</button>';
+    html += '      </div>';
+
+    html += '      <div class="feedback '+fbClass+'" id="fb-msg">'+fbText+'</div>';
+
+    html += '      <div class="answer-box'+(state.revealed[q.id]?' show':'')+'">';
+    html += '        <div class="lbl">🔍 정답</div>';
+    q.answer.forEach(function(l){ html += '<div class="al">'+esc(l)+'</div>'; });
+    if(q.note){ html += '<div class="note">'+esc(q.note)+'</div>'; }
+    html += '      </div>';
+
+    html += '      <div class="nav-row">';
+    html += '        <button class="btn btn-nav" data-action="prev" '+(state.index===0?'disabled':'')+'>← 이전</button>';
+    html += '        <span class="pos">'+(state.index+1)+' / '+levelQs.length+'</span>';
+    html += '        <button class="btn btn-nav" data-action="next" '+(state.index===levelQs.length-1?'disabled':'')+'>다음 →</button>';
+    html += '      </div>';
+
+    html += '    </div>';
+    html += '  </div>';
+    html += '</div>';
+
+    /* terminal log */
+    html += '<div class="terminal">';
+    html += '  <div class="terminal-head"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span>&nbsp;&nbsp;test-runner</div>';
+    html += '  <div class="terminal-body" id="term-body">';
+    if(state.log.length===0){
+      html += '<div class="ln">대기 중... 채점 버튼을 눌러보세요.</div>';
+    }else{
+      state.log.forEach(function(l){
+        html += '<div class="ln cmd">$ '+esc(l.cmd)+'</div>';
+        html += '<div class="ln '+(l.pass?'pass':'fail')+'">  '+(l.pass?'✓ PASS':'✗ FAIL')+'</div>';
+      });
+    }
+    html += '    <span class="cursor"></span>';
+    html += '  </div>';
+    html += '</div>';
+
+    app.innerHTML = html;
+
+    var ta = document.getElementById('ans-input');
+    if(ta){
+      ta.value = savedInput;
+      ta.addEventListener('input', function(){ state.inputs[q.id] = ta.value; });
+    }
+    var term = document.getElementById('term-body');
+    if(term) term.scrollTop = term.scrollHeight;
+  }
+
+  /* ============ 액션 함수 (클릭 · 키보드 공용) ============ */
+  function doSelectLevel(lv){
+    state.reviewMode = false;
+    state.bookmarkMode = false;
+    state.level = lv;
+    state.index = 0;
+    render();
+  }
+  function doToggleReview(){
+    state.reviewMode = !state.reviewMode;
+    if(state.reviewMode) state.bookmarkMode = false;
+    state.index = 0;
+    render();
+  }
+  function doToggleBookmarkMode(){
+    state.bookmarkMode = !state.bookmarkMode;
+    if(state.bookmarkMode) state.reviewMode = false;
+    state.index = 0;
+    render();
+  }
+  function doExitSpecialMode(){
+    state.reviewMode = false;
+    state.bookmarkMode = false;
+    state.index = 0;
+    render();
+  }
+  function doJump(i){
+    state.index = i;
+    render();
+  }
+  function doPrev(){
+    if(state.index>0){ state.index--; render(); }
+  }
+  function doNext(){
+    var levelQs = activeQuestionList();
+    if(state.index<levelQs.length-1){ state.index++; render(); }
+  }
+  function doReveal(){
+    var levelQs = activeQuestionList();
+    var q = levelQs[state.index];
+    if(!q) return;
+    state.revealed[q.id] = !state.revealed[q.id];
+    render();
+  }
+  function doToggleBookmark(qid){
+    if(!qid) return;
+    if(state.bookmarks[qid]) delete state.bookmarks[qid];
+    else state.bookmarks[qid] = true;
+    saveBookmarks();
+    render();
+  }
+  function doGrade(){
+    var levelQs = activeQuestionList();
+    var q = levelQs[state.index];
+    if(!q) return;
+    var ta = document.getElementById('ans-input');
+    var val = ta ? ta.value : '';
+    var pass = gradeQuestion(q, val);
+    state.progress[q.id] = {status: pass?'pass':'fail', input: val};
+    pushLog(q.id, pass);
+    saveProgress();
+    render();
+  }
+  function doReset(){
+    if(window.confirm('모든 진행 상황을 초기화할까요? 되돌릴 수 없습니다.')){
+      state.progress = {};
+      state.inputs = {};
+      state.revealed = {};
+      state.log = [];
+      state.reviewMode = false;
+      saveProgress();
+      render();
+    }
+  }
+  function focusAnswerInput(){
+    var ta = document.getElementById('ans-input');
+    if(ta) ta.focus();
+  }
+
+  /* ============ 클릭 이벤트 ============ */
+  document.getElementById('app').addEventListener('click', function(e){
+    var el = e.target.closest('[data-action]');
+    if(!el) return;
+    var action = el.getAttribute('data-action');
+
+    if(action==='select-level'){
+      doSelectLevel(parseInt(el.getAttribute('data-level'),10));
+    }else if(action==='toggle-review'){
+      doToggleReview();
+    }else if(action==='toggle-bookmark-mode'){
+      doToggleBookmarkMode();
+    }else if(action==='exit-review'){
+      doExitSpecialMode();
+    }else if(action==='jump'){
+      doJump(parseInt(el.getAttribute('data-index'),10));
+    }else if(action==='prev'){
+      doPrev();
+    }else if(action==='next'){
+      doNext();
+    }else if(action==='reveal'){
+      doReveal();
+    }else if(action==='toggle-bookmark'){
+      doToggleBookmark(el.getAttribute('data-qid'));
+    }else if(action==='grade'){
+      doGrade();
+    }else if(action==='reset'){
+      doReset();
+    }
+  });
+
+  /* ============ 키보드 단축키 ============ */
+  document.addEventListener('keydown', function(e){
+    var ta = document.getElementById('ans-input');
+    var taFocused = document.activeElement === ta;
+
+    // Ctrl/Cmd + Enter : 입력창 포커스 여부와 상관없이 항상 채점
+    if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
+      e.preventDefault();
+      doGrade();
+      return;
+    }
+
+    if(taFocused){
+      // 입력창에 포커스가 있을 때는 Esc로 빠져나오는 것만 처리 (타이핑 방해 금지)
+      if(e.key === 'Escape'){
+        e.preventDefault();
+        ta.blur();
+      }
+      return;
+    }
+
+    // 입력창 포커스가 해제된 상태에서만 동작
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      focusAnswerInput();
+    }else if(e.key === 'ArrowLeft'){
+      e.preventDefault();
+      doPrev();
+    }else if(e.key === 'ArrowRight'){
+      e.preventDefault();
+      doNext();
+    }else if(e.key === 'r' || e.key === 'R'){
+      e.preventDefault();
+      doReveal();
+    }
+  });
+
+  /* ============ 시작 ============ */
+  render();
+  loadProgress().then(render);
+
+})();
+</script>
+</body>
+</html>

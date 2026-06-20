@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java 스택·큐·덱·힙 자동채점</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#15120D;
+    --surface:#1E1912;
+    --surface2:#241D15;
+    --code-bg:#0F0D09;
+    --border:#332B20;
+    --border-soft:#2A2318;
+    --accent:#D98C3D;
+    --accent-soft:#E8A552;
+    --success:#6FD9A0;
+    --fail:#E2604F;
+    --text:#F3ECDD;
+    --muted:#9C9284;
+    --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    --display:'Space Grotesk', sans-serif;
+    --body:'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    min-height:100vh;
+  }
+  #app{max-width:1180px;margin:0 auto;padding:24px 18px 56px;}
+
+  /* ---------- topbar ---------- */
+  .topbar{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    gap:18px;flex-wrap:wrap;margin-bottom:20px;
+  }
+  .brand-eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.13em;
+    color:var(--accent-soft);text-transform:uppercase;margin-bottom:6px;
+  }
+  .brand-title{font-family:var(--display);font-size:24px;font-weight:700;margin:0 0 4px;}
+  .brand-sub{font-size:12.5px;color:var(--muted);max-width:480px;line-height:1.5;}
+  .top-stats{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .progress-wrap{min-width:170px;}
+  .progress-label{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:5px;font-family:var(--mono);}
+  .progress-label b{color:var(--text);}
+  .progress-track{height:6px;border-radius:4px;background:var(--surface2);overflow:hidden;border:1px solid var(--border-soft);}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-soft));border-radius:4px;transition:width .35s ease;}
+  .btn{
+    font-family:var(--body);font-size:12.5px;font-weight:600;
+    border-radius:8px;border:1px solid var(--border);
+    background:var(--surface);color:var(--text);
+    padding:8px 13px;cursor:pointer;transition:.15s;
+  }
+  .btn:hover{border-color:var(--accent);color:var(--accent-soft);}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .btn-accent{background:var(--accent);border-color:var(--accent);color:#1A1308;}
+  .btn-accent:hover{background:var(--accent-soft);border-color:var(--accent-soft);color:#1A1308;}
+  .btn-ghost{background:transparent;}
+  .btn-review{
+    width:100%;text-align:left;background:var(--surface2);
+    border:1px solid var(--border-soft);border-radius:10px;
+    padding:11px 13px;font-size:12.5px;font-weight:600;color:var(--text);
+    cursor:pointer;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:8px;
+  }
+  .btn-review:hover{border-color:var(--accent);}
+  .btn-review.active{background:var(--accent);color:#1A1308;border-color:var(--accent);}
+  .btn-review .count{font-family:var(--mono);font-size:11px;opacity:.85;}
+
+  /* ---------- layout ---------- */
+  .layout{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;}
+  .sidebar{width:240px;flex-shrink:0;}
+  .content{flex:1;min-width:300px;display:flex;flex-direction:column;gap:16px;}
+
+  .level-tabs{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+  .level-tab{
+    border:1px solid var(--border-soft);border-radius:10px;background:var(--surface);
+    padding:9px 12px;cursor:pointer;transition:.15s;
+  }
+  .level-tab:hover{border-color:var(--accent);}
+  .level-tab.active{background:var(--surface2);border-color:var(--accent);box-shadow:inset 2px 0 0 var(--accent);}
+  .level-tab.disabled{opacity:.55;cursor:default;}
+  .lt-name{font-family:var(--display);font-size:13.5px;font-weight:600;}
+  .lt-sub{font-size:10.5px;color:var(--muted);margin-top:1px;}
+  .lt-count{font-family:var(--mono);font-size:10.5px;color:var(--accent-soft);margin-top:4px;}
+
+  .dot-grid{display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--surface);border:1px solid var(--border-soft);border-radius:10px;}
+  .dot{
+    width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:10.5px;color:var(--muted);
+    background:var(--surface2);border:1px solid var(--border-soft);cursor:pointer;transition:.12s;
+  }
+  .dot:hover{border-color:var(--accent);color:var(--text);}
+  .dot.current{border-color:var(--accent);color:var(--accent-soft);box-shadow:0 0 0 1px var(--accent);}
+  .dot.pass{background:rgba(111,217,160,0.14);color:var(--success);border-color:rgba(111,217,160,0.4);}
+  .dot.fail{background:rgba(226,96,79,0.14);color:var(--fail);border-color:rgba(226,96,79,0.4);}
+
+  .card{background:var(--surface);border:1px solid var(--border-soft);border-radius:14px;padding:22px 22px 20px;}
+  .card-eyebrow{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.05em;margin-bottom:8px;}
+  .card-title{font-family:var(--display);font-size:19px;font-weight:700;margin:0 0 12px;}
+  .concept{
+    font-size:13px;line-height:1.65;background:var(--surface2);border:1px solid var(--border-soft);
+    border-left:3px solid var(--accent);border-radius:8px;padding:11px 13px;margin-bottom:16px;color:var(--text);
+  }
+  .concept b{color:var(--accent-soft);}
+
+  .codebox{
+    background:var(--code-bg);border:1px solid var(--border);border-radius:10px;
+    padding:14px 16px;font-family:var(--mono);font-size:12.8px;line-height:1.7;
+    overflow-x:auto;margin-bottom:14px;
+  }
+  .cl{white-space:pre;}
+  .cl.muted{color:var(--muted);}
+  .cl.hint{color:var(--accent-soft);}
+  .answer-area{
+    width:100%;background:rgba(217,140,61,0.06);border:1px dashed var(--accent);border-radius:6px;
+    color:var(--text);font-family:var(--mono);font-size:12.8px;line-height:1.7;
+    padding:6px 8px;margin:2px 0;resize:vertical;min-height:34px;
+  }
+  .answer-area:focus{outline:none;border-color:var(--accent-soft);background:rgba(217,140,61,0.1);}
+  .answer-area:focus-visible{outline:2px solid var(--accent);outline-offset:1px;}
+
+  .expected{font-size:12px;color:var(--muted);margin-bottom:14px;}
+  .expected pre{
+    margin:6px 0 0;background:var(--code-bg);border:1px solid var(--border);border-radius:8px;
+    padding:9px 12px;font-family:var(--mono);font-size:12px;color:var(--text);white-space:pre-wrap;
+  }
+
+  .actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .result-badge{font-family:var(--mono);font-size:12px;font-weight:600;padding:5px 10px;border-radius:6px;}
+  .result-badge.pass{background:rgba(111,217,160,0.14);color:var(--success);}
+  .result-badge.fail{background:rgba(226,96,79,0.14);color:var(--fail);}
+
+  .nav-row{display:flex;justify-content:space-between;border-top:1px solid var(--border-soft);padding-top:14px;margin-top:6px;}
+
+  .terminal{
+    background:var(--code-bg);border:1px solid var(--border-soft);border-radius:10px;
+    padding:12px 14px;font-family:var(--mono);font-size:11.5px;color:var(--muted);
+    max-height:150px;overflow-y:auto;
+  }
+  .terminal-title{font-size:10.5px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
+  .term-line{padding:2px 0;white-space:pre-wrap;}
+  .term-line.pass{color:var(--success);}
+  .term-line.fail{color:var(--fail);}
+
+  .empty-review{
+    background:var(--surface);border:1px solid var(--border-soft);border-radius:14px;
+    padding:40px 24px;text-align:center;
+  }
+  .empty-review .big{font-family:var(--display);font-size:20px;font-weight:700;margin-bottom:8px;color:var(--accent-soft);}
+  .empty-review p{color:var(--muted);font-size:13px;}
+
+  @media (max-width:760px){
+    .layout{flex-direction:column;}
+    .sidebar{width:100%;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+var QUESTIONS_DATA = {"levels": [{"id": 0, "name": "Stack", "sub": "스택"}, {"id": 1, "name": "Queue", "sub": "큐"}, {"id": 2, "name": "Deque", "sub": "덱"}, {"id": 3, "name": "PriorityQueue", "sub": "우선순위 큐(힙)"}, {"id": 4, "name": "🔁 변형", "sub": "같은 패턴, 다른 데이터"}], "questions": [{"id": "ST1", "level": 0, "title": "스택 기본 — push & pop", "concept": "자료의 맨 위에 값을 쌓고, 맨 위에서 값을 꺼내는 두 가지 동작이 필요합니다. 꺼낸 값은 스택에서 함께 사라집니다.", "before": "Deque<Integer> stack = new ArrayDeque<>();", "placeholder": "// TODO: 1, 2, 3 순서로 스택에 쌓고, 맨 위 값을 하나 꺼내 top에 저장", "after": "\nSystem.out.println(top);\nSystem.out.println(stack);", "expected": "3\n[2, 1]", "answer": "stack.push(1);\nstack.push(2);\nstack.push(3);\nint top = stack.pop();", "note": "ArrayDeque를 스택처럼 쓸 때는 push/pop 짝을 사용합니다. peek()와 달리 pop()은 꺼내면서 동시에 제거합니다.", "checks": [{"p": "push\\s*\\(\\s*1\\s*\\)"}, {"p": "push\\s*\\(\\s*2\\s*\\)"}, {"p": "push\\s*\\(\\s*3\\s*\\)"}, {"p": "pop\\s*\\(\\s*\\)"}]}, {"id": "ST2", "level": 0, "title": "괄호 짝 검사", "concept": "여는 괄호가 나오면 쌓아두고, 닫는 괄호가 나오면 지금 쌓여있는 것 중 가장 최근 것과 짝이 맞는지 확인한 뒤 함께 없앱니다. 문자열을 다 본 뒤에도 쌓인 게 남아있으면 짝이 맞지 않는 것입니다.", "before": "static boolean isValid(String s) {\n    Deque<Character> stack = new ArrayDeque<>();\n    for (char c : s.toCharArray()) {\n        if (c == '(' || c == '{' || c == '[') {", "placeholder": "            // TODO: 여는 괄호를 스택에 쌓기", "after": "        } else {\n            if (stack.isEmpty()) return false;\n            char open = stack.pop();\n            if (c == ')' && open != '(') return false;\n            if (c == '}' && open != '{') return false;\n            if (c == ']' && open != '[') return false;\n        }\n    }\n    return stack.isEmpty();\n}\n\nSystem.out.println(isValid(\"{[()]}\"));\nSystem.out.println(isValid(\"{[(])}\"));", "expected": "true\nfalse", "answer": "stack.push(c);", "note": "닫는 괄호 쪽 로직은 이미 작성돼 있습니다 — 스택에서 꺼낸 값(pop)이 지금 닫는 괄호와 짝이 맞는 여는 괄호인지 비교합니다.", "checks": [{"p": "push\\s*\\(\\s*c\\s*\\)"}]}, {"id": "ST3", "level": 0, "title": "후위표기법(postfix) 계산", "concept": "숫자가 나오면 쌓아두고, 연산자가 나오면 쌓여있는 것 중 최근 두 개를 꺼내 계산한 뒤 다시 쌓습니다. 먼저 꺼낸 값(b)이 오른쪽, 나중에 꺼낸 값(a)이 왼쪽 피연산자가 되도록 순서에 주의하세요.", "before": "String[] tokens = {\"4\", \"13\", \"5\", \"/\", \"+\"};\nDeque<Integer> stack = new ArrayDeque<>();\nfor (String t : tokens) {\n    if (t.equals(\"+\") || t.equals(\"-\") || t.equals(\"*\") || t.equals(\"/\")) {\n        int b = stack.pop();\n        int a = stack.pop();", "placeholder": "        // TODO: 연산자 t에 맞게 a와 b를 계산해서 다시 스택에 쌓기", "after": "    } else {\n        stack.push(Integer.parseInt(t));\n    }\n}\nSystem.out.println(stack.peek());", "expected": "6", "answer": "int result = 0;\nswitch (t) {\n    case \"+\": result = a + b; break;\n    case \"-\": result = a - b; break;\n    case \"*\": result = a * b; break;\n    case \"/\": result = a / b; break;\n}\nstack.push(result);", "note": "4, 13, 5가 차례로 쌓인 뒤 '/'를 만나면 먼저 꺼낸 5가 b(나중에 들어온 값), 다음에 꺼낸 13이 a가 되어 13/5=2가 됩니다. 그다음 '+'에서 2와 4를 더해 6이 됩니다.", "checks": [{"p": "a\\s*\\+\\s*b"}, {"p": "a\\s*-\\s*b"}, {"p": "a\\s*\\*\\s*b"}, {"p": "a\\s*/\\s*b"}, {"p": "push\\s*\\("}]}, {"id": "ST4", "level": 0, "title": "비어있는지 확인 후 꺼내기", "concept": "꺼내기 전에 스택이 비어있는지 먼저 확인해야 안전합니다. 비어있는 스택에서 그냥 꺼내려고 하면 예외가 발생합니다. '비어있나?'를 묻는 메서드를 먼저 호출하세요.", "before": "Deque<Integer> stack = new ArrayDeque<>();\nint result;", "placeholder": "// TODO: 스택이 비어있으면 result = -1, 아니면 스택에서 하나 꺼내 result에 저장", "after": "\nSystem.out.println(result);", "expected": "-1", "answer": "if (stack.isEmpty()) {\n    result = -1;\n} else {\n    result = stack.pop();\n}", "note": "isEmpty()로 먼저 확인하는 습관을 들이면 NoSuchElementException을 피할 수 있습니다. 참고로 poll()/pollFirst() 계열은 비어있어도 예외 대신 null을 반환합니다 — pop()과의 차이입니다.", "checks": [{"p": "isEmpty\\s*\\(\\s*\\)"}, {"p": "result\\s*=\\s*-1"}, {"p": "pop\\s*\\(\\s*\\)"}]}, {"id": "ST5", "level": 0, "title": "스택으로 문자열 뒤집기", "concept": "한 글자씩 순서대로 쌓았다가, 다시 하나씩 꺼내 이어붙이면 순서가 자연스럽게 반대로 됩니다.", "before": "String word = \"stack\";\nDeque<Character> stack = new ArrayDeque<>();\nfor (char c : word.toCharArray()) {\n    stack.push(c);\n}\nStringBuilder sb = new StringBuilder();\nwhile (!stack.isEmpty()) {", "placeholder": "    // TODO: 스택에서 한 글자 꺼내 sb에 이어붙이기", "after": "}\nSystem.out.println(sb.toString());", "expected": "kcats", "answer": "sb.append(stack.pop());", "note": "StringBuilder.append()는 인자를 바로 받아 이어붙일 수 있어서, pop()의 반환값을 변수에 따로 담지 않고 바로 넘겨도 됩니다.", "checks": [{"p": "append\\s*\\(\\s*stack\\.pop\\s*\\(\\s*\\)\\s*\\)"}]}, {"id": "QU1", "level": 1, "title": "큐 기본 — offer & poll", "concept": "Queue는 인터페이스라 직접 객체를 만들 수 없고, LinkedList나 ArrayDeque로 구현체를 만들어야 합니다. 맨 뒤에 넣는 동작과 맨 앞에서 꺼내는 동작, 두 가지가 필요합니다.", "before": "Queue<Integer> queue = new LinkedList<>();", "placeholder": "// TODO: 1, 2, 3 순서로 큐에 넣고, 맨 앞 값을 하나 꺼내 first에 저장", "after": "\nSystem.out.println(first);\nSystem.out.println(queue);", "expected": "1\n[2, 3]", "answer": "queue.offer(1);\nqueue.offer(2);\nqueue.offer(3);\nint first = queue.poll();", "note": "offer는 맨 뒤에 추가, poll은 맨 앞에서 꺼내 FIFO(선입선출) 순서를 만듭니다. add/remove도 같은 역할을 하지만 실패 시 예외를 던지는 차이가 있어 offer/poll이 더 안전합니다.", "checks": [{"p": "offer\\s*\\(\\s*1\\s*\\)"}, {"p": "offer\\s*\\(\\s*2\\s*\\)"}, {"p": "offer\\s*\\(\\s*3\\s*\\)"}, {"p": "poll\\s*\\(\\s*\\)"}]}, {"id": "QU2", "level": 1, "title": "BFS — 방문 처리는 언제?", "concept": "이웃 노드를 큐에 '넣을 때' 방문 표시를 해야 같은 노드가 큐에 중복으로 쌓이는 걸 막을 수 있습니다. 꺼낸 뒤에 표시하면 한 노드가 여러 번 큐에 들어갈 수 있습니다.", "before": "int[][] graph = {{1,2},{0,3},{0,3},{1,2}};\nboolean[] visited = new boolean[4];\nQueue<Integer> queue = new LinkedList<>();\nqueue.offer(0);\nvisited[0] = true;\nList<Integer> order = new ArrayList<>();\nwhile (!queue.isEmpty()) {\n    int cur = queue.poll();\n    order.add(cur);\n    for (int next : graph[cur]) {\n        if (!visited[next]) {", "placeholder": "            // TODO: next를 방문 처리하고 큐에 넣기", "after": "        }\n    }\n}\nSystem.out.println(order);", "expected": "[0, 1, 2, 3]", "answer": "visited[next] = true;\nqueue.offer(next);", "note": "꺼낼 때 방문 처리하면 같은 노드가 여러 경로를 통해 먼저 큐에 들어가버려 중복 방문이 생길 수 있습니다. '큐에 넣기 전에' 방문 처리하는 것이 BFS의 표준 패턴입니다.", "checks": [{"p": "visited\\s*\\[\\s*next\\s*\\]\\s*=\\s*true"}, {"p": "offer\\s*\\(\\s*next\\s*\\)"}]}, {"id": "QU3", "level": 1, "title": "큐가 빌 때까지 처리하기", "concept": "큐에 더 이상 꺼낼 게 없는지 확인하는 조건이 while문에 들어가야 합니다. 비어있다고 판단하는 메서드를 떠올려보세요.", "before": "Queue<Integer> queue = new LinkedList<>(Arrays.asList(10, 20, 30));\nint sum = 0;", "placeholder": "// TODO: 큐가 빌 때까지 반복하면서 sum에 모두 더하기", "after": "\nSystem.out.println(sum);", "expected": "60", "answer": "while (!queue.isEmpty()) {\n    sum += queue.poll();\n}", "note": "isEmpty()는 size() == 0과 동일하지만 의도가 더 분명히 드러납니다.", "checks": [{"p": "isEmpty\\s*\\(\\s*\\)"}, {"p": "poll\\s*\\(\\s*\\)"}, {"p": "sum\\s*\\+="}]}, {"id": "QU4", "level": 1, "title": "Queue 타입 선언, 구현체는?", "concept": "ArrayDeque는 Queue 인터페이스와 Deque 인터페이스를 동시에 구현하고 있어서, 둘 중 어느 타입의 변수에도 담을 수 있습니다. LinkedList보다 일반적으로 더 빠릅니다.", "before": "Queue<Integer> q;", "placeholder": "// TODO: ArrayDeque로 q를 생성하고, 1과 2를 순서대로 넣기", "after": "\nSystem.out.println(q);", "expected": "[1, 2]", "answer": "q = new ArrayDeque<>();\nq.offer(1);\nq.offer(2);", "note": "Queue<Integer> q = new ArrayDeque<>();처럼 인터페이스 타입으로 선언하고 구현체는 ArrayDeque를 쓰는 게 LinkedList보다 권장되는 방식입니다 (메모리 지역성이 더 좋음).", "checks": [{"p": "new\\s+ArrayDeque\\s*<"}, {"p": "offer\\s*\\(\\s*1\\s*\\)"}, {"p": "offer\\s*\\(\\s*2\\s*\\)"}]}, {"id": "QU5", "level": 1, "title": "BFS로 레벨(깊이)별 묶어서 탐색하기", "concept": "한 바퀴(레벨)를 처리하기 전에, 지금 큐에 쌓여있는 개수를 미리 변수에 저장해두고 그 개수만큼만 반복하면 레벨 단위로 끊어 처리할 수 있습니다. 큐 크기를 묻는 메서드가 필요합니다.", "before": "int[][] graph = {{1,2},{0,3,4},{0},{1},{1}};\nboolean[] visited = new boolean[5];\nQueue<Integer> queue = new LinkedList<>();\nqueue.offer(0);\nvisited[0] = true;\nint depth = 0;\nwhile (!queue.isEmpty()) {", "placeholder": "    // TODO: 현재 큐에 쌓여있는 노드 개수를 levelSize에 저장", "after": "    for (int i = 0; i < levelSize; i++) {\n        int cur = queue.poll();\n        for (int next : graph[cur]) {\n            if (!visited[next]) {\n                visited[next] = true;\n                queue.offer(next);\n            }\n        }\n    }\n    depth++;\n}\nSystem.out.println(depth);", "expected": "3", "answer": "int levelSize = queue.size();", "note": "levelSize를 미리 변수에 고정해두지 않고 for(i < queue.size(); ...)처럼 매번 다시 평가하면, 반복 중간에 새로 추가된 다음 레벨 노드까지 같은 레벨로 잘못 처리됩니다.", "checks": [{"p": "levelSize\\s*=\\s*queue\\.size\\s*\\(\\s*\\)"}]}, {"id": "DQ1", "level": 2, "title": "덱 기본 — 양쪽 끝 추가/제거", "concept": "덱은 양쪽 끝에서 모두 추가·제거가 가능합니다. 이번엔 뒤에 추가하는 동작 두 번과, 앞에 추가하는 동작, 앞에서 제거하는 동작을 사용해보세요.", "before": "Deque<Integer> deque = new ArrayDeque<>();", "placeholder": "// TODO: 뒤에 1 추가 → 뒤에 2 추가 → 앞에 0 추가 → 앞에서 하나 꺼내 first에 저장", "after": "\nSystem.out.println(first);\nSystem.out.println(deque);", "expected": "0\n[1, 2]", "answer": "deque.addLast(1);\ndeque.addLast(2);\ndeque.addFirst(0);\nint first = deque.pollFirst();", "note": "addFirst/addLast/pollFirst/pollLast 네 가지만 정확히 구분하면 덱의 절반은 익힌 것입니다. 나머지 절반(peekFirst/peekLast 등)은 제거 없이 보기만 하는 버전입니다.", "checks": [{"p": "addLast\\s*\\(\\s*1\\s*\\)"}, {"p": "addLast\\s*\\(\\s*2\\s*\\)"}, {"p": "addFirst\\s*\\(\\s*0\\s*\\)"}, {"p": "pollFirst\\s*\\(\\s*\\)"}]}, {"id": "DQ2", "level": 2, "title": "덱으로 회문(palindrome) 검사하기", "concept": "양쪽 끝에서 동시에 하나씩 꺼내 비교하면 됩니다. 한쪽은 앞에서, 한쪽은 뒤에서 꺼낼 수 있는 자료구조가 필요합니다.", "before": "static boolean isPalindrome(String s) {\n    Deque<Character> deque = new ArrayDeque<>();\n    for (char c : s.toCharArray()) {\n        deque.addLast(c);\n    }\n    while (deque.size() > 1) {", "placeholder": "        // TODO: 앞에서 하나, 뒤에서 하나를 꺼내 다르면 false 반환", "after": "    }\n    return true;\n}\n\nSystem.out.println(isPalindrome(\"level\"));\nSystem.out.println(isPalindrome(\"queue\"));", "expected": "true\nfalse", "answer": "char front = deque.pollFirst();\nchar back = deque.pollLast();\nif (front != back) return false;", "note": "pollFirst와 pollLast를 매 반복마다 하나씩 꺼내면 가운데로 좁혀 들어가면서 비교할 수 있습니다. size()가 1 이하가 되면(글자 수가 홀수라 가운데 글자 하나 남는 경우 포함) 더 비교할 필요가 없습니다.", "checks": [{"p": "pollFirst\\s*\\(\\s*\\)"}, {"p": "pollLast\\s*\\(\\s*\\)"}, {"p": "!="}]}, {"id": "DQ3", "level": 2, "title": "슬라이딩 윈도우 최솟값 (모노토닉 덱)", "concept": "새 값이 들어올 때, 덱의 맨 뒤에서부터 새 값보다 크거나 같은 값들을 먼저 빼낸 뒤에 새 값을 뒤에 넣으면, 덱의 맨 앞이 항상 지금 창(window) 안에서 가장 작은 값의 인덱스가 됩니다.", "before": "int[] nums = {4, 2, 5, 1, 3};\nint k = 3;\nDeque<Integer> deque = new ArrayDeque<>(); // 인덱스를 저장\nList<Integer> result = new ArrayList<>();\n\nfor (int i = 0; i < nums.length; i++) {\n    if (!deque.isEmpty() && deque.peekFirst() <= i - k) {\n        deque.pollFirst();\n    }", "placeholder": "    // TODO: 덱 뒤쪽에서 nums[i]보다 크거나 같은 값들을 빼낸 뒤, 인덱스 i를 뒤에 추가", "after": "    if (i >= k - 1) {\n        result.add(nums[deque.peekFirst()]);\n    }\n}\nSystem.out.println(result);", "expected": "[2, 1, 1]", "answer": "while (!deque.isEmpty() && nums[deque.peekLast()] >= nums[i]) {\n    deque.pollLast();\n}\ndeque.addLast(i);", "note": "이렇게 만들어진 덱은 항상 '앞에서 뒤로 갈수록 값이 커지는' 상태(모노토닉)를 유지합니다. 그래서 맨 앞 인덱스의 값이 곧 현재 창의 최솟값이 됩니다.", "checks": [{"p": "peekLast\\s*\\(\\s*\\)"}, {"p": "pollLast\\s*\\(\\s*\\)"}, {"p": "addLast\\s*\\(\\s*i\\s*\\)"}]}, {"id": "DQ4", "level": 2, "title": "같은 덱, 다른 추가 방향", "concept": "push()는 맨 앞에, offer()는 맨 뒤에 새 값을 추가합니다. 같은 값을 넣어도 어느 메서드를 쓰느냐에 따라 최종 순서가 달라집니다.", "before": "Deque<Integer> stackStyle = new ArrayDeque<>(Arrays.asList(1, 2, 3));\nDeque<Integer> queueStyle = new ArrayDeque<>(Arrays.asList(1, 2, 3));", "placeholder": "// TODO: stackStyle엔 push(9)로, queueStyle엔 offer(9)로 9를 추가", "after": "\nSystem.out.println(stackStyle);\nSystem.out.println(queueStyle);", "expected": "[9, 1, 2, 3]\n[1, 2, 3, 9]", "answer": "stackStyle.push(9);\nqueueStyle.offer(9);", "note": "push()는 addFirst()와 동일해 맨 앞에 쌓이고, offer()는 addLast()와 동일해 맨 뒤에 쌓입니다. 같은 ArrayDeque 타입이라도 호출하는 메서드 이름이 곧 그 자료구조의 '역할'을 결정합니다.", "checks": [{"p": "push\\s*\\(\\s*9\\s*\\)"}, {"p": "offer\\s*\\(\\s*9\\s*\\)"}]}, {"id": "DQ5", "level": 2, "title": "Deque 정렬하기 (변환 후 재구성)", "concept": "Deque 자체에는 정렬 메서드가 없습니다. 다른 자료구조로 옮겨서 정렬한 뒤, 다시 덱에 채워 넣어야 합니다.", "before": "Deque<Integer> deque = new ArrayDeque<>(Arrays.asList(3, 1, 4, 1, 5));", "placeholder": "// TODO: deque를 정렬된 상태로 만들기 (List로 옮겨 정렬한 뒤 다시 deque에 채우기)", "after": "\nSystem.out.println(deque);", "expected": "[1, 1, 3, 4, 5]", "answer": "List<Integer> list = new ArrayList<>(deque);\nCollections.sort(list);\ndeque = new ArrayDeque<>(list);", "note": "직접 정렬이 필요한 일이 잦다면 처음부터 ArrayDeque 대신 TreeSet이나 PriorityQueue를 고려하는 게 낫습니다.", "checks": [{"p": "Collections\\.sort"}, {"p": "new\\s+ArrayList\\s*<.*?>\\s*\\(\\s*deque\\s*\\)"}, {"p": "new\\s+ArrayDeque\\s*<.*?>\\s*\\(\\s*list\\s*\\)"}]}, {"id": "PQ1", "level": 3, "title": "우선순위 큐 기본 — 최소 힙", "concept": "기본 생성자로 만들면 항상 가장 작은 값이 맨 앞으로 옵니다. 추가하는 메서드와 맨 앞 값을 꺼내는 메서드가 필요합니다.", "before": "PriorityQueue<Integer> pq = new PriorityQueue<>();", "placeholder": "// TODO: 5, 1, 3을 순서대로 추가하고, 가장 작은 값을 하나 꺼내 min에 저장", "after": "\nSystem.out.println(min);\nSystem.out.println(pq);", "expected": "1\n[3, 5]", "answer": "pq.offer(5);\npq.offer(1);\npq.offer(3);\nint min = pq.poll();", "note": "PriorityQueue를 그냥 출력하면 정렬된 순서가 아니라 내부 힙 배열 순서로 나옵니다 — 진짜 정렬된 순서를 보려면 poll()을 반복해서 하나씩 꺼내야 합니다.", "checks": [{"p": "offer\\s*\\(\\s*5\\s*\\)"}, {"p": "offer\\s*\\(\\s*1\\s*\\)"}, {"p": "offer\\s*\\(\\s*3\\s*\\)"}, {"p": "poll\\s*\\(\\s*\\)"}]}, {"id": "PQ2", "level": 3, "title": "최대 힙 만들기", "concept": "생성자에 비교 기준을 거꾸로 뒤집어주는 방법이 있습니다 (java.util.Collections의 유틸리티 메서드를 활용).", "before": "", "placeholder": "// TODO: 가장 큰 값이 먼저 나오도록 PriorityQueue를 생성", "after": "maxHeap.offer(3);\nmaxHeap.offer(7);\nmaxHeap.offer(1);\nSystem.out.println(maxHeap.poll());", "expected": "7", "answer": "PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());", "note": "Collections.reverseOrder()는 기본 오름차순 비교 결과를 뒤집은 Comparator를 만들어줍니다. 직접 (a, b) -> b - a 같은 람다를 넣어도 동일하게 동작합니다.", "checks": [{"p": "new\\s+PriorityQueue\\s*<.*?>\\s*\\(\\s*Collections\\.reverseOrder\\s*\\(\\s*\\)\\s*\\)"}]}, {"id": "PQ3", "level": 3, "title": "객체를 우선순위 큐에 — Comparator 지정", "concept": "기본 타입이 아닌 직접 만든 클래스는 '무엇을 기준으로 비교할지'를 알려주지 않으면 우선순위 큐에 넣을 수 없습니다. 두 객체를 받아 비교 결과를 돌려주는 함수를 비교 기준으로 전달하세요.", "before": "class Person {\n    String name;\n    int age;\n    Person(String name, int age) { this.name = name; this.age = age; }\n}\n\nPriorityQueue<Person> pq = new PriorityQueue<>(", "placeholder": "    // TODO: 나이(age)가 어린 사람이 먼저 나오도록 비교 기준 전달", "after": ");\npq.offer(new Person(\"Kim\", 30));\npq.offer(new Person(\"Lee\", 20));\npq.offer(new Person(\"Park\", 25));\nSystem.out.println(pq.poll().name);", "expected": "Lee", "answer": "(a, b) -> a.age - b.age", "note": "a.age - b.age가 음수면 a가 더 작다(=먼저 나온다)는 뜻으로 해석됩니다. Comparator.comparingInt(p -> p.age)로 써도 동일합니다.", "checks": [{"p": "a\\.age\\s*-\\s*b\\.age"}, {"p": "->"}]}, {"id": "PQ4", "level": 3, "title": "K번째 큰 값 구하기", "concept": "최소 힙의 크기를 K로 유지하면서, 새 값을 넣은 뒤 크기가 K를 넘으면 가장 작은 값을 빼버리세요. 그러면 끝까지 힙에 K개 큰 값만 남고, 맨 위가 K번째로 큰 값이 됩니다.", "before": "int[] nums = {3, 2, 1, 5, 6, 4};\nint k = 2;\nPriorityQueue<Integer> pq = new PriorityQueue<>();\nfor (int n : nums) {\n    pq.offer(n);", "placeholder": "    // TODO: 힙 크기가 k를 넘으면 가장 작은 값을 제거", "after": "}\nSystem.out.println(pq.peek());", "expected": "5", "answer": "if (pq.size() > k) {\n    pq.poll();\n}", "note": "힙의 크기를 항상 K 이하로 유지하면 가장 작은 값들이 자동으로 걸러져, 맨 위(peek)가 K번째로 큰 값이 됩니다. 전체를 정렬하는 것보다 효율적입니다.", "checks": [{"p": "size\\s*\\(\\s*\\)\\s*>\\s*k"}, {"p": "poll\\s*\\(\\s*\\)"}]}, {"id": "PQ5", "level": 3, "title": "다익스트라 기초 — 거리 기준 정렬", "concept": "거리와 노드 번호를 함께 담아 큐에 넣어야 하므로, 배열로 묶어서 사용합니다. 큐에서 꺼낼 때 거리가 가장 짧은 것부터 나오도록 비교 기준을 지정하세요.", "before": "// {node, distance} 형태의 int[]를 담는 우선순위 큐\nPriorityQueue<int[]> pq = new PriorityQueue<>(", "placeholder": "    // TODO: distance(인덱스 1번 값)가 작은 것이 먼저 나오도록 비교 기준 전달", "after": ");\npq.offer(new int[]{1, 7});\npq.offer(new int[]{2, 3});\npq.offer(new int[]{3, 5});\n\nint[] nearest = pq.poll();\nSystem.out.println(nearest[0] + \" \" + nearest[1]);", "expected": "2 3", "answer": "(a, b) -> a[1] - b[1]", "note": "다익스트라에서는 '아직 처리 안 한 노드 중 거리가 가장 짧은 노드'를 매번 꺼내야 해서, 이렇게 거리 기준으로 정렬되는 우선순위 큐가 핵심 도구로 쓰입니다.", "checks": [{"p": "a\\[\\s*1\\s*\\]\\s*-\\s*b\\[\\s*1\\s*\\]"}, {"p": "->"}]}, {"id": "V1", "level": 4, "title": "🔁 변형 — 괄호 짝 검사 (다른 입력)", "concept": "여는 괄호는 쌓아두고, 닫는 괄호가 나오면 스택 맨 위와 짝을 비교합니다. ST2와 같은 패턴, 다른 문자열입니다.", "before": "static boolean isValid(String s) {\n    Deque<Character> stack = new ArrayDeque<>();\n    for (char c : s.toCharArray()) {\n        if (c == '(' || c == '{' || c == '[') {", "placeholder": "            // TODO: 여는 괄호를 스택에 쌓기", "after": "        } else {\n            if (stack.isEmpty()) return false;\n            char open = stack.pop();\n            if (c == ')' && open != '(') return false;\n            if (c == '}' && open != '{') return false;\n            if (c == ']' && open != '[') return false;\n        }\n    }\n    return stack.isEmpty();\n}\n\nSystem.out.println(isValid(\"([{}])\"));\nSystem.out.println(isValid(\"([)]\"));", "expected": "true\nfalse", "answer": "stack.push(c);", "note": "ST2와 정답 코드는 완전히 동일합니다. 입력 문자열만 바뀌었을 뿐, 괄호 검사 로직 자체는 변하지 않는다는 걸 확인하는 문제입니다.", "checks": [{"p": "push\\s*\\(\\s*c\\s*\\)"}]}, {"id": "V2", "level": 4, "title": "🔁 변형 — BFS 방문 처리 (다른 그래프)", "concept": "이웃을 큐에 넣을 때 방문 표시를 하는 패턴은 QU2와 동일합니다. 이번엔 그래프 모양이 다릅니다.", "before": "int[][] graph = {{1,2,3},{0},{0},{0,4},{3}};\nboolean[] visited = new boolean[5];\nQueue<Integer> queue = new LinkedList<>();\nqueue.offer(0);\nvisited[0] = true;\nList<Integer> order = new ArrayList<>();\nwhile (!queue.isEmpty()) {\n    int cur = queue.poll();\n    order.add(cur);\n    for (int next : graph[cur]) {\n        if (!visited[next]) {", "placeholder": "            // TODO: next를 방문 처리하고 큐에 넣기", "after": "        }\n    }\n}\nSystem.out.println(order);", "expected": "[0, 1, 2, 3, 4]", "answer": "visited[next] = true;\nqueue.offer(next);", "note": "그래프 모양이 달라져도 '큐에 넣기 전에 방문 처리' 원칙은 그대로입니다.", "checks": [{"p": "visited\\s*\\[\\s*next\\s*\\]\\s*=\\s*true"}, {"p": "offer\\s*\\(\\s*next\\s*\\)"}]}, {"id": "V3", "level": 4, "title": "🔁 변형 — 슬라이딩 윈도우 최댓값", "concept": "이번엔 최솟값이 아니라 최댓값입니다. 모노토닉 덱 패턴은 같지만, 빼내는 조건의 부등호 방향이 DQ3과 반대로 바뀝니다.", "before": "int[] nums = {1, 3, -1, -3, 5, 3};\nint k = 3;\nDeque<Integer> deque = new ArrayDeque<>();\nList<Integer> result = new ArrayList<>();\n\nfor (int i = 0; i < nums.length; i++) {\n    if (!deque.isEmpty() && deque.peekFirst() <= i - k) {\n        deque.pollFirst();\n    }", "placeholder": "    // TODO: 덱 뒤쪽에서 nums[i]보다 작거나 같은 값들을 빼낸 뒤, 인덱스 i를 뒤에 추가", "after": "    if (i >= k - 1) {\n        result.add(nums[deque.peekFirst()]);\n    }\n}\nSystem.out.println(result);", "expected": "[3, 3, 5, 5]", "answer": "while (!deque.isEmpty() && nums[deque.peekLast()] <= nums[i]) {\n    deque.pollLast();\n}\ndeque.addLast(i);", "note": "최댓값을 구할 때는 덱에 큰 값이 작은 값보다 먼저 남아있어야 하므로, 새 값보다 작거나 같은 값들을 뒤에서 미리 제거합니다. 최솟값 버전(DQ3)과 부등호만 반대입니다.", "checks": [{"p": "peekLast\\s*\\(\\s*\\)"}, {"p": "pollLast\\s*\\(\\s*\\)"}, {"p": "addLast\\s*\\(\\s*i\\s*\\)"}, {"p": "<="}]}, {"id": "V4", "level": 4, "title": "🔁 변형 — K번째 작은 값 구하기", "concept": "이번엔 K번째로 작은 값입니다. PQ4와 반대로, 최대 힙을 K 크기로 유지하면 맨 위가 K번째로 작은 값이 됩니다.", "before": "int[] nums = {7, 10, 4, 3, 20, 15};\nint k = 3;\nPriorityQueue<Integer> pq = new PriorityQueue<>(Collections.reverseOrder());\nfor (int n : nums) {\n    pq.offer(n);", "placeholder": "    // TODO: 힙 크기가 k를 넘으면 가장 큰 값을 제거", "after": "}\nSystem.out.println(pq.peek());", "expected": "7", "answer": "if (pq.size() > k) {\n    pq.poll();\n}", "note": "최댓값을 K개 유지하면 가장 큰 값들이 계속 걸러져 나가고, 작은 값 K개만 남습니다. 그중 가장 큰 값(=힙의 top)이 K번째로 작은 값이 됩니다 — PQ4와 정반대 방향의 힙을 쓴다는 점에 주의하세요.", "checks": [{"p": "size\\s*\\(\\s*\\)\\s*>\\s*k"}, {"p": "poll\\s*\\(\\s*\\)"}]}, {"id": "V5", "level": 4, "title": "🔁 변형 — 객체 정렬 기준 바꾸기", "concept": "이번엔 나이가 아니라 이름 순서로 비교해야 합니다. 문자열끼리는 직접 뺄셈을 할 수 없으니 문자열 비교 메서드를 사용하세요.", "before": "class Person {\n    String name;\n    int age;\n    Person(String name, int age) { this.name = name; this.age = age; }\n}\n\nPriorityQueue<Person> pq = new PriorityQueue<>(", "placeholder": "    // TODO: 이름(name)을 사전순으로 비교해서 먼저 나오도록 비교 기준 전달", "after": ");\npq.offer(new Person(\"Park\", 25));\npq.offer(new Person(\"Kim\", 30));\npq.offer(new Person(\"Lee\", 20));\nSystem.out.println(pq.poll().name);", "expected": "Kim", "answer": "(a, b) -> a.name.compareTo(b.name)", "note": "문자열은 정수가 아니라서 a - b처럼 뺄 수 없습니다. compareTo()가 사전순으로 비교한 결과를 음수/0/양수로 돌려줍니다.", "checks": [{"p": "a\\.name\\.compareTo\\s*\\(\\s*b\\.name\\s*\\)"}, {"p": "->"}]}, {"id": "V6", "level": 4, "title": "🔁 변형 — 다익스트라 (다른 거리 데이터)", "concept": "PQ5와 같은 패턴인데, 이번엔 노드와 거리가 다른 값으로 들어옵니다. 거리(두 번째 값) 기준으로 작은 게 먼저 나오게 합니다.", "before": "PriorityQueue<int[]> pq = new PriorityQueue<>(", "placeholder": "    // TODO: distance(인덱스 1번 값)가 작은 것이 먼저 나오도록 비교 기준 전달", "after": ");\npq.offer(new int[]{1, 12});\npq.offer(new int[]{2, 4});\npq.offer(new int[]{3, 9});\npq.offer(new int[]{4, 4});\n\nint[] nearest = pq.poll();\nSystem.out.println(nearest[0] + \" \" + nearest[1]);", "expected": "2 4", "answer": "(a, b) -> a[1] - b[1]", "note": "거리가 같은 노드가 여러 개 있을 수 있는데, 우선순위 큐는 그중 어떤 걸 먼저 꺼낼지 보장하지 않습니다(동점 처리 순서는 구현에 따라 다름). 다익스트라 자체는 거리만 정확하면 결과에 영향이 없습니다.", "checks": [{"p": "a\\[\\s*1\\s*\\]\\s*-\\s*b\\[\\s*1\\s*\\]"}, {"p": "->"}]}, {"id": "V7", "level": 4, "title": "🔁 변형 — 회문 검사 (다른 문자열)", "concept": "DQ2와 같은 패턴, 다른 입력입니다. 양쪽 끝에서 하나씩 꺼내 비교하는 흐름은 동일합니다.", "before": "static boolean isPalindrome(String s) {\n    Deque<Character> deque = new ArrayDeque<>();\n    for (char c : s.toCharArray()) {\n        deque.addLast(c);\n    }\n    while (deque.size() > 1) {", "placeholder": "        // TODO: 앞에서 하나, 뒤에서 하나를 꺼내 다르면 false 반환", "after": "    }\n    return true;\n}\n\nSystem.out.println(isPalindrome(\"racecar\"));\nSystem.out.println(isPalindrome(\"stack\"));", "expected": "true\nfalse", "answer": "char front = deque.pollFirst();\nchar back = deque.pollLast();\nif (front != back) return false;", "note": "DQ2와 정답 코드는 완전히 동일합니다 — 입력 문자열만 바뀌었습니다.", "checks": [{"p": "pollFirst\\s*\\(\\s*\\)"}, {"p": "pollLast\\s*\\(\\s*\\)"}, {"p": "!="}]}, {"id": "V8", "level": 4, "title": "🔁 변형 — 최대 힙으로 가장 큰 두 값의 합 구하기", "concept": "최대 힙을 만들면 가장 큰 값부터 순서대로 꺼낼 수 있습니다. 두 번 꺼내서 더하면 가장 큰 두 값의 합이 됩니다.", "before": "int[] nums = {4, 8, 2, 10, 6};\nPriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());\nfor (int n : nums) {\n    maxHeap.offer(n);\n}", "placeholder": "// TODO: 가장 큰 값 두 개를 꺼내 합을 sum에 저장", "after": "\nSystem.out.println(sum);", "expected": "18", "answer": "int sum = maxHeap.poll() + maxHeap.poll();", "note": "poll()을 두 번 호출하면 매번 '지금 남아있는 것 중 가장 큰 값'이 차례로 나옵니다 — 첫 번째 poll() 결과가 두 번째 poll() 호출에 영향을 줍니다(이미 그 값은 빠지고 없으니까요).", "checks": [{"p": "poll\\s*\\(\\s*\\)", "n": 2}, {"p": "\\+"}]}]};
+var LEVELS = QUESTIONS_DATA.levels;
+var QUESTIONS = QUESTIONS_DATA.questions;
+var STORAGE_KEY = 'ch2-stack-queue-deque-pq-state';
+
+var state = {
+  level: 0,
+  index: 0,
+  reviewMode: false,
+  progress: {},   // { qid: 'pass' | 'fail' }
+  inputs: {},     // { qid: '학생이 입력한 코드' }
+  log: []         // [{id, status, time}]
+};
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function questionsOfLevel(lv){
+  return QUESTIONS.filter(function(q){ return q.level === lv; });
+}
+
+function failedQuestions(){
+  return QUESTIONS.filter(function(q){ return state.progress[q.id] === 'fail'; });
+}
+
+function activeQuestionList(){
+  return state.reviewMode ? failedQuestions() : questionsOfLevel(state.level);
+}
+
+function totalPassed(){
+  return QUESTIONS.filter(function(q){ return state.progress[q.id] === 'pass'; }).length;
+}
+
+function levelPassed(lv){
+  return questionsOfLevel(lv).filter(function(q){ return state.progress[q.id] === 'pass'; }).length;
+}
+
+/* ---------------- storage ---------------- */
+
+async function loadState(){
+  try{
+    var res = await window.storage.get(STORAGE_KEY, false);
+    if(res && res.value){
+      var saved = JSON.parse(res.value);
+      state.progress = saved.progress || {};
+      state.inputs = saved.inputs || {};
+    }
+  }catch(e){
+    /* 저장된 값 없음 - 최초 실행 */
+  }
+}
+
+async function saveState(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify({progress: state.progress, inputs: state.inputs}), false);
+  }catch(e){
+    console.error('저장 실패', e);
+  }
+}
+
+/* ---------------- grading ---------------- */
+
+function checkAnswer(q, code){
+  return q.checks.every(function(chk){
+    var re;
+    try{ re = new RegExp(chk.p, 'g'); }catch(e){ return false; }
+    var matches = code.match(re);
+    var count = matches ? matches.length : 0;
+    return count >= (chk.n || 1);
+  });
+}
+
+function captureCurrentInput(){
+  var ta = document.getElementById('answer-input');
+  if(ta){
+    var list = activeQuestionList();
+    var q = list[state.index];
+    if(q) state.inputs[q.id] = ta.value;
+  }
+}
+
+/* ---------------- render ---------------- */
+
+function render(){
+  var levelQs = activeQuestionList();
+  if(state.reviewMode && levelQs.length === 0){
+    renderEmptyReview();
+    return;
+  }
+  if(state.index >= levelQs.length) state.index = 0;
+  if(state.index < 0) state.index = 0;
+  var q = levelQs[state.index];
+  var passed = totalPassed();
+  var app = document.getElementById('app');
+
+  var html = '';
+  html += '<div class="topbar">';
+  html += '  <div>';
+  html += '    <div class="brand-eyebrow">$ run --suite stack-queue-deque-priorityqueue</div>';
+  html += '    <h1 class="brand-title">Chapter 2 자동채점</h1>';
+  html += '    <div class="brand-sub">Stack → Queue → Deque → PriorityQueue → 🔁 변형. 코드를 입력하고 채점하면 정규식으로 핵심 패턴을 검증합니다 (실제 자바 실행 X).</div>';
+  html += '  </div>';
+  html += '  <div class="top-stats">';
+  html += '    <div class="progress-wrap">';
+  html += '      <div class="progress-label"><span>전체 진행</span><b>'+passed+' / '+QUESTIONS.length+'</b></div>';
+  html += '      <div class="progress-track"><div class="progress-fill" style="width:'+Math.round(passed/QUESTIONS.length*100)+'%"></div></div>';
+  html += '    </div>';
+  html += '    <button class="btn" data-action="reset">진행 초기화</button>';
+  html += '  </div>';
+  html += '</div>';
+
+  html += '<div class="layout">';
+
+  /* sidebar */
+  html += '  <div class="sidebar">';
+  var failCount = failedQuestions().length;
+  html += '    <button class="btn-review'+(state.reviewMode?' active':'')+'" data-action="toggle-review">';
+  html += '      <span>📌 복습 모드 (오답노트)</span><span class="count">'+failCount+'문항</span>';
+  html += '    </button>';
+
+  html += '    <div class="level-tabs">';
+  LEVELS.forEach(function(lv){
+    var qs = questionsOfLevel(lv.id);
+    var p = levelPassed(lv.id);
+    var isActive = (!state.reviewMode && state.level === lv.id);
+    html += '<div class="level-tab'+(isActive?' active':'')+'" data-action="select-level" data-level="'+lv.id+'">';
+    html += '  <div class="lt-name">'+esc(lv.name)+'</div>';
+    html += '  <div class="lt-sub">'+esc(lv.sub)+'</div>';
+    html += '  <div class="lt-count">'+p+' / '+qs.length+' 완료</div>';
+    html += '</div>';
+  });
+  html += '    </div>';
+
+  html += '    <div class="dot-grid">';
+  levelQs.forEach(function(qq, i){
+    var st = state.progress[qq.id];
+    var cls = 'dot' + (i===state.index?' current':'') + (st==='pass'?' pass':st==='fail'?' fail':'');
+    var label = st==='pass' ? '✓' : st==='fail' ? '✗' : (i+1);
+    html += '<div class="'+cls+'" data-action="jump" data-index="'+i+'" title="'+esc(qq.id)+'">'+label+'</div>';
+  });
+  html += '    </div>';
+  html += '  </div>';
+
+  /* main content */
+  html += '  <div class="content">';
+  html += '    <div class="card">';
+  var levelName = state.reviewMode ? '복습 모드' : LEVELS[state.level].name;
+  html += '      <div class="card-eyebrow">'+esc(levelName)+' · 문항 '+(state.index+1)+' / '+levelQs.length+' · '+esc(q.id)+'</div>';
+  html += '      <h2 class="card-title">'+esc(q.title)+'</h2>';
+  html += '      <div class="concept"><b>핵심 개념</b> — '+esc(q.concept)+'</div>';
+
+  html += '      <div class="codebox">';
+  if(q.before){
+    q.before.split('\n').forEach(function(l){ html += '<div class="cl muted">'+esc(l)+'</div>'; });
+  }
+  q.placeholder.split('\n').forEach(function(l){ html += '<div class="cl hint">'+esc(l)+'</div>'; });
+  var savedInput = (state.inputs[q.id] !== undefined) ? state.inputs[q.id] : '';
+  html += '<textarea id="answer-input" class="answer-area" spellcheck="false" rows="'+Math.max(2, savedInput.split('\n').length)+'" placeholder="여기에 코드를 입력하세요">'+esc(savedInput)+'</textarea>';
+  if(q.after){
+    q.after.split('\n').forEach(function(l){ html += '<div class="cl muted">'+esc(l)+'</div>'; });
+  }
+  html += '      </div>';
+
+  html += '      <div class="expected">기대 출력<pre>'+esc(q.expected)+'</pre></div>';
+
+  html += '      <div class="actions">';
+  html += '        <button class="btn btn-accent" data-action="check">채점하기</button>';
+  var st2 = state.progress[q.id];
+  if(st2 === 'pass') html += '<span class="result-badge pass">✓ PASS</span>';
+  if(st2 === 'fail') html += '<span class="result-badge fail">✗ FAIL — 다시 시도해보세요</span>';
+  html += '      </div>';
+
+  html += '      <div class="nav-row">';
+  html += '        <button class="btn btn-ghost" data-action="prev">← 이전</button>';
+  html += '        <button class="btn btn-ghost" data-action="next">다음 →</button>';
+  html += '      </div>';
+  html += '    </div>';
+
+  html += '    <div class="terminal">';
+  html += '      <div class="terminal-title">채점 기록</div>';
+  if(state.log.length === 0){
+    html += '<div class="term-line">아직 채점 기록이 없습니다.</div>';
+  } else {
+    state.log.slice(-8).reverse().forEach(function(entry){
+      var cls = entry.status === 'pass' ? 'pass' : 'fail';
+      var tag = entry.status === 'pass' ? 'PASS' : 'FAIL';
+      html += '<div class="term-line '+cls+'">['+entry.time+'] '+esc(entry.id)+' → '+tag+'</div>';
+    });
+  }
+  html += '    </div>';
+
+  html += '  </div>';
+  html += '</div>';
+
+  app.innerHTML = html;
+
+  var ta = document.getElementById('answer-input');
+  if(ta){
+    ta.addEventListener('input', function(){
+      ta.style.height = 'auto';
+      ta.style.height = ta.scrollHeight + 'px';
+    });
+  }
+}
+
+function renderEmptyReview(){
+  var app = document.getElementById('app');
+  var passed = totalPassed();
+  var html = '';
+  html += '<div class="topbar">';
+  html += '  <div>';
+  html += '    <div class="brand-eyebrow">$ run --suite stack-queue-deque-priorityqueue</div>';
+  html += '    <h1 class="brand-title">Chapter 2 자동채점</h1>';
+  html += '  </div>';
+  html += '  <div class="top-stats">';
+  html += '    <button class="btn" data-action="reset">진행 초기화</button>';
+  html += '  </div>';
+  html += '</div>';
+  html += '<div class="layout">';
+  html += '  <div class="sidebar">';
+  html += '    <button class="btn-review active" data-action="toggle-review"><span>📌 복습 모드 (오답노트)</span><span class="count">0문항</span></button>';
+  html += '    <div class="level-tabs">';
+  LEVELS.forEach(function(lv){
+    var qs = questionsOfLevel(lv.id);
+    var p = levelPassed(lv.id);
+    html += '<div class="level-tab" data-action="select-level" data-level="'+lv.id+'">';
+    html += '  <div class="lt-name">'+esc(lv.name)+'</div>';
+    html += '  <div class="lt-sub">'+esc(lv.sub)+'</div>';
+    html += '  <div class="lt-count">'+p+' / '+qs.length+' 완료</div>';
+    html += '</div>';
+  });
+  html += '    </div>';
+  html += '  </div>';
+  html += '  <div class="content">';
+  html += '    <div class="empty-review">';
+  if(passed === QUESTIONS.length){
+    html += '<div class="big">🎉 28문항 전부 통과했습니다</div>';
+    html += '<p>복습할 오답이 없습니다. 레벨 탭에서 자유롭게 다시 풀어보셔도 좋습니다.</p>';
+  } else {
+    html += '<div class="big">📌 아직 틀린 문제가 없습니다</div>';
+    html += '<p>오답노트는 채점에서 FAIL이 뜬 문제만 모아 보여줍니다. 왼쪽 레벨 탭에서 문제를 먼저 풀어보세요.</p>';
+  }
+  html += '    </div>';
+  html += '  </div>';
+  html += '</div>';
+  app.innerHTML = html;
+}
+
+/* ---------------- actions ---------------- */
+
+function doCheck(){
+  var ta = document.getElementById('answer-input');
+  if(!ta) return;
+  var list = activeQuestionList();
+  var q = list[state.index];
+  if(!q) return;
+  var code = ta.value;
+  state.inputs[q.id] = code;
+  var ok = checkAnswer(q, code);
+  state.progress[q.id] = ok ? 'pass' : 'fail';
+  var now = new Date();
+  var time = ('0'+now.getHours()).slice(-2)+':'+('0'+now.getMinutes()).slice(-2)+':'+('0'+now.getSeconds()).slice(-2);
+  state.log.push({id: q.id, status: ok ? 'pass' : 'fail', time: time});
+  saveState();
+  render();
+}
+
+function doReset(){
+  if(!confirm('모든 진행 상황과 입력 내용을 초기화할까요? 되돌릴 수 없습니다.')) return;
+  state.progress = {};
+  state.inputs = {};
+  state.log = [];
+  state.level = 0;
+  state.index = 0;
+  state.reviewMode = false;
+  saveState();
+  render();
+}
+
+document.getElementById('app').addEventListener('click', function(e){
+  var el = e.target.closest('[data-action]');
+  if(!el) return;
+  var action = el.getAttribute('data-action');
+
+  if(action === 'check'){ doCheck(); return; }
+  if(action === 'reset'){ doReset(); return; }
+
+  if(action === 'select-level'){
+    captureCurrentInput();
+    state.reviewMode = false;
+    state.level = parseInt(el.getAttribute('data-level'), 10);
+    state.index = 0;
+    render();
+    return;
+  }
+  if(action === 'toggle-review'){
+    captureCurrentInput();
+    state.reviewMode = !state.reviewMode;
+    state.index = 0;
+    render();
+    return;
+  }
+  if(action === 'jump'){
+    captureCurrentInput();
+    state.index = parseInt(el.getAttribute('data-index'), 10);
+    render();
+    return;
+  }
+  if(action === 'prev'){
+    captureCurrentInput();
+    var list = activeQuestionList();
+    state.index = (state.index - 1 + list.length) % list.length;
+    render();
+    return;
+  }
+  if(action === 'next'){
+    captureCurrentInput();
+    var list2 = activeQuestionList();
+    state.index = (state.index + 1) % list2.length;
+    render();
+    return;
+  }
+});
+
+(async function init(){
+  await loadState();
+  render();
+})();
+</script>
+</body>
+</html>
