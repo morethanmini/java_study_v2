@@ -59,22 +59,21 @@
   .reset-btn{font-family:var(--mono);font-size:12px;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;transition:.15s;}
   .reset-btn:hover{border-color:var(--fail);color:var(--fail);}
 
-  /* ---------- layout ---------- */
-  .layout{display:grid;grid-template-columns:230px 1fr;gap:18px;}
-  @media(max-width:760px){.layout{grid-template-columns:1fr;}}
-  .sidebar{display:flex;flex-direction:column;gap:14px;min-width:0;}
-  .level-tabs{display:flex;flex-direction:column;gap:6px;}
-  @media(max-width:760px){.level-tabs{flex-direction:row;overflow-x:auto;padding-bottom:4px;}}
-  .level-tab{text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;cursor:pointer;color:var(--text);font-family:var(--body);transition:.15s;}
-  @media(max-width:760px){.level-tab{flex:0 0 auto;min-width:150px;}}
-  .level-tab:hover{border-color:var(--accent-soft);}
-  .level-tab.active{border-color:var(--accent);background:var(--surface2);}
-  .level-tab .lt-name{font-weight:600;font-size:13px;}
-  .level-tab .lt-sub{font-size:11px;color:var(--muted);margin-top:2px;}
-  .level-tab .lt-count{font-family:var(--mono);font-size:11px;color:var(--accent-soft);margin-top:6px;}
+  /* ---------- level nav ---------- */
+  #level-nav{position:sticky;top:44px;z-index:99;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:8px 20px;overflow-x:auto;scrollbar-width:none;}
+  #level-nav::-webkit-scrollbar{display:none;}
+  .lv-btn{font-family:var(--body);font-size:12px;font-weight:500;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--muted);padding:6px 12px;cursor:pointer;white-space:nowrap;transition:.15s;flex:0 0 auto;}
+  .lv-btn:hover{border-color:var(--accent-soft);color:var(--text);}
+  .lv-btn.lv-active{background:var(--surface2);border-color:var(--accent);color:var(--text);}
+  .lv-btn.lv-special{border-color:var(--border);}
+  .lv-btn.lv-special.lv-on{background:var(--accent);border-color:var(--accent);color:#191309;}
+  .lv-sep{width:1px;height:20px;background:var(--border);flex:0 0 auto;margin:0 4px;}
 
-  .dot-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;}
-  @media(max-width:760px){.dot-grid{grid-template-columns:repeat(10,1fr);}}
+  /* ---------- layout ---------- */
+  .layout{display:flex;flex-direction:column;gap:18px;}
+  .dot-grid-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;}
+
+  .dot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:6px;}
   .dot{aspect-ratio:1;border-radius:6px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;transition:.15s;}
   .dot:hover{border-color:var(--accent-soft);}
   .dot.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
@@ -149,19 +148,13 @@
     .progress-wrap{min-width:0;width:100%;}
     .reset-btn{font-size:11px;padding:6px 10px;}
 
-    /* 레이아웃: 사이드바를 위로 */
-    .layout{grid-template-columns:1fr;gap:12px;}
-
-    /* 레벨 탭 가로 스크롤 */
-    .level-tabs{flex-direction:row;overflow-x:auto;padding-bottom:6px;gap:6px;
-      scrollbar-width:none;}
-    .level-tabs::-webkit-scrollbar{display:none;}
-    .level-tab{flex:0 0 auto;min-width:140px;padding:8px 10px;}
-    .level-tab .lt-name{font-size:12px;}
-    .level-tab .lt-sub{font-size:10px;}
+    /* level nav */
+    #level-nav{top:38px;padding:6px 12px;gap:5px;}
+    .lv-btn{font-size:11px;padding:5px 10px;}
 
     /* dot grid */
-    .dot-grid{grid-template-columns:repeat(10,1fr);gap:4px;padding:8px;}
+    .dot-grid{gap:4px;}
+    .dot-grid-wrap{padding:8px;}
     .dot{font-size:8px;min-height:28px;}
 
     /* kbd hint 숨기기 (모바일엔 키보드 단축키 불필요) */
@@ -214,6 +207,7 @@
   <button class="ch-btn" data-ch="4">Ch4. 자료구조 응용</button>
   <button class="ch-btn" data-ch="5">Ch5. 람다·Stream·IO</button>
 </div>
+<div id="level-nav"></div>
 
 <div id="app"><div class="loading">진행 상황 불러오는 중...</div></div>
 
@@ -324,6 +318,16 @@
   function renderEmptySpecial(){
     var app=document.getElementById('app'),passed=totalPassed(),isB=state.bookmarkMode;
     var title=isB?'🔖 아직 즐겨찾기한 문제가 없습니다':'🎉 지금은 틀린 문제가 없습니다';
+    var failCount=failedQuestions().length,bmCount=Object.keys(state.bookmarks).filter(function(k){return state.bookmarks[k];}).length;
+    var lnav=document.getElementById('level-nav'),lhtml='';
+    LEVELS.forEach(function(lv){
+      var p=levelPassed(lv.id),qs=questionsOfLevel(lv.id).length;
+      lhtml+='<button class="lv-btn" data-action="select-level" data-level="'+lv.id+'">'+esc(lv.name)+' <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+p+'/'+qs+'</span></button>';
+    });
+    lhtml+='<div class="lv-sep"></div>';
+    lhtml+='<button class="lv-btn lv-special'+(state.reviewMode?' lv-on':'')+'" data-action="toggle-review">📌 오답노트 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+failCount+'</span></button>';
+    lhtml+='<button class="lv-btn lv-special'+(state.bookmarkMode?' lv-on':'')+'" data-action="toggle-bookmark-mode">🔖 즐겨찾기 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+bmCount+'</span></button>';
+    lnav.innerHTML=lhtml;
     var html='';
     html+='<div class="topbar"><div><div class="brand-eyebrow">$ run --suite '+CHAPTER_DATA[currentCh].suite+'</div><h1 class="brand-title">'+CHAPTER_DATA[currentCh].brandTitle+'</h1></div>';
     html+='<div class="top-stats"><button class="reset-btn" data-action="reset">진행 초기화</button></div></div>';
@@ -351,19 +355,21 @@
     html+='<div class="progress-track"><div class="progress-fill" style="width:'+Math.round(passed/QUESTIONS.length*100)+'%"></div></div>';
     html+='</div><button class="reset-btn" data-action="reset">진행 초기화</button></div></div>';
 
-    html+='<div class="layout"><div class="sidebar">';
+    /* --- level nav bar --- */
     var failCount=failedQuestions().length,bmCount=Object.keys(state.bookmarks).filter(function(k){return state.bookmarks[k];}).length;
-    html+='<button class="level-tab" data-action="toggle-review" style="border-color:'+(state.reviewMode?'var(--accent)':'var(--border)')+';background:'+(state.reviewMode?'var(--surface2)':'var(--surface)')+';">';
-    html+='<div class="lt-name">📌 오답 노트</div><div class="lt-sub">'+(state.reviewMode?'복습 모드 진행 중':'틀린 문제만 모아 다시 풀기')+'</div><div class="lt-count">'+failCount+'개 대기 중</div></button>';
-    html+='<button class="level-tab" data-action="toggle-bookmark-mode" style="border-color:'+(state.bookmarkMode?'var(--accent)':'var(--border)')+';background:'+(state.bookmarkMode?'var(--surface2)':'var(--surface)')+';">';
-    html+='<div class="lt-name">🔖 즐겨찾기</div><div class="lt-sub">'+(state.bookmarkMode?'즐겨찾기 모드 진행 중':'북마크한 문제만 모아 보기')+'</div><div class="lt-count">'+bmCount+'개 저장됨</div></button>';
-    html+='<div class="level-tabs">';
+    var lnav=document.getElementById('level-nav'),lhtml='';
     LEVELS.forEach(function(lv){
-      var qs=questionsOfLevel(lv.id),p=levelPassed(lv.id);
-      html+='<div class="level-tab'+((!state.reviewMode&&!state.bookmarkMode&&state.level===lv.id)?' active':'')+'" data-action="select-level" data-level="'+lv.id+'">';
-      html+='<div class="lt-name">'+esc(lv.name)+'</div><div class="lt-sub">'+esc(lv.sub)+'</div><div class="lt-count">'+p+' / '+qs.length+' 완료</div></div>';
+      var p=levelPassed(lv.id),qs=questionsOfLevel(lv.id).length;
+      var isActive=!state.reviewMode&&!state.bookmarkMode&&state.level===lv.id;
+      lhtml+='<button class="lv-btn'+(isActive?' lv-active':'')+'" data-action="select-level" data-level="'+lv.id+'">'+esc(lv.name)+' <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+p+'/'+qs+'</span></button>';
     });
-    html+='</div><div class="dot-grid">';
+    lhtml+='<div class="lv-sep"></div>';
+    lhtml+='<button class="lv-btn lv-special'+(state.reviewMode?' lv-on':'')+'" data-action="toggle-review">📌 오답노트 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+failCount+'</span></button>';
+    lhtml+='<button class="lv-btn lv-special'+(state.bookmarkMode?' lv-on':'')+'" data-action="toggle-bookmark-mode">🔖 즐겨찾기 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+bmCount+'</span></button>';
+    lnav.innerHTML=lhtml;
+
+    html+='<div class="layout">';
+    html+='<div class="dot-grid-wrap"><div class="dot-grid">';
     levelQs.forEach(function(qq,i){
       var st=state.progress[qq.id]&&state.progress[qq.id].status;
       var cls='dot'+(i===state.index?' current':'')+(st==='pass'?' pass':st==='fail'?' fail':'')+(state.bookmarks[qq.id]?' bookmarked':'');
@@ -402,7 +408,7 @@
     html+='<button class="btn btn-nav" data-action="prev" '+(state.index===0?'disabled':'')+'>← 이전</button>';
     html+='<span class="pos">'+(state.index+1)+' / '+levelQs.length+'</span>';
     html+='<button class="btn btn-nav" data-action="next" '+(state.index===levelQs.length-1?'disabled':'')+'>다음 →</button>';
-    html+='</div></div></div></div>';
+    html+='</div></div></div>';
 
     html+='<div class="terminal"><div class="terminal-head"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span>&nbsp;&nbsp;test-runner</div>';
     html+='<div class="terminal-body" id="term-body">';
@@ -431,8 +437,8 @@
   function focusAnswerInput(){ var ta=document.getElementById('ans-input'); if(ta) ta.focus(); }
 
   /* ============ 이벤트 ============ */
-  document.getElementById('app').addEventListener('click',function(e){
-    var el=e.target.closest('[data-action]'); if(!el) return; var action=el.getAttribute('data-action');
+  function handleAction(el){
+    var action=el.getAttribute('data-action');
     if(action==='select-level') doSelectLevel(parseInt(el.getAttribute('data-level'),10));
     else if(action==='toggle-review') doToggleReview();
     else if(action==='toggle-bookmark-mode') doToggleBookmarkMode();
@@ -444,6 +450,12 @@
     else if(action==='toggle-bookmark') doToggleBookmark(el.getAttribute('data-qid'));
     else if(action==='grade') doGrade();
     else if(action==='reset') doReset();
+  }
+  document.getElementById('level-nav').addEventListener('click',function(e){
+    var el=e.target.closest('[data-action]'); if(!el) return; handleAction(el);
+  });
+  document.getElementById('app').addEventListener('click',function(e){
+    var el=e.target.closest('[data-action]'); if(!el) return; handleAction(el);
   });
 
   document.addEventListener('keydown',function(e){
