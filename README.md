@@ -68,13 +68,13 @@
 ```
 Java_study/
 ├── main.html                  # 메인 학습 파일 (이것만 열면 됨)
-├── ch1. 자바 기본 문법/
+├── ch1-basic-syntax/
 │   ├── items/
 │   │   ├── levels.js          # 장(레벨) 목록
 │   │   └── questions.js       # 문제 데이터
 │   └── version/               # 구버전 HTML 보관
-├── ch2. 자바 OOP 기초/
-├── ch3. 자바 컬렉션/
-├── ch4. 자바 자료구조 응용/
-└── ch5. 람다·Stream·IO/
+├── ch2-oop/
+├── ch3-collections/
+├── ch4-data-structures/
+└── ch5-lambda-stream-io/
 ```
