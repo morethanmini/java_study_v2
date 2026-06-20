@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "ch1",
+      "name": "main",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "8787", "--directory", "ch1. 자바 컬렉션 + 입출력 문법"],
-      "port": 8787
+      "runtimeArgs": ["-m", "http.server", "8788", "--directory", "."],
+      "port": 8788
     }
   ]
 }
