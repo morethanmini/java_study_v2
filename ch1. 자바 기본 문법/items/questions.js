@@ -1,4 +1,6 @@
-  window.QUESTIONS = [
+window.CHAPTER_DATA = window.CHAPTER_DATA || {};
+window.CHAPTER_DATA[1] = window.CHAPTER_DATA[1] || {};
+window.CHAPTER_DATA[1].questions = [
     {id:'CAST1', level:0, title:'int → double 자동 형변환',
      concept:'더 작은 범위의 타입에서 더 큰 범위의 타입으로 옮겨 담을 때는, 자바가 알아서 변환해줍니다. 따로 표시를 해주지 않아도 됩니다.',
      before:['int a = 7;'], placeholder:['// TODO: a를 double 타입 b에 대입'],

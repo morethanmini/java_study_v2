@@ -1,4 +1,6 @@
-  window.QUESTIONS = [
+window.CHAPTER_DATA = window.CHAPTER_DATA || {};
+window.CHAPTER_DATA[4] = window.CHAPTER_DATA[4] || {};
+window.CHAPTER_DATA[4].questions = [
     /* ---------------- 1장 Stack ---------------- */
     {id:'ST1', level:0, title:'Stack 기본 — push & pop',
      concept:'값을 순서대로 쌓아올리는 연산과, 맨 위 값을 꺼내면서 동시에 제거하는 연산이 짝을 이룹니다. 꺼낸 값은 변수에 담아 출력에 사용해야 합니다.',

@@ -1,4 +1,6 @@
-window.QUESTIONS = [
+window.CHAPTER_DATA = window.CHAPTER_DATA || {};
+window.CHAPTER_DATA[3] = window.CHAPTER_DATA[3] || {};
+window.CHAPTER_DATA[3].questions = [
 {id:'Q0-1', level:0, title:'크기로 배열 선언하기',
      concept:'값을 아직 모를 때도, 칸 수만 먼저 정해서 배열 공간을 미리 잡아둘 수 있는 방법이 있습니다. 이렇게 만들면 각 칸은 자동으로 기본값(default value)으로 채워집니다 — int는 0, boolean은 false, 참조 타입은 null. 크기만 알고 있을 때 배열을 어떻게 선언해야 할지 떠올려보세요.',
      before:[], placeholder:['// TODO: 크기 5인 int 배열 arr 선언'],

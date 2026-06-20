@@ -1,4 +1,6 @@
-window.QUESTIONS = [
+window.CHAPTER_DATA = window.CHAPTER_DATA || {};
+window.CHAPTER_DATA[2] = window.CHAPTER_DATA[2] || {};
+window.CHAPTER_DATA[2].questions = [
     {id:'CL1', level:0, title:'생성자(Constructor) 정의',
      concept:'생성자는 객체가 생성될 때 자동으로 호출되는, 클래스와 이름이 같은 특수한 메서드입니다. 반환 타입을 적지 않습니다.',
      before:['class Person {','    String name;','    int age;'],

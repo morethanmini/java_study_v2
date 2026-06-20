@@ -46,14 +46,22 @@
 
 ## 문제 추가 방법
 
+`main.html`은 뼈대(UI·로직)만 포함하며, 문제 데이터는 각 챕터 폴더의 `items/*.js`에서 불러옵니다.
+
 1. 해당 챕터 폴더의 `items/questions.js`에 문제 블록 추가
-2. 아래 스크립트로 `main.html` 재생성
+2. 새 레벨(장)이 필요하면 `items/levels.js`에도 추가
+3. `main.html`을 다시 열면 바로 반영됩니다 — 별도 빌드 불필요
 
-```bash
-python3 rebuild.py
+**`questions.js` 문제 블록 형식:**
+
+```js
+{id:'고유ID', level:레벨번호, title:'문제 제목',
+ concept:'개념 설명',
+ before:['// 주어지는 코드'], placeholder:['// TODO: ...'],
+ after:['System.out.println(result);'],
+ expected:'기대 출력값', answer:['정답 코드'], note:'추가 설명',
+ regex:[/정답을_검증하는_정규식/]}
 ```
-
-> `rebuild.py`가 없으면 각 챕터 `items/questions.js` 수정 후 Claude에게 main.html 재생성을 요청하세요.
 
 ## 프로젝트 구조
 

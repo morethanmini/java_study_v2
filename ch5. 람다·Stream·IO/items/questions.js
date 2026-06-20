@@ -1,4 +1,6 @@
-window.QUESTIONS = [
+window.CHAPTER_DATA = window.CHAPTER_DATA || {};
+window.CHAPTER_DATA[5] = window.CHAPTER_DATA[5] || {};
+window.CHAPTER_DATA[5].questions = [
     {id:'LM1', level:0, title:'함수형 인터페이스와 람다 기본 문법',
      concept:'추상 메서드가 딱 하나뿐인 인터페이스를 함수형 인터페이스(functional interface)라고 합니다. 이런 인터페이스는 (매개변수) -> 본문 형태의 람다식으로 간단하게 구현체를 만들 수 있습니다.',
      before:['interface Greeting {','    void say(String name);','}'],
