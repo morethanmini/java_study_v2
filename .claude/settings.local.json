@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"/Users/int_min/Documents/Dev/coding/Java_study/.claude\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(python3 -c ' *)",
+      "Bash(python3)"
+    ]
+  }
+}
