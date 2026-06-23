@@ -440,6 +440,28 @@
         color: var(--fail);
         border: 1px solid rgba(226, 96, 79, 0.3);
       }
+      .output-box {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .output-label {
+        font-size: 11px;
+        color: var(--accent-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        display: block;
+        margin-bottom: 4px;
+      }
+      .output-val {
+        margin: 0;
+        color: var(--text);
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
       .answer-box {
         display: none;
         background: var(--surface2);
@@ -847,6 +869,9 @@
 
         function buildJavaCode(q, userInput) {
           var lines = [];
+          lines.push('import java.io.*;');
+          lines.push('import java.util.*;');
+          lines.push('import java.util.stream.*;');
           lines.push('public class Main {');
           lines.push('  public static void main(String[] args) throws Exception {');
           (q.before || []).forEach(function(l) { lines.push('    ' + l); });
@@ -1647,12 +1672,21 @@
           var fb = state.progress[q.id],
             fbClass = "",
             fbText = "";
+          var lastLog = state.log.filter(function(l) { return l.cmd === 'check ' + q.id; });
+          var lastOutput = lastLog.length ? lastLog[lastLog.length - 1].output : null;
           if (fb && fb.status === "pass") {
             fbClass = "pass show";
             fbText = "✓ PASS — 정답입니다.";
           } else if (fb && fb.status === "fail") {
             fbClass = "fail show";
             fbText = "✗ FAIL — 문법을 다시 확인해보세요.";
+          }
+          var outputHtml = '';
+          if (lastOutput !== null && lastOutput !== undefined) {
+            outputHtml = '<div class="output-box">' +
+              '<span class="output-label">출력</span>' +
+              '<pre class="output-val">' + esc(lastOutput) + '</pre>' +
+              '</div>';
           }
           html +=
             '<div class="actions"><button class="btn btn-grade" data-action="grade">채점</button>';
@@ -1666,6 +1700,7 @@
             '" id="fb-msg">' +
             fbText +
             "</div>";
+          html += outputHtml;
           html +=
             '<div class="answer-box' +
             (state.revealed[q.id] ? " show" : "") +
@@ -1693,27 +1728,6 @@
             ">다음 →</button>";
           html += "</div></div></div>";
 
-          html +=
-            '<div class="terminal"><div class="terminal-head"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span>&nbsp;&nbsp;test-runner</div>';
-          html += '<div class="terminal-body" id="term-body">';
-          if (state.log.length === 0) {
-            html += '<div class="ln">대기 중... 채점 버튼을 눌러보세요.</div>';
-          } else {
-            state.log.forEach(function (l) {
-              html +=
-                '<div class="ln cmd">$ ' +
-                esc(l.cmd) +
-                '</div><div class="ln ' +
-                (l.pass ? "pass" : "fail") +
-                '">  ' +
-                (l.pass ? "✓ PASS" : "✗ FAIL") +
-                "</div>";
-              if (l.output !== null && l.output !== undefined) {
-                html += '<div class="ln" style="color:#ccc;margin-left:1em;">출력: ' + esc(l.output) + '</div>';
-              }
-            });
-          }
-          html += '<span class="cursor"></span></div></div>';
 
           app.innerHTML = html;
           updateServerBadge();
@@ -1729,8 +1743,6 @@
               handleEditorKeydown(e, ta, q);
             });
           }
-          var term = document.getElementById("term-body");
-          if (term) term.scrollTop = term.scrollHeight;
         }
 
         /* ============ 액션 ============ */
