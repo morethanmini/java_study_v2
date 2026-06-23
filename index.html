@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Java 간단 문법 익히기</title>
+    <title>Java 문법 채점기</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -850,53 +850,83 @@
       (function () {
         /* ============ 현재 챕터 상태 ============ */
         var currentCh = 1;
-        var SERVER_URL = 'http://localhost:3000/run';
+        var SERVER_URL = "http://localhost:3000/run";
         var serverAvailable = false;
 
         function checkServer() {
-          fetch(SERVER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: 'public class Main { public static void main(String[] args) { System.out.println("ok"); } }' }), signal: AbortSignal.timeout(2000) })
-            .then(function(r) { return r.json(); })
-            .then(function(d) { serverAvailable = d.output === 'ok'; updateServerBadge(); })
-            .catch(function() { serverAvailable = false; updateServerBadge(); });
+          fetch(SERVER_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              code: 'public class Main { public static void main(String[] args) { System.out.println("ok"); } }',
+            }),
+            signal: AbortSignal.timeout(2000),
+          })
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (d) {
+              serverAvailable = d.output === "ok";
+              updateServerBadge();
+            })
+            .catch(function () {
+              serverAvailable = false;
+              updateServerBadge();
+            });
         }
 
         function updateServerBadge() {
-          var badge = document.getElementById('server-badge');
+          var badge = document.getElementById("server-badge");
           if (!badge) return;
-          badge.textContent = serverAvailable ? '● 실행 채점' : '● regex 채점 (서버 꺼짐)';
-          badge.style.color = serverAvailable ? '#4caf50' : '#aaa';
+          badge.textContent = serverAvailable
+            ? "● 실행 채점"
+            : "● regex 채점 (서버 꺼짐)";
+          badge.style.color = serverAvailable ? "#4caf50" : "#aaa";
         }
 
         function buildJavaCode(q, userInput) {
           var lines = [];
-          lines.push('import java.io.*;');
-          lines.push('import java.util.*;');
-          lines.push('import java.util.stream.*;');
-          lines.push('public class Main {');
-          lines.push('  public static void main(String[] args) throws Exception {');
-          (q.before || []).forEach(function(l) { lines.push('    ' + l); });
-          userInput.split('\n').forEach(function(l) { lines.push('    ' + l); });
-          (q.after || []).forEach(function(l) { lines.push('    ' + l); });
-          lines.push('  }');
-          lines.push('}');
-          return lines.join('\n');
+          lines.push("import java.io.*;");
+          lines.push("import java.util.*;");
+          lines.push("import java.util.stream.*;");
+          lines.push("public class Main {");
+          lines.push(
+            "  public static void main(String[] args) throws Exception {",
+          );
+          (q.before || []).forEach(function (l) {
+            lines.push("    " + l);
+          });
+          userInput.split("\n").forEach(function (l) {
+            lines.push("    " + l);
+          });
+          (q.after || []).forEach(function (l) {
+            lines.push("    " + l);
+          });
+          lines.push("  }");
+          lines.push("}");
+          return lines.join("\n");
         }
 
         function gradeByExecution(q, input) {
           return fetch(SERVER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code: buildJavaCode(q, input) }),
-            signal: AbortSignal.timeout(5000)
+            signal: AbortSignal.timeout(5000),
           })
-          .then(function(r) { return r.json(); })
-          .then(function(d) {
-            var out = d.output ? d.output.trim() : '';
-            var err = d.error ? d.error.trim() : '';
-            if (!out && err) return { pass: false, output: '⚠ ' + err.split('\n')[0] };
-            return { pass: out === String(q.expected).trim(), output: out };
-          })
-          .catch(function() { return null; });
+            .then(function (r) {
+              return r.json();
+            })
+            .then(function (d) {
+              var out = d.output ? d.output.trim() : "";
+              var err = d.error ? d.error.trim() : "";
+              if (!out && err)
+                return { pass: false, output: "⚠ " + err.split("\n")[0] };
+              return { pass: out === String(q.expected).trim(), output: out };
+            })
+            .catch(function () {
+              return null;
+            });
         }
         var LEVELS = CHAPTER_DATA[1].levels;
         var QUESTIONS = CHAPTER_DATA[1].questions;
@@ -959,12 +989,19 @@
         }
         function savePosition() {
           try {
-            localStorage.setItem('java_study_pos', JSON.stringify({ ch: currentCh, level: state.level, index: state.index }));
+            localStorage.setItem(
+              "java_study_pos",
+              JSON.stringify({
+                ch: currentCh,
+                level: state.level,
+                index: state.index,
+              }),
+            );
           } catch (e) {}
         }
         function loadPosition() {
           try {
-            var pos = JSON.parse(localStorage.getItem('java_study_pos'));
+            var pos = JSON.parse(localStorage.getItem("java_study_pos"));
             if (!pos || !CHAPTER_DATA[pos.ch]) return;
             if (pos.ch !== currentCh) switchChapter(pos.ch);
             state.level = pos.level || 0;
@@ -1227,7 +1264,11 @@
           return gradeQuestion(q, input);
         }
         function pushLog(qid, pass, output) {
-          state.log.push({ cmd: "check " + qid, pass: pass, output: output || null });
+          state.log.push({
+            cmd: "check " + qid,
+            pass: pass,
+            output: output || null,
+          });
           if (state.log.length > 40) state.log.shift();
         }
 
@@ -1379,17 +1420,24 @@
           return false;
         }
         /* ============ undo 스택 ============ */
-        var undoStack = {};  // { [qid]: [{value, ss, se}] }
+        var undoStack = {}; // { [qid]: [{value, ss, se}] }
         var undoPointer = {}; // { [qid]: number }
         var undoTimer = null;
 
         function pushUndo(q, ta) {
           var id = q.id;
-          if (!undoStack[id]) { undoStack[id] = []; undoPointer[id] = -1; }
+          if (!undoStack[id]) {
+            undoStack[id] = [];
+            undoPointer[id] = -1;
+          }
           var stack = undoStack[id];
           // 현재 포인터 이후 스택 제거
           stack.splice(undoPointer[id] + 1);
-          stack.push({ value: ta.value, ss: ta.selectionStart, se: ta.selectionEnd });
+          stack.push({
+            value: ta.value,
+            ss: ta.selectionStart,
+            se: ta.selectionEnd,
+          });
           if (stack.length > 100) stack.shift();
           undoPointer[id] = stack.length - 1;
         }
@@ -1407,11 +1455,13 @@
 
         function scheduleUndo(q, ta) {
           clearTimeout(undoTimer);
-          undoTimer = setTimeout(function() { pushUndo(q, ta); }, 300);
+          undoTimer = setTimeout(function () {
+            pushUndo(q, ta);
+          }, 300);
         }
 
         function handleEditorKeydown(e, ta, q) {
-          if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+          if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
             e.preventDefault();
             doUndo(q, ta);
             return;
@@ -1451,7 +1501,9 @@
               qs = questionsOfLevel(lv.id).length;
             var isDone = p === qs && qs > 0;
             lhtml +=
-              '<button class="lv-btn' + (isDone ? ' lv-done' : '') + '" data-action="select-level" data-level="' +
+              '<button class="lv-btn' +
+              (isDone ? " lv-done" : "") +
+              '" data-action="select-level" data-level="' +
               lv.id +
               '">' +
               esc(lv.name) +
@@ -1562,7 +1614,7 @@
             var isDone = p === qs && qs > 0;
             lhtml +=
               '<button class="lv-btn' +
-              (isDone ? ' lv-done' : '') +
+              (isDone ? " lv-done" : "") +
               (isActive ? " lv-active" : "") +
               '" data-action="select-level" data-level="' +
               lv.id +
@@ -1672,8 +1724,12 @@
           var fb = state.progress[q.id],
             fbClass = "",
             fbText = "";
-          var lastLog = state.log.filter(function(l) { return l.cmd === 'check ' + q.id; });
-          var lastOutput = lastLog.length ? lastLog[lastLog.length - 1].output : null;
+          var lastLog = state.log.filter(function (l) {
+            return l.cmd === "check " + q.id;
+          });
+          var lastOutput = lastLog.length
+            ? lastLog[lastLog.length - 1].output
+            : null;
           if (fb && fb.status === "pass") {
             fbClass = "pass show";
             fbText = "✓ PASS — 정답입니다.";
@@ -1681,12 +1737,15 @@
             fbClass = "fail show";
             fbText = "✗ FAIL — 문법을 다시 확인해보세요.";
           }
-          var outputHtml = '';
+          var outputHtml = "";
           if (lastOutput !== null && lastOutput !== undefined) {
-            outputHtml = '<div class="output-box">' +
+            outputHtml =
+              '<div class="output-box">' +
               '<span class="output-label">출력</span>' +
-              '<pre class="output-val">' + esc(lastOutput) + '</pre>' +
-              '</div>';
+              '<pre class="output-val">' +
+              esc(lastOutput) +
+              "</pre>" +
+              "</div>";
           }
           html +=
             '<div class="actions"><button class="btn btn-grade" data-action="grade">채점</button>';
@@ -1727,7 +1786,6 @@
             (state.index === levelQs.length - 1 ? "disabled" : "") +
             ">다음 →</button>";
           html += "</div></div></div>";
-
 
           app.innerHTML = html;
           updateServerBadge();
@@ -1813,7 +1871,10 @@
           var ta = document.getElementById("ans-input"),
             val = ta ? ta.value : "";
           var gradeBtn = document.querySelector('[data-action="grade"]');
-          if (gradeBtn) { gradeBtn.disabled = true; gradeBtn.textContent = '채점 중...'; }
+          if (gradeBtn) {
+            gradeBtn.disabled = true;
+            gradeBtn.textContent = "채점 중...";
+          }
           var executionOutput = null;
           var pass;
           if (serverAvailable) {
@@ -1827,7 +1888,10 @@
           } else {
             pass = gradeQuestion(q, val);
           }
-          if (gradeBtn) { gradeBtn.disabled = false; gradeBtn.textContent = '채점'; }
+          if (gradeBtn) {
+            gradeBtn.disabled = false;
+            gradeBtn.textContent = "채점";
+          }
           state.progress[q.id] = { status: pass ? "pass" : "fail", input: val };
           pushLog(q.id, pass, executionOutput);
           saveProgress();
