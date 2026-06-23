@@ -12,6 +12,7 @@ Object.assign(window.CHAPTER_DATA[1], {
     {id:3, name:'4장 String 자르기와 변형', sub:'substring · split · replace'},
     {id:4, name:'5장 예외처리 기초', sub:'try-catch-finally · throws'},
     {id:5, name:'6장 변형 연습', sub:'같은 패턴, 다른 데이터로 반복'},
-    {id:6, name:'7장 제어 흐름과 수학', sub:'for · while · Math · 상수 · 삼항'}
+    {id:6, name:'7장 제어 흐름과 수학', sub:'for · while · Math · 상수 · 삼항'},
+    {id:7, name:'8장 배열', sub:'1차원 · 2차원 · for · for-each'}
   ]
 });

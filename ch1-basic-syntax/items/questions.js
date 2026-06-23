@@ -415,6 +415,67 @@ window.CHAPTER_DATA[1].questions = [
      before:['int n = 7;'], placeholder:['// TODO: n이 짝수면 "even", 홀수면 "odd"를 result에 저장 (삼항 연산자)'],
      after:['System.out.println(result);'],
      expected:'odd', answer:['String result = (n % 2 == 0) ? "even" : "odd";'], note:'',
-     regex:[/String\s+result\s*=/, /\?\s*"even"\s*:\s*"odd"|n\s*%\s*2\s*!=\s*0.*\?\s*"odd"/]}
+     regex:[/String\s+result\s*=/, /\?\s*"even"\s*:\s*"odd"|n\s*%\s*2\s*!=\s*0.*\?\s*"odd"/]},
+
+    /* ---------------- 8장 배열 ---------------- */
+    {id:'ARR1', level:7, title:'1차원 배열 선언 (크기 지정)',
+     concept:'배열은 같은 타입의 값 여러 개를 연속된 공간에 저장하는 자료구조입니다. new 타입[크기]로 선언하면 각 칸은 기본값(int는 0, String은 null)으로 초기화됩니다.',
+     before:[], placeholder:['// TODO: 크기 5인 int 배열 arr 선언'],
+     after:['System.out.println(arr.length);'],
+     expected:'5', answer:['int[] arr = new int[5];'], note:'',
+     regex:[/int\[\]\s*arr\s*=\s*new\s*int\[\s*5\s*\]\s*;?/]},
+
+    {id:'ARR2', level:7, title:'배열 리터럴로 초기화',
+     concept:'값을 미리 알고 있을 때는 중괄호로 선언과 동시에 값을 넣을 수 있습니다. 자바가 크기를 자동으로 결정합니다.',
+     before:[], placeholder:['// TODO: {10, 20, 30} 으로 초기화된 int 배열 arr 선언'],
+     after:['System.out.println(arr[1]);'],
+     expected:'20', answer:['int[] arr = {10, 20, 30};'], note:'',
+     regex:[/int\[\]\s*arr\s*=\s*\{\s*10\s*,\s*20\s*,\s*30\s*\}\s*;?/]},
+
+    {id:'ARR3', level:7, title:'배열 인덱스로 값 수정',
+     concept:'배열의 인덱스는 0부터 시작합니다. arr[인덱스] = 값; 으로 해당 칸을 덮어씁니다.',
+     before:['int[] scores = {70, 85, 92};'], placeholder:['// TODO: scores[1]을 100으로 변경'],
+     after:['System.out.println(scores[1]);'],
+     expected:'100', answer:['scores[1] = 100;'], note:'',
+     regex:[/scores\[\s*1\s*\]\s*=\s*100\s*;?/]},
+
+    {id:'ARR4', level:7, title:'for문으로 배열 합계 구하기',
+     concept:'arr.length는 배열의 길이를 반환합니다. for문과 인덱스를 조합해 모든 요소를 하나씩 처리할 수 있습니다.',
+     before:['int[] nums = {1, 2, 3, 4, 5};', 'int sum = 0;'],
+     placeholder:['// TODO: for문으로 nums의 모든 요소를 sum에 누적'], rows:2,
+     after:['System.out.println(sum);'],
+     expected:'15', answer:['for (int i = 0; i < nums.length; i++) sum += nums[i];'], note:'',
+     regex:[/for\s*\(.*nums\.length.*\)/, /sum\s*\+=\s*nums\[/]},
+
+    {id:'ARR5', level:7, title:'for-each로 배열 순회',
+     concept:'인덱스가 필요 없을 때는 for-each(향상된 for문)로 더 간결하게 순회할 수 있습니다. 배열 요소를 읽기만 하는 경우에 씁니다.',
+     before:['String[] fruits = {"apple", "banana", "cherry"};'],
+     placeholder:['// TODO: for-each로 fruits의 각 요소를 한 줄씩 출력'],
+     after:[''],
+     expected:'apple\nbanana\ncherry', answer:['for (String f : fruits) System.out.println(f);'], note:'',
+     regex:[/for\s*\(\s*String\s+\w+\s*:\s*fruits\s*\)/]},
+
+    {id:'ARR6', level:7, title:'2차원 배열 선언',
+     concept:'2차원 배열은 배열의 배열입니다. int[행][열]로 선언하고, arr[행인덱스][열인덱스]로 각 칸에 접근합니다.',
+     before:[], placeholder:['// TODO: 2행 3열 int 2차원 배열 matrix 선언'],
+     after:['matrix[1][2] = 9;', 'System.out.println(matrix[1][2]);'],
+     expected:'9', answer:['int[][] matrix = new int[2][3];'], note:'',
+     regex:[/int\[\]\[\]\s*matrix\s*=\s*new\s*int\[\s*2\s*\]\[\s*3\s*\]\s*;?/]},
+
+    {id:'ARR7', level:7, title:'2차원 배열 리터럴 초기화',
+     concept:'중괄호를 중첩해서 2차원 배열을 선언과 동시에 초기화할 수 있습니다. 각 내부 중괄호가 한 행입니다.',
+     before:[], placeholder:['// TODO: {{1,2},{3,4},{5,6}} 으로 초기화된 2차원 배열 grid 선언'],
+     after:['System.out.println(grid[2][1]);'],
+     expected:'6', answer:['int[][] grid = {{1,2},{3,4},{5,6}};'], note:'',
+     regex:[/int\[\]\[\]\s*grid\s*=\s*\{/]},
+
+    {id:'ARR8', level:7, title:'2차원 배열 이중 for문 순회',
+     concept:'행 수는 arr.length, 특정 행의 열 수는 arr[i].length 로 얻습니다. 이중 for문으로 모든 칸을 순회할 수 있습니다.',
+     before:['int[][] mat = {{1,2,3},{4,5,6}};', 'int sum = 0;'],
+     placeholder:['// TODO: 이중 for문으로 mat의 모든 값을 sum에 누적'], rows:3,
+     after:['System.out.println(sum);'],
+     expected:'21', answer:['for (int i = 0; i < mat.length; i++)', '    for (int j = 0; j < mat[i].length; j++)', '        sum += mat[i][j];'],
+     note:'',
+     regex:[/for\s*\(.*mat\.length/, /sum\s*\+=\s*mat\[/]}
 
   ];

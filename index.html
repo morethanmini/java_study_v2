@@ -131,6 +131,24 @@
   @keyframes blink{50%{opacity:0;}}
   .loading{padding:60px 0;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px;}
 
+  /* ---------- overview ---------- */
+  .ov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-bottom:24px;}
+  .ov-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:border-color .15s, transform .15s;}
+  .ov-card:hover{border-color:var(--accent-soft);transform:translateY(-2px);}
+  .ov-card-head{padding:16px 18px 12px;display:flex;flex-direction:column;gap:4px;border-bottom:2px solid var(--border);}
+  .ov-ch-label{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;}
+  .ov-ch-title{font-family:var(--display);font-size:16px;font-weight:600;color:var(--text);}
+  .ov-ch-stats{font-family:var(--mono);font-size:10.5px;color:var(--muted);}
+  .ov-kw-list{list-style:none;margin:0;padding:12px 18px 10px;display:flex;flex-direction:column;gap:6px;flex:1;}
+  .ov-kw-list li{font-size:12.5px;color:var(--muted);padding-left:12px;position:relative;line-height:1.4;}
+  .ov-kw-list li::before{content:'·';position:absolute;left:2px;color:var(--accent);}
+  .ov-card-footer{padding:9px 18px;font-family:var(--mono);font-size:11px;color:var(--muted);border-top:1px solid var(--border-soft);text-align:right;transition:color .15s;}
+  .ov-card:hover .ov-card-footer{color:var(--accent-soft);}
+  .ov-flow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:4px;}
+  .ov-flow-item{font-family:var(--mono);font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;white-space:nowrap;}
+  .ov-arrow{color:var(--accent);font-size:14px;font-weight:700;}
+  .ov-notice{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;margin-top:6px;}
+
   /* ========== 모바일 반응형 ========== */
   @media(max-width:600px){
     /* chapter nav */
@@ -201,6 +219,7 @@
 <body>
 
 <div id="chapter-nav">
+  <button class="ch-btn" data-ch="0">📋 전체 개요</button>
   <button class="ch-btn ch-active" data-ch="1">Ch1. 기본 문법</button>
   <button class="ch-btn" data-ch="2">Ch2. OOP 기초</button>
   <button class="ch-btn" data-ch="3">Ch3. 컬렉션</button>
@@ -260,6 +279,62 @@
     try{ await store.set(BOOKMARK_KEY, JSON.stringify(state.bookmarks)); }catch(e){}
   }
 
+  /* ============ 개요 페이지 ============ */
+  var isOverview = false;
+
+  var OV_INFO = [
+    { ch:1, color:'#D98C3D', keywords:['기본형 · 참조형', '형 변환 (캐스팅)', 'String 메서드', '예외처리 (try-catch-finally)', '제어 흐름 · Math · 삼항', '배열 (1D / 2D)'] },
+    { ch:2, color:'#6B9FD4', keywords:['클래스 · 생성자 · overloading', '상속 (extends) · overriding', '인터페이스 · abstract class', '캡슐화 · equals · toString', 'Comparator · enum', '접근 제어자 · import · 동적 바인딩', '사용자 정의 예외', 'Generic · 와일드카드 · PECS'] },
+    { ch:3, color:'#6FD9A0', keywords:['배열 · ArrayList (List 계열)', 'HashSet (Set 계열)', 'HashMap (Map 계열)', '정렬 · 탐색 · 집합 연산', '오토박싱 · 빈도수 카운팅', 'TreeMap · copyOfRange · computeIfAbsent'] },
+    { ch:4, color:'#C77DFF', keywords:['Stack — LIFO · 괄호검사', 'Queue — FIFO · BFS', 'Deque — 슬라이딩 윈도우', 'PriorityQueue — 힙 · 다익스트라'] },
+    { ch:5, color:'#FF9A3C', keywords:['Lambda · @FunctionalInterface', 'Predicate · Function · Consumer', 'Stream API (filter·map·collect)', 'Scanner · BufferedReader (표준입력)', 'FileWriter · BufferedReader (파일)', 'Files.readAllLines · try-with-resources'] },
+  ];
+
+  function renderOverview(){
+    isOverview = true;
+    document.querySelectorAll('.ch-btn').forEach(function(b){
+      b.classList.toggle('ch-active', b.getAttribute('data-ch') === '0');
+    });
+    document.getElementById('level-nav').innerHTML = '';
+    var html = '';
+    html += '<div style="margin-bottom:24px;">';
+    html += '<div class="brand-eyebrow">$ java --curriculum overview</div>';
+    html += '<h1 class="brand-title">Java 커리큘럼 전체 개요</h1>';
+    html += '<div class="brand-sub">각 챕터의 학습 주제와 키워드를 한눈에 확인하세요. 카드를 클릭하면 해당 챕터로 이동합니다.</div>';
+    html += '</div>';
+
+    html += '<div class="ov-flow">';
+    var flowNames = ['기본 문법','OOP 기초','컬렉션','자료구조','람다·IO'];
+    flowNames.forEach(function(name, i){
+      if(i > 0) html += '<span class="ov-arrow">→</span>';
+      html += '<span class="ov-flow-item">Ch'+(i+1)+'. '+name+'</span>';
+    });
+    html += '</div>';
+    html += '<div class="ov-notice">Java 파트 커리큘럼 순서 (XML 챕터 제외)</div>';
+
+    html += '<div style="height:20px;"></div>';
+    html += '<div class="ov-grid">';
+    OV_INFO.forEach(function(info){
+      var chData = CHAPTER_DATA[info.ch];
+      var totalQs = chData.questions.length;
+      var totalLevels = chData.levels.length;
+      html += '<div class="ov-card" data-action="go-chapter" data-ch="'+info.ch+'">';
+      html += '<div class="ov-card-head" style="border-bottom-color:'+info.color+';">';
+      html += '<span class="ov-ch-label" style="color:'+info.color+';">Ch'+info.ch+'</span>';
+      html += '<span class="ov-ch-title">'+esc(chData.brandTitle.replace(' 자동채점',''))+'</span>';
+      html += '<span class="ov-ch-stats">'+totalQs+'문제 · '+totalLevels+'장</span>';
+      html += '</div>';
+      html += '<ul class="ov-kw-list">';
+      info.keywords.forEach(function(kw){ html += '<li>'+esc(kw)+'</li>'; });
+      html += '</ul>';
+      html += '<div class="ov-card-footer">학습 시작 →</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    document.getElementById('app').innerHTML = html;
+  }
+
   /* ============ 챕터 전환 ============ */
   function switchChapter(ch){
     currentCh = ch;
@@ -279,7 +354,8 @@
     var btn = e.target.closest('.ch-btn');
     if(!btn) return;
     var ch = parseInt(btn.getAttribute('data-ch'));
-    if(ch !== currentCh) switchChapter(ch);
+    if(ch === 0){ renderOverview(); return; }
+    if(isOverview || ch !== currentCh){ isOverview = false; switchChapter(ch); }
   });
 
   /* ============ 유틸 ============ */
@@ -450,6 +526,7 @@
     else if(action==='toggle-bookmark') doToggleBookmark(el.getAttribute('data-qid'));
     else if(action==='grade') doGrade();
     else if(action==='reset') doReset();
+    else if(action==='go-chapter'){ var ch=parseInt(el.getAttribute('data-ch'),10); isOverview=false; switchChapter(ch); }
   }
   document.getElementById('level-nav').addEventListener('click',function(e){
     var el=e.target.closest('[data-action]'); if(!el) return; handleAction(el);
