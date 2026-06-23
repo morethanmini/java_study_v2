@@ -1,555 +1,1770 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Java 자동채점</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg:#F0F4F8;
-    --surface:#FFFFFF;
-    --surface2:#E8EFF6;
-    --code-bg:#F5F8FB;
-    --border:#C9D8E8;
-    --border-soft:#D8E6F0;
-    --accent:#2E86C1;
-    --accent-soft:#4DA3D4;
-    --success:#1A8A56;
-    --fail:#C0392B;
-    --text:#1A2733;
-    --muted:#5D7A8A;
-    --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-    --display:'Space Grotesk', sans-serif;
-    --body:'Inter', sans-serif;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;overflow-x:hidden;}
-  body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;}
-
-  /* ---------- chapter nav ---------- */
-  #chapter-nav{
-    position:sticky;top:0;z-index:100;
-    background:var(--surface);border-bottom:1px solid var(--border);
-    display:flex;gap:4px;padding:10px 20px;overflow-x:auto;
-  }
-  .ch-btn{
-    font-family:var(--mono);font-size:12px;font-weight:500;
-    background:transparent;border:1px solid var(--border);border-radius:8px;
-    color:var(--muted);padding:7px 14px;cursor:pointer;transition:.15s;white-space:nowrap;
-  }
-  .ch-btn:hover{border-color:var(--accent-soft);color:var(--text);}
-  .ch-btn.ch-active{background:var(--accent);border-color:var(--accent);color:#191309;font-weight:700;}
-
-  #app{max-width:1180px;margin:0 auto;padding:28px 20px 60px;}
-
-  /* ---------- topbar ---------- */
-  .topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px;}
-  .brand-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--accent-soft);text-transform:uppercase;margin-bottom:6px;}
-  .brand-title{font-family:var(--display);font-weight:700;font-size:28px;letter-spacing:-0.01em;margin:0;}
-  .brand-sub{color:var(--muted);font-size:13px;margin-top:4px;}
-  .top-stats{display:flex;align-items:center;gap:14px;}
-  .progress-wrap{min-width:220px;}
-  .progress-label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:6px;}
-  .progress-label b{color:var(--text);font-weight:600;}
-  .progress-track{height:8px;border-radius:99px;background:var(--surface2);border:1px solid var(--border);overflow:hidden;}
-  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-soft));transition:width .3s ease;}
-  .reset-btn{font-family:var(--mono);font-size:12px;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;transition:.15s;}
-  .reset-btn:hover{border-color:var(--fail);color:var(--fail);}
-
-  /* ---------- level nav ---------- */
-  #level-nav{position:sticky;top:44px;z-index:99;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:8px 20px;overflow-x:auto;scrollbar-width:none;}
-  #level-nav::-webkit-scrollbar{display:none;}
-  .lv-btn{font-family:var(--body);font-size:12px;font-weight:500;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--muted);padding:6px 12px;cursor:pointer;white-space:nowrap;transition:.15s;flex:0 0 auto;}
-  .lv-btn:hover{border-color:var(--accent-soft);color:var(--text);}
-  .lv-btn.lv-active{background:var(--surface2);border-color:var(--accent);color:var(--text);}
-  .lv-btn.lv-special{border-color:var(--border);}
-  .lv-btn.lv-special.lv-on{background:var(--accent);border-color:var(--accent);color:#191309;}
-  .lv-sep{width:1px;height:20px;background:var(--border);flex:0 0 auto;margin:0 4px;}
-
-  /* ---------- layout ---------- */
-  .layout{display:flex;flex-direction:column;gap:18px;}
-  .dot-grid-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;}
-
-  .dot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:6px;}
-  .dot{aspect-ratio:1;border-radius:6px;border:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;transition:.15s;}
-  .dot:hover{border-color:var(--accent-soft);}
-  .dot.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
-  .dot.pass{background:rgba(111,217,160,.14);border-color:var(--success);color:var(--success);}
-  .dot.fail{background:rgba(226,96,79,.14);border-color:var(--fail);color:var(--fail);}
-  .dot.bookmarked{outline:2px solid var(--accent-soft);outline-offset:1px;}
-
-  .kbd-hint{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px;}
-  .kbd-hint kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:10.5px;color:var(--text);}
-
-  /* ---------- question card ---------- */
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 24px;display:flex;flex-direction:column;gap:14px;}
-  .card-eyebrow{font-family:var(--mono);font-size:11px;color:var(--accent-soft);letter-spacing:.08em;text-transform:uppercase;}
-  .card-title{font-family:var(--display);font-size:21px;font-weight:600;margin:0;}
-  .concept{background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:10px 14px;font-size:13.5px;line-height:1.6;color:var(--text);}
-  .concept b{color:var(--accent-soft);}
-  .codebox{background:var(--code-bg);border:1px solid var(--border-soft);border-radius:10px;padding:14px 16px;font-family:var(--mono);font-size:13.5px;line-height:1.7;}
-  .cl{white-space:pre-wrap;color:var(--text);}
-  .cl.muted{color:var(--muted);}
-  .blank{width:100%;resize:vertical;background:#DEEAF4;border:1px dashed var(--accent-soft);border-radius:6px;color:var(--accent);font-family:var(--mono);font-size:13.5px;padding:8px 10px;margin:4px 0;outline:none;}
-  .blank:focus{border-style:solid;border-color:var(--accent);}
-  .expected{font-family:var(--mono);font-size:12.5px;color:var(--muted);}
-  .expected code{color:var(--accent-soft);background:none;}
-  .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
-  .btn{font-family:var(--body);font-weight:600;font-size:13px;border-radius:8px;padding:9px 16px;cursor:pointer;border:1px solid var(--border);transition:.15s;}
-  .btn-grade{background:var(--accent);border-color:var(--accent);color:#191309;}
-  .btn-grade:hover{background:var(--accent-soft);}
-  .btn-ghost{background:transparent;color:var(--muted);}
-  .btn-ghost:hover{color:var(--text);border-color:var(--accent-soft);}
-  .btn-nav{background:var(--surface2);color:var(--text);}
-  .btn-nav:hover{border-color:var(--accent-soft);}
-  .btn-nav:disabled{opacity:.35;cursor:not-allowed;}
-  .feedback{font-family:var(--mono);font-size:13px;border-radius:8px;padding:9px 12px;display:none;}
-  .feedback.show{display:block;}
-  .feedback.pass{background:rgba(111,217,160,.12);color:var(--success);border:1px solid rgba(111,217,160,.3);}
-  .feedback.fail{background:rgba(226,96,79,.12);color:var(--fail);border:1px solid rgba(226,96,79,.3);}
-  .answer-box{display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
-  .answer-box.show{display:block;}
-  .answer-box .lbl{font-family:var(--mono);font-size:11px;color:var(--accent-soft);margin-bottom:8px;letter-spacing:.06em;}
-  .answer-box .al{font-family:var(--mono);font-size:13.5px;color:var(--text);white-space:pre-wrap;}
-  .answer-box .note{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6;}
-  .nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:4px;}
-  .nav-row .pos{font-family:var(--mono);font-size:12px;color:var(--muted);}
-
-  /* ---------- terminal log ---------- */
-  .terminal{margin-top:20px;background:var(--code-bg);border:1px solid var(--border-soft);border-radius:12px;overflow:hidden;}
-  .terminal-head{display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--surface2);border-bottom:1px solid var(--border-soft);font-family:var(--mono);font-size:11.5px;color:var(--muted);}
-  .terminal-dot{width:8px;height:8px;border-radius:50%;background:var(--border);}
-  .terminal-body{height:150px;overflow-y:auto;padding:12px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.7;color:var(--muted);}
-  .terminal-body .ln{white-space:pre-wrap;}
-  .terminal-body .ln.pass{color:var(--success);}
-  .terminal-body .ln.fail{color:var(--fail);}
-  .terminal-body .ln.cmd{color:var(--accent-soft);}
-  .cursor{display:inline-block;width:7px;height:13px;background:var(--accent-soft);animation:blink 1s steps(1) infinite;vertical-align:-2px;}
-  @keyframes blink{50%{opacity:0;}}
-  .loading{padding:60px 0;text-align:center;color:var(--muted);font-family:var(--mono);font-size:13px;}
-
-  /* ---------- overview ---------- */
-  .ov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-bottom:24px;}
-  .ov-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:border-color .15s, transform .15s;}
-  .ov-card:hover{border-color:var(--accent-soft);transform:translateY(-2px);}
-  .ov-card-head{padding:16px 18px 12px;display:flex;flex-direction:column;gap:4px;border-bottom:2px solid var(--border);}
-  .ov-ch-label{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;}
-  .ov-ch-title{font-family:var(--display);font-size:16px;font-weight:600;color:var(--text);}
-  .ov-ch-stats{font-family:var(--mono);font-size:10.5px;color:var(--muted);}
-  .ov-kw-list{list-style:none;margin:0;padding:12px 18px 10px;display:flex;flex-direction:column;gap:6px;flex:1;}
-  .ov-kw-list li{font-size:12.5px;color:var(--muted);padding-left:12px;position:relative;line-height:1.4;}
-  .ov-kw-list li::before{content:'·';position:absolute;left:2px;color:var(--accent);}
-  .ov-card-footer{padding:9px 18px;font-family:var(--mono);font-size:11px;color:var(--muted);border-top:1px solid var(--border-soft);text-align:right;transition:color .15s;}
-  .ov-card:hover .ov-card-footer{color:var(--accent-soft);}
-  .ov-flow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:4px;}
-  .ov-flow-item{font-family:var(--mono);font-size:12px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;white-space:nowrap;}
-  .ov-arrow{color:var(--accent);font-size:14px;font-weight:700;}
-  .ov-notice{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:right;margin-top:6px;}
-
-  /* ========== 모바일 반응형 ========== */
-  @media(max-width:600px){
-    /* chapter nav */
-    #chapter-nav{padding:8px 12px;gap:6px;}
-    .ch-btn{font-size:11px;padding:6px 10px;}
-
-    /* app 패딩 */
-    #app{padding:14px 12px 80px;}
-
-    /* topbar */
-    .topbar{flex-direction:column;align-items:flex-start;gap:12px;margin-bottom:14px;}
-    .brand-title{font-size:20px;}
-    .brand-sub{font-size:12px;}
-    .top-stats{width:100%;}
-    .progress-wrap{min-width:0;width:100%;}
-    .reset-btn{font-size:11px;padding:6px 10px;}
-
-    /* level nav */
-    #level-nav{top:38px;padding:6px 12px;gap:5px;}
-    .lv-btn{font-size:11px;padding:5px 10px;}
-
-    /* dot grid */
-    .dot-grid{gap:4px;}
-    .dot-grid-wrap{padding:8px;}
-    .dot{font-size:8px;min-height:28px;}
-
-    /* kbd hint 숨기기 (모바일엔 키보드 단축키 불필요) */
-    .kbd-hint{display:none;}
-
-    /* 카드 */
-    .card{padding:14px 14px;gap:12px;border-radius:12px;}
-    .card-title{font-size:17px;}
-    .concept{font-size:13px;padding:9px 12px;}
-
-    /* 코드박스 */
-    .codebox{padding:10px 12px;font-size:12.5px;overflow-x:auto;}
-    .blank{font-size:12.5px;padding:8px 10px;}
-
-    /* 버튼 */
-    .btn{font-size:13px;padding:10px 14px;}
-    .actions{gap:6px;}
-    .btn-grade,.btn-ghost{width:100%;}
-
-    /* 네비 버튼 */
-    .nav-row{gap:8px;}
-    .btn-nav{flex:1;text-align:center;font-size:13px;padding:10px 8px;}
-
-    /* 정답 박스 */
-    .answer-box{padding:12px;}
-    .answer-box .al{font-size:12.5px;}
-
-    /* 터미널 */
-    .terminal{margin-top:14px;}
-    .terminal-body{height:120px;font-size:12px;}
-  }
-</style>
-<script src="ch1-basic-syntax/items/levels.js"></script>
-<script src="ch1-basic-syntax/items/questions.js"></script>
-<script src="ch2-oop/items/levels.js"></script>
-<script src="ch2-oop/items/questions.js"></script>
-<script src="ch3-collections/items/levels.js"></script>
-<script src="ch3-collections/items/questions.js"></script>
-<script src="ch4-data-structures/items/levels.js"></script>
-<script src="ch4-data-structures/items/questions.js"></script>
-<script src="ch5-lambda-stream-io/items/levels.js"></script>
-<script src="ch5-lambda-stream-io/items/questions.js"></script>
-</head>
-<body>
-
-<div id="chapter-nav">
-  <button class="ch-btn" data-ch="0">📋 전체 개요</button>
-  <button class="ch-btn ch-active" data-ch="1">Ch1. 기본 문법</button>
-  <button class="ch-btn" data-ch="2">Ch2. OOP 기초</button>
-  <button class="ch-btn" data-ch="3">Ch3. 컬렉션</button>
-  <button class="ch-btn" data-ch="4">Ch4. 자료구조 응용</button>
-  <button class="ch-btn" data-ch="5">Ch5. 람다·Stream·IO</button>
-</div>
-<div id="level-nav"></div>
-
-<div id="app"><div class="loading">진행 상황 불러오는 중...</div></div>
-
-<script>
-(function(){
-
-
-  /* ============ 현재 챕터 상태 ============ */
-  var currentCh = 1;
-  var LEVELS    = CHAPTER_DATA[1].levels;
-  var QUESTIONS = CHAPTER_DATA[1].questions;
-  var STORAGE_KEY  = CHAPTER_DATA[1].storageKey;
-  var BOOKMARK_KEY = CHAPTER_DATA[1].bookmarkKey;
-
-  /* ============ 앱 상태 ============ */
-  var state = {
-    loaded:false,
-    progress:{},
-    inputs:{},
-    revealed:{},
-    bookmarks:{},
-    level:0, index:0, log:[],
-    reviewMode:false, bookmarkMode:false
-  };
-
-  /* ============ 저장소 ============ */
-  var store = {
-    get: function(key){
-      if(window.storage && window.storage.get){
-        return window.storage.get(key, false).then(function(res){ return res && res.value ? res.value : null; });
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Java 간단 문법 익히기</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f0f4f8;
+        --surface: #ffffff;
+        --surface2: #e8eff6;
+        --code-bg: #f5f8fb;
+        --border: #c9d8e8;
+        --border-soft: #d8e6f0;
+        --accent-hard: #89097e;
+        --accent: #2e86c1;
+        --accent-soft: #4da3d4;
+        --success: #1a8a56;
+        --fail: #c0392b;
+        --text: #1a2733;
+        --muted: #5d7a8a;
+        --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+        --display: "Space Grotesk", sans-serif;
+        --body: "Inter", sans-serif;
       }
-      return Promise.resolve(localStorage.getItem(key));
-    },
-    set: function(key, val){
-      if(window.storage && window.storage.set) return window.storage.set(key, val, false);
-      try{ localStorage.setItem(key, val); }catch(e){}
-      return Promise.resolve();
-    }
-  };
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--body);
+        min-height: 100vh;
+      }
 
-  async function loadProgress(){
-    try{ var v = await store.get(STORAGE_KEY); if(v) state.progress = JSON.parse(v)||{}; }catch(e){ state.progress={}; }
-    try{ var b = await store.get(BOOKMARK_KEY); if(b) state.bookmarks = JSON.parse(b)||{}; }catch(e){ state.bookmarks={}; }
-    state.loaded = true;
-  }
-  async function saveProgress(){
-    try{ await store.set(STORAGE_KEY, JSON.stringify(state.progress)); }catch(e){}
-  }
-  async function saveBookmarks(){
-    try{ await store.set(BOOKMARK_KEY, JSON.stringify(state.bookmarks)); }catch(e){}
-  }
+      /* ---------- chapter nav ---------- */
+      #chapter-nav {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        gap: 4px;
+        padding: 10px 20px;
+        overflow-x: auto;
+      }
+      .ch-btn {
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 500;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--muted);
+        padding: 7px 14px;
+        cursor: pointer;
+        transition: 0.15s;
+        white-space: nowrap;
+      }
+      .ch-btn:hover {
+        border-color: var(--accent-soft);
+        color: var(--text);
+      }
+      .ch-btn.ch-active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #191309;
+        font-weight: 700;
+      }
 
-  /* ============ 개요 페이지 ============ */
-  var isOverview = false;
+      #app {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 20px 60px;
+      }
 
-  var OV_INFO = [
-    { ch:1, color:'#D98C3D', keywords:['기본형 · 참조형', '형 변환 (캐스팅)', 'String 메서드', '예외처리 (try-catch-finally)', '제어 흐름 · Math · 삼항', '배열 (1D / 2D)'] },
-    { ch:2, color:'#6B9FD4', keywords:['클래스 · 생성자 · overloading', '상속 (extends) · overriding', '인터페이스 · abstract class', '캡슐화 · equals · toString', 'Comparator · enum', '접근 제어자 · import · 동적 바인딩', '사용자 정의 예외', 'Generic · 와일드카드 · PECS'] },
-    { ch:3, color:'#6FD9A0', keywords:['배열 · ArrayList (List 계열)', 'HashSet (Set 계열)', 'HashMap (Map 계열)', '정렬 · 탐색 · 집합 연산', '오토박싱 · 빈도수 카운팅', 'TreeMap · copyOfRange · computeIfAbsent'] },
-    { ch:4, color:'#C77DFF', keywords:['Stack — LIFO · 괄호검사', 'Queue — FIFO · BFS', 'Deque — 슬라이딩 윈도우', 'PriorityQueue — 힙 · 다익스트라'] },
-    { ch:5, color:'#FF9A3C', keywords:['Lambda · @FunctionalInterface', 'Predicate · Function · Consumer', 'Stream API (filter·map·collect)', 'Scanner · BufferedReader (표준입력)', 'FileWriter · BufferedReader (파일)', 'Files.readAllLines · try-with-resources'] },
-  ];
+      /* ---------- topbar ---------- */
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 22px;
+      }
+      .brand-eyebrow {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        color: var(--accent-soft);
+        text-transform: uppercase;
+        margin-bottom: 6px;
+      }
+      .brand-title {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 28px;
+        letter-spacing: -0.01em;
+        margin: 0;
+      }
+      .brand-sub {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 4px;
+      }
+      .top-stats {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .progress-wrap {
+        min-width: 220px;
+      }
+      .progress-label {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .progress-label b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .progress-track {
+        height: 8px;
+        border-radius: 99px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), var(--accent-soft));
+        transition: width 0.3s ease;
+      }
+      .reset-btn {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: 0.15s;
+      }
+      .reset-btn:hover {
+        border-color: var(--fail);
+        color: var(--fail);
+      }
 
-  function renderOverview(){
-    isOverview = true;
-    document.querySelectorAll('.ch-btn').forEach(function(b){
-      b.classList.toggle('ch-active', b.getAttribute('data-ch') === '0');
-    });
-    document.getElementById('level-nav').innerHTML = '';
-    var html = '';
-    html += '<div style="margin-bottom:24px;">';
-    html += '<div class="brand-eyebrow">$ java --curriculum overview</div>';
-    html += '<h1 class="brand-title">Java 커리큘럼 전체 개요</h1>';
-    html += '<div class="brand-sub">각 챕터의 학습 주제와 키워드를 한눈에 확인하세요. 카드를 클릭하면 해당 챕터로 이동합니다.</div>';
-    html += '</div>';
+      /* ---------- level nav ---------- */
+      #level-nav {
+        position: sticky;
+        top: 44px;
+        z-index: 99;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 20px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      #level-nav::-webkit-scrollbar {
+        display: none;
+      }
+      .lv-btn {
+        font-family: var(--body);
+        font-size: 12px;
+        font-weight: 500;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--muted);
+        padding: 6px 12px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: 0.15s;
+        flex: 0 0 auto;
+      }
+      .lv-btn:hover {
+        border-color: var(--accent-soft);
+        color: var(--text);
+      }
+      .lv-btn.lv-active {
+        background: var(--surface2);
+        border-color: var(--accent);
+        color: var(--text);
+      }
+      .lv-btn.lv-special {
+        border-color: var(--border);
+      }
+      .lv-btn.lv-special.lv-on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #191309;
+      }
+      .lv-sep {
+        width: 1px;
+        height: 20px;
+        background: var(--border);
+        flex: 0 0 auto;
+        margin: 0 4px;
+      }
 
-    html += '<div class="ov-flow">';
-    var flowNames = ['기본 문법','OOP 기초','컬렉션','자료구조','람다·IO'];
-    flowNames.forEach(function(name, i){
-      if(i > 0) html += '<span class="ov-arrow">→</span>';
-      html += '<span class="ov-flow-item">Ch'+(i+1)+'. '+name+'</span>';
-    });
-    html += '</div>';
-    html += '<div class="ov-notice">Java 파트 커리큘럼 순서 (XML 챕터 제외)</div>';
+      /* ---------- layout ---------- */
+      .layout {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .dot-grid-wrap {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px;
+      }
 
-    html += '<div style="height:20px;"></div>';
-    html += '<div class="ov-grid">';
-    OV_INFO.forEach(function(info){
-      var chData = CHAPTER_DATA[info.ch];
-      var totalQs = chData.questions.length;
-      var totalLevels = chData.levels.length;
-      html += '<div class="ov-card" data-action="go-chapter" data-ch="'+info.ch+'">';
-      html += '<div class="ov-card-head" style="border-bottom-color:'+info.color+';">';
-      html += '<span class="ov-ch-label" style="color:'+info.color+';">Ch'+info.ch+'</span>';
-      html += '<span class="ov-ch-title">'+esc(chData.brandTitle.replace(' 자동채점',''))+'</span>';
-      html += '<span class="ov-ch-stats">'+totalQs+'문제 · '+totalLevels+'장</span>';
-      html += '</div>';
-      html += '<ul class="ov-kw-list">';
-      info.keywords.forEach(function(kw){ html += '<li>'+esc(kw)+'</li>'; });
-      html += '</ul>';
-      html += '<div class="ov-card-footer">학습 시작 →</div>';
-      html += '</div>';
-    });
-    html += '</div>';
+      .dot-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+        gap: 6px;
+      }
+      .dot {
+        aspect-ratio: 1;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--surface2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+        cursor: pointer;
+        transition: 0.15s;
+      }
+      .dot:hover {
+        border-color: var(--accent-soft);
+      }
+      .dot.current {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
+      }
+      .dot.pass {
+        background: rgba(111, 217, 160, 0.14);
+        border-color: var(--success);
+        color: var(--success);
+      }
+      .dot.fail {
+        background: rgba(226, 96, 79, 0.14);
+        border-color: var(--fail);
+        color: var(--fail);
+      }
+      .dot.bookmarked {
+        outline: 2px solid var(--accent-soft);
+        outline-offset: 1px;
+      }
 
-    document.getElementById('app').innerHTML = html;
-  }
+      .kbd-hint {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .kbd-hint kbd {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--text);
+      }
 
-  /* ============ 챕터 전환 ============ */
-  function switchChapter(ch){
-    currentCh = ch;
-    LEVELS    = CHAPTER_DATA[ch].levels;
-    QUESTIONS = CHAPTER_DATA[ch].questions;
-    STORAGE_KEY  = CHAPTER_DATA[ch].storageKey;
-    BOOKMARK_KEY = CHAPTER_DATA[ch].bookmarkKey;
-    state = { loaded:false, progress:{}, inputs:{}, revealed:{}, bookmarks:{}, level:0, index:0, log:[], reviewMode:false, bookmarkMode:false };
-    document.querySelectorAll('.ch-btn').forEach(function(b){
-      b.classList.toggle('ch-active', parseInt(b.getAttribute('data-ch')) === ch);
-    });
-    render();
-    loadProgress().then(render);
-  }
+      /* ---------- question card ---------- */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 22px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .card-eyebrow {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--accent-soft);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .card-title {
+        font-family: var(--display);
+        font-size: 21px;
+        font-weight: 600;
+        margin: 0;
+      }
+      .concept {
+        background: var(--surface2);
+        border-left: 3px solid var(--accent);
+        border-radius: 0 8px 8px 0;
+        padding: 10px 14px;
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: var(--text);
+      }
+      .concept b {
+        color: var(--accent-soft);
+      }
+      .codebox {
+        background: var(--code-bg);
+        border: 1px solid var(--border-soft);
+        border-radius: 10px;
+        padding: 14px 16px;
+        font-family: var(--mono);
+        font-size: 13.5px;
+        line-height: 1.7;
+      }
+      .cl {
+        white-space: pre-wrap;
+        color: var(--text);
+      }
+      .cl.muted {
+        color: var(--muted);
+      }
+      .blank {
+        width: 100%;
+        resize: vertical;
+        background: #deeaf4;
+        border: 1px dashed var(--accent-soft);
+        border-radius: 6px;
+        color: var(--accent-hard);
+        font-family: var(--mono);
+        font-size: 13.5px;
+        padding: 8px 10px;
+        margin: 4px 0;
+        outline: none;
+      }
+      .blank:focus {
+        border-style: solid;
+        border-color: var(--accent);
+      }
+      .expected {
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .expected code {
+        color: var(--accent-soft);
+        background: none;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .btn {
+        font-family: var(--body);
+        font-weight: 600;
+        font-size: 13px;
+        border-radius: 8px;
+        padding: 9px 16px;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        transition: 0.15s;
+      }
+      .btn-grade {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #191309;
+      }
+      .btn-grade:hover {
+        background: var(--accent-soft);
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--muted);
+      }
+      .btn-ghost:hover {
+        color: var(--text);
+        border-color: var(--accent-soft);
+      }
+      .btn-nav {
+        background: var(--surface2);
+        color: var(--text);
+      }
+      .btn-nav:hover {
+        border-color: var(--accent-soft);
+      }
+      .btn-nav:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .feedback {
+        font-family: var(--mono);
+        font-size: 13px;
+        border-radius: 8px;
+        padding: 9px 12px;
+        display: none;
+      }
+      .feedback.show {
+        display: block;
+      }
+      .feedback.pass {
+        background: rgba(111, 217, 160, 0.12);
+        color: var(--success);
+        border: 1px solid rgba(111, 217, 160, 0.3);
+      }
+      .feedback.fail {
+        background: rgba(226, 96, 79, 0.12);
+        color: var(--fail);
+        border: 1px solid rgba(226, 96, 79, 0.3);
+      }
+      .answer-box {
+        display: none;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .answer-box.show {
+        display: block;
+      }
+      .answer-box .lbl {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--accent-soft);
+        margin-bottom: 8px;
+        letter-spacing: 0.06em;
+      }
+      .answer-box .al {
+        font-family: var(--mono);
+        font-size: 13.5px;
+        color: var(--text);
+        white-space: pre-wrap;
+      }
+      .answer-box .note {
+        margin-top: 10px;
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .nav-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 4px;
+      }
+      .nav-row .pos {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+      }
 
-  document.getElementById('chapter-nav').addEventListener('click', function(e){
-    var btn = e.target.closest('.ch-btn');
-    if(!btn) return;
-    var ch = parseInt(btn.getAttribute('data-ch'));
-    if(ch === 0){ renderOverview(); return; }
-    if(isOverview || ch !== currentCh){ isOverview = false; switchChapter(ch); }
-  });
+      /* ---------- terminal log ---------- */
+      .terminal {
+        margin-top: 20px;
+        background: var(--code-bg);
+        border: 1px solid var(--border-soft);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .terminal-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 14px;
+        background: var(--surface2);
+        border-bottom: 1px solid var(--border-soft);
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--muted);
+      }
+      .terminal-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--border);
+      }
+      .terminal-body {
+        height: 150px;
+        overflow-y: auto;
+        padding: 12px 14px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.7;
+        color: var(--muted);
+      }
+      .terminal-body .ln {
+        white-space: pre-wrap;
+      }
+      .terminal-body .ln.pass {
+        color: var(--success);
+      }
+      .terminal-body .ln.fail {
+        color: var(--fail);
+      }
+      .terminal-body .ln.cmd {
+        color: var(--accent-soft);
+      }
+      .cursor {
+        display: inline-block;
+        width: 7px;
+        height: 13px;
+        background: var(--accent-soft);
+        animation: blink 1s steps(1) infinite;
+        vertical-align: -2px;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      .loading {
+        padding: 60px 0;
+        text-align: center;
+        color: var(--muted);
+        font-family: var(--mono);
+        font-size: 13px;
+      }
 
-  /* ============ 유틸 ============ */
-  function esc(s){
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
-  function questionsOfLevel(lv){ return QUESTIONS.filter(function(q){return q.level===lv;}); }
-  function failedQuestions(){ return QUESTIONS.filter(function(q){ return state.progress[q.id]&&state.progress[q.id].status==='fail'; }); }
-  function bookmarkedQuestions(){ return QUESTIONS.filter(function(q){ return !!state.bookmarks[q.id]; }); }
-  function activeQuestionList(){
-    if(state.reviewMode) return failedQuestions();
-    if(state.bookmarkMode) return bookmarkedQuestions();
-    return questionsOfLevel(state.level);
-  }
-  function totalPassed(){
-    var n=0; Object.keys(state.progress).forEach(function(k){ if(state.progress[k]&&state.progress[k].status==='pass') n++; }); return n;
-  }
-  function levelPassed(lv){
-    var n=0; questionsOfLevel(lv).forEach(function(q){ if(state.progress[q.id]&&state.progress[q.id].status==='pass') n++; }); return n;
-  }
+      /* ---------- overview ---------- */
+      .ov-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .ov-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          transform 0.15s;
+      }
+      .ov-card:hover {
+        border-color: var(--accent-soft);
+        transform: translateY(-2px);
+      }
+      .ov-card-head {
+        padding: 16px 18px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-bottom: 2px solid var(--border);
+      }
+      .ov-ch-label {
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+      }
+      .ov-ch-title {
+        font-family: var(--display);
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .ov-ch-stats {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--muted);
+      }
+      .ov-kw-list {
+        list-style: none;
+        margin: 0;
+        padding: 12px 18px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
+      }
+      .ov-kw-list li {
+        font-size: 12.5px;
+        color: var(--muted);
+        padding-left: 12px;
+        position: relative;
+        line-height: 1.4;
+      }
+      .ov-kw-list li::before {
+        content: "·";
+        position: absolute;
+        left: 2px;
+        color: var(--accent);
+      }
+      .ov-card-footer {
+        padding: 9px 18px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        border-top: 1px solid var(--border-soft);
+        text-align: right;
+        transition: color 0.15s;
+      }
+      .ov-card:hover .ov-card-footer {
+        color: var(--accent-soft);
+      }
+      .ov-flow {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 14px 18px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 4px;
+      }
+      .ov-flow-item {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text);
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 5px 12px;
+        white-space: nowrap;
+      }
+      .ov-arrow {
+        color: var(--accent);
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .ov-notice {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        text-align: right;
+        margin-top: 6px;
+      }
 
-  /* ============ 채점 ============ */
-  function gradeQuestion(q,input){ return q.regex.every(function(r){ return r.test(input); }); }
-  function pushLog(qid,pass){ state.log.push({cmd:'check '+qid,pass:pass}); if(state.log.length>40) state.log.shift(); }
+      /* ========== 모바일 반응형 ========== */
+      @media (max-width: 600px) {
+        /* chapter nav */
+        #chapter-nav {
+          padding: 8px 12px;
+          gap: 6px;
+        }
+        .ch-btn {
+          font-size: 11px;
+          padding: 6px 10px;
+        }
 
-  /* ============ 에디터 보조 ============ */
-  var BRACKET_OPEN_CLOSE={'(':')',  '[':']', '{':'}'}; var BRACKET_CLOSE_CHARS={')':true,']':true,'}':true}; var QUOTE_CHARS={'"':true,"'":true}; var INDENT_UNIT='    ';
-  function lineBoundsOf(v,s,e){ var ls=v.lastIndexOf('\n',s-1)+1,le=v.indexOf('\n',e); if(le===-1)le=v.length; return {lineStart:ls,lineEnd:le}; }
-  function indentSelection(ta,q){ var v=ta.value,s=ta.selectionStart,e=ta.selectionEnd; if(s===e){ ta.value=v.slice(0,s)+INDENT_UNIT+v.slice(s); ta.selectionStart=ta.selectionEnd=s+INDENT_UNIT.length; state.inputs[q.id]=ta.value; return; } var b=lineBoundsOf(v,s,e),lines=v.slice(b.lineStart,b.lineEnd).split('\n'),ind=lines.map(function(l){return INDENT_UNIT+l;}).join('\n'); ta.value=v.slice(0,b.lineStart)+ind+v.slice(b.lineEnd); ta.selectionStart=s+INDENT_UNIT.length; ta.selectionEnd=e+INDENT_UNIT.length*lines.length; state.inputs[q.id]=ta.value; }
-  function outdentSelection(ta,q){ var v=ta.value,s=ta.selectionStart,e=ta.selectionEnd,b=lineBoundsOf(v,s,e),lines=v.slice(b.lineStart,b.lineEnd).split('\n'),removed=[],out=lines.map(function(l){ var m=l.match(/^( {1,4}|\t)/),n=m?m[0].length:0; removed.push(n); return l.slice(n); }).join('\n'); ta.value=v.slice(0,b.lineStart)+out+v.slice(b.lineEnd); var fr=removed[0]||0,tr=removed.reduce(function(a,c){return a+c;},0); ta.selectionStart=Math.max(b.lineStart,s-fr); ta.selectionEnd=Math.max(ta.selectionStart,e-tr); state.inputs[q.id]=ta.value; }
-  function autoIndentNewline(ta,q){ var v=ta.value,pos=ta.selectionStart,ls=v.lastIndexOf('\n',pos-1)+1,cur=v.slice(ls,pos),im=cur.match(/^[ \t]*/),ind=im?im[0]:'',lns=v.slice(0,pos).replace(/\s+$/,'').slice(-1),ex=(lns==='{')? INDENT_UNIT:'',ins='\n'+ind+ex; ta.value=v.slice(0,pos)+ins+v.slice(pos); var np=pos+ins.length; ta.selectionStart=ta.selectionEnd=np; state.inputs[q.id]=ta.value; }
-  function handleBracketKeydown(e,ta,q){ var key=e.key; if(e.ctrlKey||e.metaKey||e.altKey) return false; if(BRACKET_OPEN_CLOSE[key]){ var s=ta.selectionStart,en=ta.selectionEnd,v=ta.value,cl=BRACKET_OPEN_CLOSE[key]; if(s!==en){ var sel=v.slice(s,en); ta.value=v.slice(0,s)+key+sel+cl+v.slice(en); ta.selectionStart=s+1; ta.selectionEnd=en+1; }else{ ta.value=v.slice(0,s)+key+cl+v.slice(s); ta.selectionStart=ta.selectionEnd=s+1; } state.inputs[q.id]=ta.value; e.preventDefault(); return true; } if(QUOTE_CHARS[key]){ var s=ta.selectionStart,en=ta.selectionEnd,v=ta.value; if(s!==en){ var sel=v.slice(s,en); ta.value=v.slice(0,s)+key+sel+key+v.slice(en); ta.selectionStart=s+1; ta.selectionEnd=en+1; state.inputs[q.id]=ta.value; e.preventDefault(); return true; } if(v[s]===key){ ta.selectionStart=ta.selectionEnd=s+1; e.preventDefault(); return true; } ta.value=v.slice(0,s)+key+key+v.slice(s); ta.selectionStart=ta.selectionEnd=s+1; state.inputs[q.id]=ta.value; e.preventDefault(); return true; } if(BRACKET_CLOSE_CHARS[key]){ var p=ta.selectionStart; if(ta.selectionStart===ta.selectionEnd&&ta.value[p]===key){ ta.selectionStart=ta.selectionEnd=p+1; e.preventDefault(); return true; } return false; } if(key==='Backspace'){ var ss=ta.selectionStart,se=ta.selectionEnd; if(ss===se&&ss>0){ var pc=ta.value[ss-1],nc=ta.value[ss]; if((BRACKET_OPEN_CLOSE[pc]&&BRACKET_OPEN_CLOSE[pc]===nc)||(QUOTE_CHARS[pc]&&pc===nc)){ ta.value=ta.value.slice(0,ss-1)+ta.value.slice(ss+1); ta.selectionStart=ta.selectionEnd=ss-1; state.inputs[q.id]=ta.value; e.preventDefault(); return true; } } return false; } return false; }
-  function handleEditorKeydown(e,ta,q){ if(e.key==='Tab'&&!e.ctrlKey&&!e.altKey&&!e.metaKey){ e.preventDefault(); if(e.shiftKey) outdentSelection(ta,q); else indentSelection(ta,q); return; } if(e.key==='Enter'&&!e.ctrlKey&&!e.metaKey){ e.preventDefault(); autoIndentNewline(ta,q); return; } handleBracketKeydown(e,ta,q); }
+        /* app 패딩 */
+        #app {
+          padding: 14px 12px 80px;
+        }
 
-  /* ============ 렌더링 ============ */
-  function renderEmptySpecial(){
-    var app=document.getElementById('app'),passed=totalPassed(),isB=state.bookmarkMode;
-    var title=isB?'🔖 아직 즐겨찾기한 문제가 없습니다':'🎉 지금은 틀린 문제가 없습니다';
-    var failCount=failedQuestions().length,bmCount=Object.keys(state.bookmarks).filter(function(k){return state.bookmarks[k];}).length;
-    var lnav=document.getElementById('level-nav'),lhtml='';
-    LEVELS.forEach(function(lv){
-      var p=levelPassed(lv.id),qs=questionsOfLevel(lv.id).length;
-      lhtml+='<button class="lv-btn" data-action="select-level" data-level="'+lv.id+'">'+esc(lv.name)+' <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+p+'/'+qs+'</span></button>';
-    });
-    lhtml+='<div class="lv-sep"></div>';
-    lhtml+='<button class="lv-btn lv-special'+(state.reviewMode?' lv-on':'')+'" data-action="toggle-review">📌 오답노트 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+failCount+'</span></button>';
-    lhtml+='<button class="lv-btn lv-special'+(state.bookmarkMode?' lv-on':'')+'" data-action="toggle-bookmark-mode">🔖 즐겨찾기 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+bmCount+'</span></button>';
-    lnav.innerHTML=lhtml;
-    var html='';
-    html+='<div class="topbar"><div><div class="brand-eyebrow">$ run --suite '+CHAPTER_DATA[currentCh].suite+'</div><h1 class="brand-title">'+CHAPTER_DATA[currentCh].brandTitle+'</h1></div>';
-    html+='<div class="top-stats"><button class="reset-btn" data-action="reset">진행 초기화</button></div></div>';
-    html+='<div class="card" style="text-align:center;padding:50px 24px;"><div class="card-title">'+title+'</div>';
-    html+='<p style="color:var(--muted);font-size:13.5px;margin:10px 0 18px;">전체 진행: '+passed+' / '+QUESTIONS.length+'</p>';
-    html+='<button class="btn btn-grade" data-action="exit-review">전체 문제로 돌아가기</button></div>';
-    app.innerHTML=html;
-  }
+        /* topbar */
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 12px;
+          margin-bottom: 14px;
+        }
+        .brand-title {
+          font-size: 20px;
+        }
+        .brand-sub {
+          font-size: 12px;
+        }
+        .top-stats {
+          width: 100%;
+        }
+        .progress-wrap {
+          min-width: 0;
+          width: 100%;
+        }
+        .reset-btn {
+          font-size: 11px;
+          padding: 6px 10px;
+        }
 
-  function render(){
-    var app=document.getElementById('app');
-    if(!state.loaded){ app.innerHTML='<div class="loading">진행 상황 불러오는 중...</div>'; return; }
-    var levelQs=activeQuestionList();
-    if((state.reviewMode||state.bookmarkMode)&&levelQs.length===0){ renderEmptySpecial(); return; }
-    if(state.index>=levelQs.length) state.index=0;
-    var q=levelQs[state.index],passed=totalPassed(),html='';
+        /* level nav */
+        #level-nav {
+          top: 38px;
+          padding: 6px 12px;
+          gap: 5px;
+        }
+        .lv-btn {
+          font-size: 11px;
+          padding: 5px 10px;
+        }
 
-    html+='<div class="topbar"><div>';
-    html+='<div class="brand-eyebrow">$ run --suite '+CHAPTER_DATA[currentCh].suite+'</div>';
-    html+='<h1 class="brand-title">'+CHAPTER_DATA[currentCh].brandTitle+'</h1>';
-    html+='<div class="brand-sub">코드를 입력하고 채점하면, 정규식으로 문법을 검증합니다 (실제 자바 실행 X).</div>';
-    html+='<div class="kbd-hint"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 문제 · <kbd>R</kbd> 정답 보기 · <kbd>Esc</kbd> 입력창 빠져나오기 · <kbd>Enter</kbd> 입력창 포커스</div>';
-    html+='</div><div class="top-stats"><div class="progress-wrap">';
-    html+='<div class="progress-label"><span>전체 진행</span><b>'+passed+' / '+QUESTIONS.length+'</b></div>';
-    html+='<div class="progress-track"><div class="progress-fill" style="width:'+Math.round(passed/QUESTIONS.length*100)+'%"></div></div>';
-    html+='</div><button class="reset-btn" data-action="reset">진행 초기화</button></div></div>';
+        /* dot grid */
+        .dot-grid {
+          gap: 4px;
+        }
+        .dot-grid-wrap {
+          padding: 8px;
+        }
+        .dot {
+          font-size: 8px;
+          min-height: 28px;
+        }
 
-    /* --- level nav bar --- */
-    var failCount=failedQuestions().length,bmCount=Object.keys(state.bookmarks).filter(function(k){return state.bookmarks[k];}).length;
-    var lnav=document.getElementById('level-nav'),lhtml='';
-    LEVELS.forEach(function(lv){
-      var p=levelPassed(lv.id),qs=questionsOfLevel(lv.id).length;
-      var isActive=!state.reviewMode&&!state.bookmarkMode&&state.level===lv.id;
-      lhtml+='<button class="lv-btn'+(isActive?' lv-active':'')+'" data-action="select-level" data-level="'+lv.id+'">'+esc(lv.name)+' <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+p+'/'+qs+'</span></button>';
-    });
-    lhtml+='<div class="lv-sep"></div>';
-    lhtml+='<button class="lv-btn lv-special'+(state.reviewMode?' lv-on':'')+'" data-action="toggle-review">📌 오답노트 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+failCount+'</span></button>';
-    lhtml+='<button class="lv-btn lv-special'+(state.bookmarkMode?' lv-on':'')+'" data-action="toggle-bookmark-mode">🔖 즐겨찾기 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">'+bmCount+'</span></button>';
-    lnav.innerHTML=lhtml;
+        /* kbd hint 숨기기 (모바일엔 키보드 단축키 불필요) */
+        .kbd-hint {
+          display: none;
+        }
 
-    html+='<div class="layout">';
-    html+='<div class="dot-grid-wrap"><div class="dot-grid">';
-    levelQs.forEach(function(qq,i){
-      var st=state.progress[qq.id]&&state.progress[qq.id].status;
-      var cls='dot'+(i===state.index?' current':'')+(st==='pass'?' pass':st==='fail'?' fail':'')+(state.bookmarks[qq.id]?' bookmarked':'');
-      html+='<div class="'+cls+'" data-action="jump" data-index="'+i+'" title="'+esc(qq.id)+'">'+(st==='pass'?'✓':st==='fail'?'✗':(i+1))+'</div>';
-    });
-    html+='</div></div>';
+        /* 카드 */
+        .card {
+          padding: 14px 14px;
+          gap: 12px;
+          border-radius: 12px;
+        }
+        .card-title {
+          font-size: 17px;
+        }
+        .concept {
+          font-size: 13px;
+          padding: 9px 12px;
+        }
 
-    html+='<div class="content"><div class="card">';
-    var eyebrow=state.reviewMode?'📌 오답 노트 (복습 모드)':(state.bookmarkMode?'🔖 즐겨찾기 모드':esc(LEVELS[state.level].name));
-    html+='<div class="card-eyebrow">'+eyebrow+' · 문항 '+(state.index+1)+' / '+levelQs.length+' · '+esc(q.id)+'</div>';
-    html+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
-    html+='<h2 class="card-title" style="margin:0;">'+esc(q.title)+'</h2>';
-    html+='<button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap;" data-action="toggle-bookmark" data-qid="'+esc(q.id)+'">'+(state.bookmarks[q.id]?'🔖 즐겨찾기 해제':'☆ 즐겨찾기 추가')+'</button></div>';
-    if(state.reviewMode||state.bookmarkMode) html+='<button class="btn btn-ghost" style="align-self:flex-start;padding:5px 10px;font-size:12px;" data-action="exit-review">← 전체 문제로 돌아가기</button>';
-    html+='<div class="concept"><b>핵심 개념</b> — '+esc(q.concept)+'</div>';
-    html+='<div class="codebox">';
-    q.before.forEach(function(l){ html+='<div class="cl muted">'+esc(l)+'</div>'; });
-    q.placeholder.forEach(function(l){ html+='<div class="cl muted">'+esc(l)+'</div>'; });
-    var savedInput=(state.inputs[q.id]!==undefined)?state.inputs[q.id]:((state.progress[q.id]&&state.progress[q.id].input)||'');
-    html+='<textarea class="blank" id="ans-input" rows="'+(q.rows||2)+'" placeholder="여기에 코드를 입력하세요"></textarea>';
-    q.after.forEach(function(l){ html+='<div class="cl muted">'+esc(l)+'</div>'; });
-    html+='</div>';
-    html+='<div class="expected">기대 출력: <code>'+esc(q.expected)+'</code></div>';
-    var fb=state.progress[q.id],fbClass='',fbText='';
-    if(fb&&fb.status==='pass'){ fbClass='pass show'; fbText='✓ PASS — 정답입니다.'; }
-    else if(fb&&fb.status==='fail'){ fbClass='fail show'; fbText='✗ FAIL — 문법을 다시 확인해보세요.'; }
-    html+='<div class="actions"><button class="btn btn-grade" data-action="grade">채점</button>';
-    html+='<button class="btn btn-ghost" data-action="reveal">'+(state.revealed[q.id]?'정답 숨기기':'정답 보기')+'</button></div>';
-    html+='<div class="feedback '+fbClass+'" id="fb-msg">'+fbText+'</div>';
-    html+='<div class="answer-box'+(state.revealed[q.id]?' show':'')+'">';
-    html+='<div class="lbl">🔍 정답</div>';
-    q.answer.forEach(function(l){ html+='<div class="al">'+esc(l)+'</div>'; });
-    if(q.note) html+='<div class="note">'+esc(q.note)+'</div>';
-    html+='</div>';
-    html+='<div class="nav-row">';
-    html+='<button class="btn btn-nav" data-action="prev" '+(state.index===0?'disabled':'')+'>← 이전</button>';
-    html+='<span class="pos">'+(state.index+1)+' / '+levelQs.length+'</span>';
-    html+='<button class="btn btn-nav" data-action="next" '+(state.index===levelQs.length-1?'disabled':'')+'>다음 →</button>';
-    html+='</div></div></div>';
+        /* 코드박스 */
+        .codebox {
+          padding: 10px 12px;
+          font-size: 12.5px;
+          overflow-x: auto;
+        }
+        .blank {
+          font-size: 12.5px;
+          padding: 8px 10px;
+        }
 
-    html+='<div class="terminal"><div class="terminal-head"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span>&nbsp;&nbsp;test-runner</div>';
-    html+='<div class="terminal-body" id="term-body">';
-    if(state.log.length===0){ html+='<div class="ln">대기 중... 채점 버튼을 눌러보세요.</div>'; }
-    else{ state.log.forEach(function(l){ html+='<div class="ln cmd">$ '+esc(l.cmd)+'</div><div class="ln '+(l.pass?'pass':'fail')+'">  '+(l.pass?'✓ PASS':'✗ FAIL')+'</div>'; }); }
-    html+='<span class="cursor"></span></div></div>';
+        /* 버튼 */
+        .btn {
+          font-size: 13px;
+          padding: 10px 14px;
+        }
+        .actions {
+          gap: 6px;
+        }
+        .btn-grade,
+        .btn-ghost {
+          width: 100%;
+        }
 
-    app.innerHTML=html;
-    var ta=document.getElementById('ans-input');
-    if(ta){ ta.value=savedInput; ta.addEventListener('input',function(){ state.inputs[q.id]=ta.value; }); ta.addEventListener('keydown',function(e){ handleEditorKeydown(e,ta,q); }); }
-    var term=document.getElementById('term-body'); if(term) term.scrollTop=term.scrollHeight;
-  }
+        /* 네비 버튼 */
+        .nav-row {
+          gap: 8px;
+        }
+        .btn-nav {
+          flex: 1;
+          text-align: center;
+          font-size: 13px;
+          padding: 10px 8px;
+        }
 
-  /* ============ 액션 ============ */
-  function doSelectLevel(lv){ state.reviewMode=false; state.bookmarkMode=false; state.level=lv; state.index=0; render(); }
-  function doToggleReview(){ state.reviewMode=!state.reviewMode; if(state.reviewMode) state.bookmarkMode=false; state.index=0; render(); }
-  function doToggleBookmarkMode(){ state.bookmarkMode=!state.bookmarkMode; if(state.bookmarkMode) state.reviewMode=false; state.index=0; render(); }
-  function doExitSpecialMode(){ state.reviewMode=false; state.bookmarkMode=false; state.index=0; render(); }
-  function doJump(i){ state.index=i; render(); }
-  function doPrev(){ if(state.index>0){ state.index--; render(); } }
-  function doNext(){ var lq=activeQuestionList(); if(state.index<lq.length-1){ state.index++; render(); } }
-  function doReveal(){ var lq=activeQuestionList(),q=lq[state.index]; if(!q) return; state.revealed[q.id]=!state.revealed[q.id]; render(); }
-  function doToggleBookmark(qid){ if(!qid) return; if(state.bookmarks[qid]) delete state.bookmarks[qid]; else state.bookmarks[qid]=true; saveBookmarks(); render(); }
-  function doGrade(){ var lq=activeQuestionList(),q=lq[state.index]; if(!q) return; var ta=document.getElementById('ans-input'),val=ta?ta.value:''; var pass=gradeQuestion(q,val); state.progress[q.id]={status:pass?'pass':'fail',input:val}; pushLog(q.id,pass); saveProgress(); render(); }
-  function doReset(){ if(window.confirm('모든 진행 상황을 초기화할까요? 되돌릴 수 없습니다.')){ state.progress={}; state.inputs={}; state.revealed={}; state.log=[]; state.reviewMode=false; saveProgress(); render(); } }
-  function focusAnswerInput(){ var ta=document.getElementById('ans-input'); if(ta) ta.focus(); }
+        /* 정답 박스 */
+        .answer-box {
+          padding: 12px;
+        }
+        .answer-box .al {
+          font-size: 12.5px;
+        }
 
-  /* ============ 이벤트 ============ */
-  function handleAction(el){
-    var action=el.getAttribute('data-action');
-    if(action==='select-level') doSelectLevel(parseInt(el.getAttribute('data-level'),10));
-    else if(action==='toggle-review') doToggleReview();
-    else if(action==='toggle-bookmark-mode') doToggleBookmarkMode();
-    else if(action==='exit-review') doExitSpecialMode();
-    else if(action==='jump') doJump(parseInt(el.getAttribute('data-index'),10));
-    else if(action==='prev') doPrev();
-    else if(action==='next') doNext();
-    else if(action==='reveal') doReveal();
-    else if(action==='toggle-bookmark') doToggleBookmark(el.getAttribute('data-qid'));
-    else if(action==='grade') doGrade();
-    else if(action==='reset') doReset();
-    else if(action==='go-chapter'){ var ch=parseInt(el.getAttribute('data-ch'),10); isOverview=false; switchChapter(ch); }
-  }
-  document.getElementById('level-nav').addEventListener('click',function(e){
-    var el=e.target.closest('[data-action]'); if(!el) return; handleAction(el);
-  });
-  document.getElementById('app').addEventListener('click',function(e){
-    var el=e.target.closest('[data-action]'); if(!el) return; handleAction(el);
-  });
+        /* 터미널 */
+        .terminal {
+          margin-top: 14px;
+        }
+        .terminal-body {
+          height: 120px;
+          font-size: 12px;
+        }
+      }
+    </style>
+    <script src="ch1-basic-syntax/items/levels.js"></script>
+    <script src="ch1-basic-syntax/items/questions.js"></script>
+    <script src="ch2-oop/items/levels.js"></script>
+    <script src="ch2-oop/items/questions.js"></script>
+    <script src="ch3-collections/items/levels.js"></script>
+    <script src="ch3-collections/items/questions.js"></script>
+    <script src="ch4-data-structures/items/levels.js"></script>
+    <script src="ch4-data-structures/items/questions.js"></script>
+    <script src="ch5-lambda-stream-io/items/levels.js"></script>
+    <script src="ch5-lambda-stream-io/items/questions.js"></script>
+  </head>
+  <body>
+    <div id="chapter-nav">
+      <button class="ch-btn" data-ch="0">📋 전체 개요</button>
+      <button class="ch-btn ch-active" data-ch="1">Ch1. 기본 문법</button>
+      <button class="ch-btn" data-ch="2">Ch2. OOP 기초</button>
+      <button class="ch-btn" data-ch="3">Ch3. 컬렉션</button>
+      <button class="ch-btn" data-ch="4">Ch4. 자료구조 응용</button>
+      <button class="ch-btn" data-ch="5">Ch5. 람다·Stream·IO</button>
+    </div>
+    <div id="level-nav"></div>
 
-  document.addEventListener('keydown',function(e){
-    var ta=document.getElementById('ans-input'),taf=document.activeElement===ta;
-    if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){ e.preventDefault(); doGrade(); return; }
-    if(taf){ if(e.key==='Escape'){ e.preventDefault(); ta.blur(); } return; }
-    if(e.key==='Enter'){ e.preventDefault(); focusAnswerInput(); }
-    else if(e.key==='ArrowLeft'){ e.preventDefault(); doPrev(); }
-    else if(e.key==='ArrowRight'){ e.preventDefault(); doNext(); }
-    else if(e.key==='r'||e.key==='R'){ e.preventDefault(); doReveal(); }
-  });
+    <div id="app"><div class="loading">진행 상황 불러오는 중...</div></div>
 
-  /* ============ 시작 ============ */
-  render();
-  loadProgress().then(render);
+    <script>
+      (function () {
+        /* ============ 현재 챕터 상태 ============ */
+        var currentCh = 1;
+        var LEVELS = CHAPTER_DATA[1].levels;
+        var QUESTIONS = CHAPTER_DATA[1].questions;
+        var STORAGE_KEY = CHAPTER_DATA[1].storageKey;
+        var BOOKMARK_KEY = CHAPTER_DATA[1].bookmarkKey;
 
-})();
-</script>
-</body>
+        /* ============ 앱 상태 ============ */
+        var state = {
+          loaded: false,
+          progress: {},
+          inputs: {},
+          revealed: {},
+          bookmarks: {},
+          level: 0,
+          index: 0,
+          log: [],
+          reviewMode: false,
+          bookmarkMode: false,
+        };
+
+        /* ============ 저장소 ============ */
+        var store = {
+          get: function (key) {
+            if (window.storage && window.storage.get) {
+              return window.storage.get(key, false).then(function (res) {
+                return res && res.value ? res.value : null;
+              });
+            }
+            return Promise.resolve(localStorage.getItem(key));
+          },
+          set: function (key, val) {
+            if (window.storage && window.storage.set)
+              return window.storage.set(key, val, false);
+            try {
+              localStorage.setItem(key, val);
+            } catch (e) {}
+            return Promise.resolve();
+          },
+        };
+
+        async function loadProgress() {
+          try {
+            var v = await store.get(STORAGE_KEY);
+            if (v) state.progress = JSON.parse(v) || {};
+          } catch (e) {
+            state.progress = {};
+          }
+          try {
+            var b = await store.get(BOOKMARK_KEY);
+            if (b) state.bookmarks = JSON.parse(b) || {};
+          } catch (e) {
+            state.bookmarks = {};
+          }
+          state.loaded = true;
+        }
+        async function saveProgress() {
+          try {
+            await store.set(STORAGE_KEY, JSON.stringify(state.progress));
+          } catch (e) {}
+        }
+        async function saveBookmarks() {
+          try {
+            await store.set(BOOKMARK_KEY, JSON.stringify(state.bookmarks));
+          } catch (e) {}
+        }
+
+        /* ============ 개요 페이지 ============ */
+        var isOverview = false;
+
+        var OV_INFO = [
+          {
+            ch: 1,
+            color: "#D98C3D",
+            keywords: [
+              "기본형 · 참조형",
+              "형 변환 (캐스팅)",
+              "String 메서드",
+              "예외처리 (try-catch-finally)",
+              "제어 흐름 · Math · 삼항",
+              "배열 (1D / 2D)",
+            ],
+          },
+          {
+            ch: 2,
+            color: "#6B9FD4",
+            keywords: [
+              "클래스 · 생성자 · overloading",
+              "상속 (extends) · overriding",
+              "인터페이스 · abstract class",
+              "캡슐화 · equals · toString",
+              "Comparator · enum",
+              "접근 제어자 · import · 동적 바인딩",
+              "사용자 정의 예외",
+              "Generic · 와일드카드 · PECS",
+            ],
+          },
+          {
+            ch: 3,
+            color: "#6FD9A0",
+            keywords: [
+              "배열 · ArrayList (List 계열)",
+              "HashSet (Set 계열)",
+              "HashMap (Map 계열)",
+              "정렬 · 탐색 · 집합 연산",
+              "오토박싱 · 빈도수 카운팅",
+              "TreeMap · copyOfRange · computeIfAbsent",
+            ],
+          },
+          {
+            ch: 4,
+            color: "#C77DFF",
+            keywords: [
+              "Stack — LIFO · 괄호검사",
+              "Queue — FIFO · BFS",
+              "Deque — 슬라이딩 윈도우",
+              "PriorityQueue — 힙 · 다익스트라",
+            ],
+          },
+          {
+            ch: 5,
+            color: "#FF9A3C",
+            keywords: [
+              "Lambda · @FunctionalInterface",
+              "Predicate · Function · Consumer",
+              "Stream API (filter·map·collect)",
+              "Scanner · BufferedReader (표준입력)",
+              "FileWriter · BufferedReader (파일)",
+              "Files.readAllLines · try-with-resources",
+            ],
+          },
+        ];
+
+        function renderOverview() {
+          isOverview = true;
+          document.querySelectorAll(".ch-btn").forEach(function (b) {
+            b.classList.toggle("ch-active", b.getAttribute("data-ch") === "0");
+          });
+          document.getElementById("level-nav").innerHTML = "";
+          var html = "";
+          html += '<div style="margin-bottom:24px;">';
+          html +=
+            '<div class="brand-eyebrow">$ java --curriculum overview</div>';
+          html += '<h1 class="brand-title">Java 커리큘럼 전체 개요</h1>';
+          html +=
+            '<div class="brand-sub">각 챕터의 학습 주제와 키워드를 한눈에 확인하세요. 카드를 클릭하면 해당 챕터로 이동합니다.</div>';
+          html += "</div>";
+
+          html += '<div class="ov-flow">';
+          var flowNames = [
+            "기본 문법",
+            "OOP 기초",
+            "컬렉션",
+            "자료구조",
+            "람다·IO",
+          ];
+          flowNames.forEach(function (name, i) {
+            if (i > 0) html += '<span class="ov-arrow">→</span>';
+            html +=
+              '<span class="ov-flow-item">Ch' +
+              (i + 1) +
+              ". " +
+              name +
+              "</span>";
+          });
+          html += "</div>";
+          html +=
+            '<div class="ov-notice">Java 파트 커리큘럼 순서 (XML 챕터 제외)</div>';
+
+          html += '<div style="height:20px;"></div>';
+          html += '<div class="ov-grid">';
+          OV_INFO.forEach(function (info) {
+            var chData = CHAPTER_DATA[info.ch];
+            var totalQs = chData.questions.length;
+            var totalLevels = chData.levels.length;
+            html +=
+              '<div class="ov-card" data-action="go-chapter" data-ch="' +
+              info.ch +
+              '">';
+            html +=
+              '<div class="ov-card-head" style="border-bottom-color:' +
+              info.color +
+              ';">';
+            html +=
+              '<span class="ov-ch-label" style="color:' +
+              info.color +
+              ';">Ch' +
+              info.ch +
+              "</span>";
+            html +=
+              '<span class="ov-ch-title">' +
+              esc(chData.brandTitle.replace(" 자동채점", "")) +
+              "</span>";
+            html +=
+              '<span class="ov-ch-stats">' +
+              totalQs +
+              "문제 · " +
+              totalLevels +
+              "장</span>";
+            html += "</div>";
+            html += '<ul class="ov-kw-list">';
+            info.keywords.forEach(function (kw) {
+              html += "<li>" + esc(kw) + "</li>";
+            });
+            html += "</ul>";
+            html += '<div class="ov-card-footer">학습 시작 →</div>';
+            html += "</div>";
+          });
+          html += "</div>";
+
+          document.getElementById("app").innerHTML = html;
+        }
+
+        /* ============ 챕터 전환 ============ */
+        function switchChapter(ch) {
+          currentCh = ch;
+          LEVELS = CHAPTER_DATA[ch].levels;
+          QUESTIONS = CHAPTER_DATA[ch].questions;
+          STORAGE_KEY = CHAPTER_DATA[ch].storageKey;
+          BOOKMARK_KEY = CHAPTER_DATA[ch].bookmarkKey;
+          state = {
+            loaded: false,
+            progress: {},
+            inputs: {},
+            revealed: {},
+            bookmarks: {},
+            level: 0,
+            index: 0,
+            log: [],
+            reviewMode: false,
+            bookmarkMode: false,
+          };
+          document.querySelectorAll(".ch-btn").forEach(function (b) {
+            b.classList.toggle(
+              "ch-active",
+              parseInt(b.getAttribute("data-ch")) === ch,
+            );
+          });
+          render();
+          loadProgress().then(render);
+        }
+
+        document
+          .getElementById("chapter-nav")
+          .addEventListener("click", function (e) {
+            var btn = e.target.closest(".ch-btn");
+            if (!btn) return;
+            var ch = parseInt(btn.getAttribute("data-ch"));
+            if (ch === 0) {
+              renderOverview();
+              return;
+            }
+            if (isOverview || ch !== currentCh) {
+              isOverview = false;
+              switchChapter(ch);
+            }
+          });
+
+        /* ============ 유틸 ============ */
+        function esc(s) {
+          return String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        }
+        function questionsOfLevel(lv) {
+          return QUESTIONS.filter(function (q) {
+            return q.level === lv;
+          });
+        }
+        function failedQuestions() {
+          return QUESTIONS.filter(function (q) {
+            return (
+              state.progress[q.id] && state.progress[q.id].status === "fail"
+            );
+          });
+        }
+        function bookmarkedQuestions() {
+          return QUESTIONS.filter(function (q) {
+            return !!state.bookmarks[q.id];
+          });
+        }
+        function activeQuestionList() {
+          if (state.reviewMode) return failedQuestions();
+          if (state.bookmarkMode) return bookmarkedQuestions();
+          return questionsOfLevel(state.level);
+        }
+        function totalPassed() {
+          var n = 0;
+          Object.keys(state.progress).forEach(function (k) {
+            if (state.progress[k] && state.progress[k].status === "pass") n++;
+          });
+          return n;
+        }
+        function levelPassed(lv) {
+          var n = 0;
+          questionsOfLevel(lv).forEach(function (q) {
+            if (state.progress[q.id] && state.progress[q.id].status === "pass")
+              n++;
+          });
+          return n;
+        }
+
+        /* ============ 채점 ============ */
+        function gradeQuestion(q, input) {
+          return q.regex.every(function (r) {
+            return r.test(input);
+          });
+        }
+        function pushLog(qid, pass) {
+          state.log.push({ cmd: "check " + qid, pass: pass });
+          if (state.log.length > 40) state.log.shift();
+        }
+
+        /* ============ 에디터 보조 ============ */
+        var BRACKET_OPEN_CLOSE = { "(": ")", "[": "]", "{": "}" };
+        var BRACKET_CLOSE_CHARS = { ")": true, "]": true, "}": true };
+        var QUOTE_CHARS = { '"': true, "'": true };
+        var INDENT_UNIT = "    ";
+        function lineBoundsOf(v, s, e) {
+          var ls = v.lastIndexOf("\n", s - 1) + 1,
+            le = v.indexOf("\n", e);
+          if (le === -1) le = v.length;
+          return { lineStart: ls, lineEnd: le };
+        }
+        function indentSelection(ta, q) {
+          var v = ta.value,
+            s = ta.selectionStart,
+            e = ta.selectionEnd;
+          if (s === e) {
+            ta.value = v.slice(0, s) + INDENT_UNIT + v.slice(s);
+            ta.selectionStart = ta.selectionEnd = s + INDENT_UNIT.length;
+            state.inputs[q.id] = ta.value;
+            return;
+          }
+          var b = lineBoundsOf(v, s, e),
+            lines = v.slice(b.lineStart, b.lineEnd).split("\n"),
+            ind = lines
+              .map(function (l) {
+                return INDENT_UNIT + l;
+              })
+              .join("\n");
+          ta.value = v.slice(0, b.lineStart) + ind + v.slice(b.lineEnd);
+          ta.selectionStart = s + INDENT_UNIT.length;
+          ta.selectionEnd = e + INDENT_UNIT.length * lines.length;
+          state.inputs[q.id] = ta.value;
+        }
+        function outdentSelection(ta, q) {
+          var v = ta.value,
+            s = ta.selectionStart,
+            e = ta.selectionEnd,
+            b = lineBoundsOf(v, s, e),
+            lines = v.slice(b.lineStart, b.lineEnd).split("\n"),
+            removed = [],
+            out = lines
+              .map(function (l) {
+                var m = l.match(/^( {1,4}|\t)/),
+                  n = m ? m[0].length : 0;
+                removed.push(n);
+                return l.slice(n);
+              })
+              .join("\n");
+          ta.value = v.slice(0, b.lineStart) + out + v.slice(b.lineEnd);
+          var fr = removed[0] || 0,
+            tr = removed.reduce(function (a, c) {
+              return a + c;
+            }, 0);
+          ta.selectionStart = Math.max(b.lineStart, s - fr);
+          ta.selectionEnd = Math.max(ta.selectionStart, e - tr);
+          state.inputs[q.id] = ta.value;
+        }
+        function autoIndentNewline(ta, q) {
+          var v = ta.value,
+            pos = ta.selectionStart,
+            ls = v.lastIndexOf("\n", pos - 1) + 1,
+            cur = v.slice(ls, pos),
+            im = cur.match(/^[ \t]*/),
+            ind = im ? im[0] : "",
+            lns = v.slice(0, pos).replace(/\s+$/, "").slice(-1),
+            ex = lns === "{" ? INDENT_UNIT : "",
+            ins = "\n" + ind + ex;
+          ta.value = v.slice(0, pos) + ins + v.slice(pos);
+          var np = pos + ins.length;
+          ta.selectionStart = ta.selectionEnd = np;
+          state.inputs[q.id] = ta.value;
+        }
+        function handleBracketKeydown(e, ta, q) {
+          var key = e.key;
+          if (e.ctrlKey || e.metaKey || e.altKey) return false;
+          if (BRACKET_OPEN_CLOSE[key]) {
+            var s = ta.selectionStart,
+              en = ta.selectionEnd,
+              v = ta.value,
+              cl = BRACKET_OPEN_CLOSE[key];
+            if (s !== en) {
+              var sel = v.slice(s, en);
+              ta.value = v.slice(0, s) + key + sel + cl + v.slice(en);
+              ta.selectionStart = s + 1;
+              ta.selectionEnd = en + 1;
+            } else {
+              ta.value = v.slice(0, s) + key + cl + v.slice(s);
+              ta.selectionStart = ta.selectionEnd = s + 1;
+            }
+            state.inputs[q.id] = ta.value;
+            e.preventDefault();
+            return true;
+          }
+          if (QUOTE_CHARS[key]) {
+            var s = ta.selectionStart,
+              en = ta.selectionEnd,
+              v = ta.value;
+            if (s !== en) {
+              var sel = v.slice(s, en);
+              ta.value = v.slice(0, s) + key + sel + key + v.slice(en);
+              ta.selectionStart = s + 1;
+              ta.selectionEnd = en + 1;
+              state.inputs[q.id] = ta.value;
+              e.preventDefault();
+              return true;
+            }
+            if (v[s] === key) {
+              ta.selectionStart = ta.selectionEnd = s + 1;
+              e.preventDefault();
+              return true;
+            }
+            ta.value = v.slice(0, s) + key + key + v.slice(s);
+            ta.selectionStart = ta.selectionEnd = s + 1;
+            state.inputs[q.id] = ta.value;
+            e.preventDefault();
+            return true;
+          }
+          if (BRACKET_CLOSE_CHARS[key]) {
+            var p = ta.selectionStart;
+            if (ta.selectionStart === ta.selectionEnd && ta.value[p] === key) {
+              ta.selectionStart = ta.selectionEnd = p + 1;
+              e.preventDefault();
+              return true;
+            }
+            return false;
+          }
+          if (key === "Backspace") {
+            var ss = ta.selectionStart,
+              se = ta.selectionEnd;
+            if (ss === se && ss > 0) {
+              var pc = ta.value[ss - 1],
+                nc = ta.value[ss];
+              if (
+                (BRACKET_OPEN_CLOSE[pc] && BRACKET_OPEN_CLOSE[pc] === nc) ||
+                (QUOTE_CHARS[pc] && pc === nc)
+              ) {
+                ta.value = ta.value.slice(0, ss - 1) + ta.value.slice(ss + 1);
+                ta.selectionStart = ta.selectionEnd = ss - 1;
+                state.inputs[q.id] = ta.value;
+                e.preventDefault();
+                return true;
+              }
+            }
+            return false;
+          }
+          return false;
+        }
+        function handleEditorKeydown(e, ta, q) {
+          if (e.key === "Tab" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            e.preventDefault();
+            if (e.shiftKey) outdentSelection(ta, q);
+            else indentSelection(ta, q);
+            return;
+          }
+          if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            autoIndentNewline(ta, q);
+            return;
+          }
+          handleBracketKeydown(e, ta, q);
+        }
+
+        /* ============ 렌더링 ============ */
+        function renderEmptySpecial() {
+          var app = document.getElementById("app"),
+            passed = totalPassed(),
+            isB = state.bookmarkMode;
+          var title = isB
+            ? "🔖 아직 즐겨찾기한 문제가 없습니다"
+            : "🎉 지금은 틀린 문제가 없습니다";
+          var failCount = failedQuestions().length,
+            bmCount = Object.keys(state.bookmarks).filter(function (k) {
+              return state.bookmarks[k];
+            }).length;
+          var lnav = document.getElementById("level-nav"),
+            lhtml = "";
+          LEVELS.forEach(function (lv) {
+            var p = levelPassed(lv.id),
+              qs = questionsOfLevel(lv.id).length;
+            lhtml +=
+              '<button class="lv-btn" data-action="select-level" data-level="' +
+              lv.id +
+              '">' +
+              esc(lv.name) +
+              ' <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+              p +
+              "/" +
+              qs +
+              "</span></button>";
+          });
+          lhtml += '<div class="lv-sep"></div>';
+          lhtml +=
+            '<button class="lv-btn lv-special' +
+            (state.reviewMode ? " lv-on" : "") +
+            '" data-action="toggle-review">📌 오답노트 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+            failCount +
+            "</span></button>";
+          lhtml +=
+            '<button class="lv-btn lv-special' +
+            (state.bookmarkMode ? " lv-on" : "") +
+            '" data-action="toggle-bookmark-mode">🔖 즐겨찾기 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+            bmCount +
+            "</span></button>";
+          lnav.innerHTML = lhtml;
+          var html = "";
+          html +=
+            '<div class="topbar"><div><div class="brand-eyebrow">$ run --suite ' +
+            CHAPTER_DATA[currentCh].suite +
+            '</div><h1 class="brand-title">' +
+            CHAPTER_DATA[currentCh].brandTitle +
+            "</h1></div>";
+          html +=
+            '<div class="top-stats"><button class="reset-btn" data-action="reset">진행 초기화</button></div></div>';
+          html +=
+            '<div class="card" style="text-align:center;padding:50px 24px;"><div class="card-title">' +
+            title +
+            "</div>";
+          html +=
+            '<p style="color:var(--muted);font-size:13.5px;margin:10px 0 18px;">전체 진행: ' +
+            passed +
+            " / " +
+            QUESTIONS.length +
+            "</p>";
+          html +=
+            '<button class="btn btn-grade" data-action="exit-review">전체 문제로 돌아가기</button></div>';
+          app.innerHTML = html;
+        }
+
+        function render() {
+          var app = document.getElementById("app");
+          if (!state.loaded) {
+            app.innerHTML =
+              '<div class="loading">진행 상황 불러오는 중...</div>';
+            return;
+          }
+          var levelQs = activeQuestionList();
+          if (
+            (state.reviewMode || state.bookmarkMode) &&
+            levelQs.length === 0
+          ) {
+            renderEmptySpecial();
+            return;
+          }
+          if (state.index >= levelQs.length) state.index = 0;
+          var q = levelQs[state.index],
+            passed = totalPassed(),
+            html = "";
+
+          html += '<div class="topbar"><div>';
+          html +=
+            '<div class="brand-eyebrow">$ run --suite ' +
+            CHAPTER_DATA[currentCh].suite +
+            "</div>";
+          html +=
+            '<h1 class="brand-title">' +
+            CHAPTER_DATA[currentCh].brandTitle +
+            "</h1>";
+          html +=
+            '<div class="brand-sub">코드를 입력하고 채점하면, 정규식으로 문법을 검증합니다 (실제 자바 실행 X).</div>';
+          html +=
+            '<div class="kbd-hint"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 문제 · <kbd>R</kbd> 정답 보기 · <kbd>Esc</kbd> 입력창 빠져나오기 · <kbd>Enter</kbd> 입력창 포커스</div>';
+          html += '</div><div class="top-stats"><div class="progress-wrap">';
+          html +=
+            '<div class="progress-label"><span>전체 진행</span><b>' +
+            passed +
+            " / " +
+            QUESTIONS.length +
+            "</b></div>";
+          html +=
+            '<div class="progress-track"><div class="progress-fill" style="width:' +
+            Math.round((passed / QUESTIONS.length) * 100) +
+            '%"></div></div>';
+          html +=
+            '</div><button class="reset-btn" data-action="reset">진행 초기화</button></div></div>';
+
+          /* --- level nav bar --- */
+          var failCount = failedQuestions().length,
+            bmCount = Object.keys(state.bookmarks).filter(function (k) {
+              return state.bookmarks[k];
+            }).length;
+          var lnav = document.getElementById("level-nav"),
+            lhtml = "";
+          LEVELS.forEach(function (lv) {
+            var p = levelPassed(lv.id),
+              qs = questionsOfLevel(lv.id).length;
+            var isActive =
+              !state.reviewMode && !state.bookmarkMode && state.level === lv.id;
+            lhtml +=
+              '<button class="lv-btn' +
+              (isActive ? " lv-active" : "") +
+              '" data-action="select-level" data-level="' +
+              lv.id +
+              '">' +
+              esc(lv.name) +
+              ' <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+              p +
+              "/" +
+              qs +
+              "</span></button>";
+          });
+          lhtml += '<div class="lv-sep"></div>';
+          lhtml +=
+            '<button class="lv-btn lv-special' +
+            (state.reviewMode ? " lv-on" : "") +
+            '" data-action="toggle-review">📌 오답노트 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+            failCount +
+            "</span></button>";
+          lhtml +=
+            '<button class="lv-btn lv-special' +
+            (state.bookmarkMode ? " lv-on" : "") +
+            '" data-action="toggle-bookmark-mode">🔖 즐겨찾기 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+            bmCount +
+            "</span></button>";
+          lnav.innerHTML = lhtml;
+
+          html += '<div class="layout">';
+          html += '<div class="dot-grid-wrap"><div class="dot-grid">';
+          levelQs.forEach(function (qq, i) {
+            var st = state.progress[qq.id] && state.progress[qq.id].status;
+            var cls =
+              "dot" +
+              (i === state.index ? " current" : "") +
+              (st === "pass" ? " pass" : st === "fail" ? " fail" : "") +
+              (state.bookmarks[qq.id] ? " bookmarked" : "");
+            html +=
+              '<div class="' +
+              cls +
+              '" data-action="jump" data-index="' +
+              i +
+              '" title="' +
+              esc(qq.id) +
+              '">' +
+              (st === "pass" ? "✓" : st === "fail" ? "✗" : i + 1) +
+              "</div>";
+          });
+          html += "</div></div>";
+
+          html += '<div class="content"><div class="card">';
+          var eyebrow = state.reviewMode
+            ? "📌 오답 노트 (복습 모드)"
+            : state.bookmarkMode
+              ? "🔖 즐겨찾기 모드"
+              : esc(LEVELS[state.level].name);
+          html +=
+            '<div class="card-eyebrow">' +
+            eyebrow +
+            " · 문항 " +
+            (state.index + 1) +
+            " / " +
+            levelQs.length +
+            " · " +
+            esc(q.id) +
+            "</div>";
+          html +=
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
+          html +=
+            '<h2 class="card-title" style="margin:0;">' +
+            esc(q.title) +
+            "</h2>";
+          html +=
+            '<button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap;" data-action="toggle-bookmark" data-qid="' +
+            esc(q.id) +
+            '">' +
+            (state.bookmarks[q.id] ? "🔖 즐겨찾기 해제" : "☆ 즐겨찾기 추가") +
+            "</button></div>";
+          if (state.reviewMode || state.bookmarkMode)
+            html +=
+              '<button class="btn btn-ghost" style="align-self:flex-start;padding:5px 10px;font-size:12px;" data-action="exit-review">← 전체 문제로 돌아가기</button>';
+          html +=
+            '<div class="concept"><b>핵심 개념</b> — ' +
+            esc(q.concept) +
+            "</div>";
+          html += '<div class="codebox">';
+          q.before.forEach(function (l) {
+            html += '<div class="cl muted">' + esc(l) + "</div>";
+          });
+          q.placeholder.forEach(function (l) {
+            html += '<div class="cl muted">' + esc(l) + "</div>";
+          });
+          var savedInput =
+            state.inputs[q.id] !== undefined
+              ? state.inputs[q.id]
+              : (state.progress[q.id] && state.progress[q.id].input) || "";
+          html +=
+            '<textarea class="blank" id="ans-input" rows="' +
+            (q.rows || 2) +
+            '" placeholder="여기에 코드를 입력하세요"></textarea>';
+          q.after.forEach(function (l) {
+            html += '<div class="cl muted">' + esc(l) + "</div>";
+          });
+          html += "</div>";
+          html +=
+            '<div class="expected">기대 출력: <code>' +
+            esc(q.expected) +
+            "</code></div>";
+          var fb = state.progress[q.id],
+            fbClass = "",
+            fbText = "";
+          if (fb && fb.status === "pass") {
+            fbClass = "pass show";
+            fbText = "✓ PASS — 정답입니다.";
+          } else if (fb && fb.status === "fail") {
+            fbClass = "fail show";
+            fbText = "✗ FAIL — 문법을 다시 확인해보세요.";
+          }
+          html +=
+            '<div class="actions"><button class="btn btn-grade" data-action="grade">채점</button>';
+          html +=
+            '<button class="btn btn-ghost" data-action="reveal">' +
+            (state.revealed[q.id] ? "정답 숨기기" : "정답 보기") +
+            "</button></div>";
+          html +=
+            '<div class="feedback ' +
+            fbClass +
+            '" id="fb-msg">' +
+            fbText +
+            "</div>";
+          html +=
+            '<div class="answer-box' +
+            (state.revealed[q.id] ? " show" : "") +
+            '">';
+          html += '<div class="lbl">🔍 정답</div>';
+          q.answer.forEach(function (l) {
+            html += '<div class="al">' + esc(l) + "</div>";
+          });
+          if (q.note) html += '<div class="note">' + esc(q.note) + "</div>";
+          html += "</div>";
+          html += '<div class="nav-row">';
+          html +=
+            '<button class="btn btn-nav" data-action="prev" ' +
+            (state.index === 0 ? "disabled" : "") +
+            ">← 이전</button>";
+          html +=
+            '<span class="pos">' +
+            (state.index + 1) +
+            " / " +
+            levelQs.length +
+            "</span>";
+          html +=
+            '<button class="btn btn-nav" data-action="next" ' +
+            (state.index === levelQs.length - 1 ? "disabled" : "") +
+            ">다음 →</button>";
+          html += "</div></div></div>";
+
+          html +=
+            '<div class="terminal"><div class="terminal-head"><span class="terminal-dot"></span><span class="terminal-dot"></span><span class="terminal-dot"></span>&nbsp;&nbsp;test-runner</div>';
+          html += '<div class="terminal-body" id="term-body">';
+          if (state.log.length === 0) {
+            html += '<div class="ln">대기 중... 채점 버튼을 눌러보세요.</div>';
+          } else {
+            state.log.forEach(function (l) {
+              html +=
+                '<div class="ln cmd">$ ' +
+                esc(l.cmd) +
+                '</div><div class="ln ' +
+                (l.pass ? "pass" : "fail") +
+                '">  ' +
+                (l.pass ? "✓ PASS" : "✗ FAIL") +
+                "</div>";
+            });
+          }
+          html += '<span class="cursor"></span></div></div>';
+
+          app.innerHTML = html;
+          var ta = document.getElementById("ans-input");
+          if (ta) {
+            ta.value = savedInput;
+            ta.addEventListener("input", function () {
+              state.inputs[q.id] = ta.value;
+            });
+            ta.addEventListener("keydown", function (e) {
+              handleEditorKeydown(e, ta, q);
+            });
+          }
+          var term = document.getElementById("term-body");
+          if (term) term.scrollTop = term.scrollHeight;
+        }
+
+        /* ============ 액션 ============ */
+        function doSelectLevel(lv) {
+          state.reviewMode = false;
+          state.bookmarkMode = false;
+          state.level = lv;
+          state.index = 0;
+          render();
+        }
+        function doToggleReview() {
+          state.reviewMode = !state.reviewMode;
+          if (state.reviewMode) state.bookmarkMode = false;
+          state.index = 0;
+          render();
+        }
+        function doToggleBookmarkMode() {
+          state.bookmarkMode = !state.bookmarkMode;
+          if (state.bookmarkMode) state.reviewMode = false;
+          state.index = 0;
+          render();
+        }
+        function doExitSpecialMode() {
+          state.reviewMode = false;
+          state.bookmarkMode = false;
+          state.index = 0;
+          render();
+        }
+        function doJump(i) {
+          state.index = i;
+          render();
+        }
+        function doPrev() {
+          if (state.index > 0) {
+            state.index--;
+            render();
+          }
+        }
+        function doNext() {
+          var lq = activeQuestionList();
+          if (state.index < lq.length - 1) {
+            state.index++;
+            render();
+          }
+        }
+        function doReveal() {
+          var lq = activeQuestionList(),
+            q = lq[state.index];
+          if (!q) return;
+          state.revealed[q.id] = !state.revealed[q.id];
+          render();
+        }
+        function doToggleBookmark(qid) {
+          if (!qid) return;
+          if (state.bookmarks[qid]) delete state.bookmarks[qid];
+          else state.bookmarks[qid] = true;
+          saveBookmarks();
+          render();
+        }
+        function doGrade() {
+          var lq = activeQuestionList(),
+            q = lq[state.index];
+          if (!q) return;
+          var ta = document.getElementById("ans-input"),
+            val = ta ? ta.value : "";
+          var pass = gradeQuestion(q, val);
+          state.progress[q.id] = { status: pass ? "pass" : "fail", input: val };
+          pushLog(q.id, pass);
+          saveProgress();
+          render();
+        }
+        function doReset() {
+          if (
+            window.confirm("모든 진행 상황을 초기화할까요? 되돌릴 수 없습니다.")
+          ) {
+            state.progress = {};
+            state.inputs = {};
+            state.revealed = {};
+            state.log = [];
+            state.reviewMode = false;
+            saveProgress();
+            render();
+          }
+        }
+        function focusAnswerInput() {
+          var ta = document.getElementById("ans-input");
+          if (ta) ta.focus();
+        }
+
+        /* ============ 이벤트 ============ */
+        function handleAction(el) {
+          var action = el.getAttribute("data-action");
+          if (action === "select-level")
+            doSelectLevel(parseInt(el.getAttribute("data-level"), 10));
+          else if (action === "toggle-review") doToggleReview();
+          else if (action === "toggle-bookmark-mode") doToggleBookmarkMode();
+          else if (action === "exit-review") doExitSpecialMode();
+          else if (action === "jump")
+            doJump(parseInt(el.getAttribute("data-index"), 10));
+          else if (action === "prev") doPrev();
+          else if (action === "next") doNext();
+          else if (action === "reveal") doReveal();
+          else if (action === "toggle-bookmark")
+            doToggleBookmark(el.getAttribute("data-qid"));
+          else if (action === "grade") doGrade();
+          else if (action === "reset") doReset();
+          else if (action === "go-chapter") {
+            var ch = parseInt(el.getAttribute("data-ch"), 10);
+            isOverview = false;
+            switchChapter(ch);
+          }
+        }
+        document
+          .getElementById("level-nav")
+          .addEventListener("click", function (e) {
+            var el = e.target.closest("[data-action]");
+            if (!el) return;
+            handleAction(el);
+          });
+        document.getElementById("app").addEventListener("click", function (e) {
+          var el = e.target.closest("[data-action]");
+          if (!el) return;
+          handleAction(el);
+        });
+
+        document.addEventListener("keydown", function (e) {
+          var ta = document.getElementById("ans-input"),
+            taf = document.activeElement === ta;
+          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            doGrade();
+            return;
+          }
+          if (taf) {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              ta.blur();
+            }
+            return;
+          }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            focusAnswerInput();
+          } else if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            doPrev();
+          } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            doNext();
+          } else if (e.key === "r" || e.key === "R") {
+            e.preventDefault();
+            doReveal();
+          }
+        });
+
+        /* ============ 시작 ============ */
+        render();
+        loadProgress().then(render);
+      })();
+    </script>
+  </body>
 </html>
