@@ -204,6 +204,16 @@
         border-color: var(--accent);
         color: var(--text);
       }
+      .lv-btn.lv-done {
+        background: rgba(111, 217, 160, 0.12);
+        border-color: rgba(111, 217, 160, 0.3);
+        color: var(--success);
+      }
+      .lv-btn.lv-done.lv-active {
+        background: rgba(111, 217, 160, 0.22);
+        border-color: rgba(111, 217, 160, 0.5);
+        color: var(--success);
+      }
       .lv-btn.lv-special {
         border-color: var(--border);
       }
@@ -818,6 +828,51 @@
       (function () {
         /* ============ 현재 챕터 상태 ============ */
         var currentCh = 1;
+        var SERVER_URL = 'http://localhost:3000/run';
+        var serverAvailable = false;
+
+        function checkServer() {
+          fetch(SERVER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: 'public class Main { public static void main(String[] args) { System.out.println("ok"); } }' }), signal: AbortSignal.timeout(2000) })
+            .then(function(r) { return r.json(); })
+            .then(function(d) { serverAvailable = d.output === 'ok'; updateServerBadge(); })
+            .catch(function() { serverAvailable = false; updateServerBadge(); });
+        }
+
+        function updateServerBadge() {
+          var badge = document.getElementById('server-badge');
+          if (!badge) return;
+          badge.textContent = serverAvailable ? '● 실행 채점' : '● regex 채점 (서버 꺼짐)';
+          badge.style.color = serverAvailable ? '#4caf50' : '#aaa';
+        }
+
+        function buildJavaCode(q, userInput) {
+          var lines = [];
+          lines.push('public class Main {');
+          lines.push('  public static void main(String[] args) throws Exception {');
+          (q.before || []).forEach(function(l) { lines.push('    ' + l); });
+          userInput.split('\n').forEach(function(l) { lines.push('    ' + l); });
+          (q.after || []).forEach(function(l) { lines.push('    ' + l); });
+          lines.push('  }');
+          lines.push('}');
+          return lines.join('\n');
+        }
+
+        function gradeByExecution(q, input) {
+          return fetch(SERVER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: buildJavaCode(q, input) }),
+            signal: AbortSignal.timeout(5000)
+          })
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            var out = d.output ? d.output.trim() : '';
+            var err = d.error ? d.error.trim() : '';
+            if (!out && err) return { pass: false, output: '⚠ ' + err.split('\n')[0] };
+            return { pass: out === String(q.expected).trim(), output: out };
+          })
+          .catch(function() { return null; });
+        }
         var LEVELS = CHAPTER_DATA[1].levels;
         var QUESTIONS = CHAPTER_DATA[1].questions;
         var STORAGE_KEY = CHAPTER_DATA[1].storageKey;
@@ -875,6 +930,20 @@
         async function saveProgress() {
           try {
             await store.set(STORAGE_KEY, JSON.stringify(state.progress));
+          } catch (e) {}
+        }
+        function savePosition() {
+          try {
+            localStorage.setItem('java_study_pos', JSON.stringify({ ch: currentCh, level: state.level, index: state.index }));
+          } catch (e) {}
+        }
+        function loadPosition() {
+          try {
+            var pos = JSON.parse(localStorage.getItem('java_study_pos'));
+            if (!pos || !CHAPTER_DATA[pos.ch]) return;
+            if (pos.ch !== currentCh) switchChapter(pos.ch);
+            state.level = pos.level || 0;
+            state.index = pos.index || 0;
           } catch (e) {}
         }
         async function saveBookmarks() {
@@ -1125,8 +1194,15 @@
             return r.test(input);
           });
         }
-        function pushLog(qid, pass) {
-          state.log.push({ cmd: "check " + qid, pass: pass });
+        async function gradeQuestionSmart(q, input) {
+          if (serverAvailable) {
+            var result = await gradeByExecution(q, input);
+            if (result !== null) return result;
+          }
+          return gradeQuestion(q, input);
+        }
+        function pushLog(qid, pass, output) {
+          state.log.push({ cmd: "check " + qid, pass: pass, output: output || null });
           if (state.log.length > 40) state.log.shift();
         }
 
@@ -1277,15 +1353,54 @@
           }
           return false;
         }
+        /* ============ undo 스택 ============ */
+        var undoStack = {};  // { [qid]: [{value, ss, se}] }
+        var undoPointer = {}; // { [qid]: number }
+        var undoTimer = null;
+
+        function pushUndo(q, ta) {
+          var id = q.id;
+          if (!undoStack[id]) { undoStack[id] = []; undoPointer[id] = -1; }
+          var stack = undoStack[id];
+          // 현재 포인터 이후 스택 제거
+          stack.splice(undoPointer[id] + 1);
+          stack.push({ value: ta.value, ss: ta.selectionStart, se: ta.selectionEnd });
+          if (stack.length > 100) stack.shift();
+          undoPointer[id] = stack.length - 1;
+        }
+
+        function doUndo(q, ta) {
+          var id = q.id;
+          if (!undoStack[id] || undoPointer[id] <= 0) return;
+          undoPointer[id]--;
+          var snap = undoStack[id][undoPointer[id]];
+          ta.value = snap.value;
+          ta.selectionStart = snap.ss;
+          ta.selectionEnd = snap.se;
+          state.inputs[id] = ta.value;
+        }
+
+        function scheduleUndo(q, ta) {
+          clearTimeout(undoTimer);
+          undoTimer = setTimeout(function() { pushUndo(q, ta); }, 300);
+        }
+
         function handleEditorKeydown(e, ta, q) {
+          if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            doUndo(q, ta);
+            return;
+          }
           if (e.key === "Tab" && !e.ctrlKey && !e.altKey && !e.metaKey) {
             e.preventDefault();
+            pushUndo(q, ta);
             if (e.shiftKey) outdentSelection(ta, q);
             else indentSelection(ta, q);
             return;
           }
           if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
             e.preventDefault();
+            pushUndo(q, ta);
             autoIndentNewline(ta, q);
             return;
           }
@@ -1309,8 +1424,9 @@
           LEVELS.forEach(function (lv) {
             var p = levelPassed(lv.id),
               qs = questionsOfLevel(lv.id).length;
+            var isDone = p === qs && qs > 0;
             lhtml +=
-              '<button class="lv-btn" data-action="select-level" data-level="' +
+              '<button class="lv-btn' + (isDone ? ' lv-done' : '') + '" data-action="select-level" data-level="' +
               lv.id +
               '">' +
               esc(lv.name) +
@@ -1356,6 +1472,7 @@
           html +=
             '<button class="btn btn-grade" data-action="exit-review">전체 문제로 돌아가기</button></div>';
           app.innerHTML = html;
+          updateServerBadge();
         }
 
         function render() {
@@ -1388,7 +1505,7 @@
             CHAPTER_DATA[currentCh].brandTitle +
             "</h1>";
           html +=
-            '<div class="brand-sub">코드를 입력하고 채점하면, 정규식으로 문법을 검증합니다 (실제 자바 실행 X).</div>';
+            '<div class="brand-sub">코드를 입력하고 채점 버튼을 누르세요. <span id="server-badge" style="font-size:0.85em;">● regex 채점 (서버 꺼짐)</span></div>';
           html +=
             '<div class="kbd-hint"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 문제 · <kbd>R</kbd> 정답 보기 · <kbd>Esc</kbd> 입력창 빠져나오기 · <kbd>Enter</kbd> 입력창 포커스</div>';
           html += '</div><div class="top-stats"><div class="progress-wrap">';
@@ -1417,8 +1534,10 @@
               qs = questionsOfLevel(lv.id).length;
             var isActive =
               !state.reviewMode && !state.bookmarkMode && state.level === lv.id;
+            var isDone = p === qs && qs > 0;
             lhtml +=
               '<button class="lv-btn' +
+              (isDone ? ' lv-done' : '') +
               (isActive ? " lv-active" : "") +
               '" data-action="select-level" data-level="' +
               lv.id +
@@ -1589,16 +1708,22 @@
                 '">  ' +
                 (l.pass ? "✓ PASS" : "✗ FAIL") +
                 "</div>";
+              if (l.output !== null && l.output !== undefined) {
+                html += '<div class="ln" style="color:#ccc;margin-left:1em;">출력: ' + esc(l.output) + '</div>';
+              }
             });
           }
           html += '<span class="cursor"></span></div></div>';
 
           app.innerHTML = html;
+          updateServerBadge();
           var ta = document.getElementById("ans-input");
           if (ta) {
             ta.value = savedInput;
+            pushUndo(q, ta);
             ta.addEventListener("input", function () {
               state.inputs[q.id] = ta.value;
+              scheduleUndo(q, ta);
             });
             ta.addEventListener("keydown", function (e) {
               handleEditorKeydown(e, ta, q);
@@ -1614,6 +1739,7 @@
           state.bookmarkMode = false;
           state.level = lv;
           state.index = 0;
+          savePosition();
           render();
         }
         function doToggleReview() {
@@ -1636,11 +1762,13 @@
         }
         function doJump(i) {
           state.index = i;
+          savePosition();
           render();
         }
         function doPrev() {
           if (state.index > 0) {
             state.index--;
+            savePosition();
             render();
           }
         }
@@ -1648,6 +1776,7 @@
           var lq = activeQuestionList();
           if (state.index < lq.length - 1) {
             state.index++;
+            savePosition();
             render();
           }
         }
@@ -1665,15 +1794,30 @@
           saveBookmarks();
           render();
         }
-        function doGrade() {
+        async function doGrade() {
           var lq = activeQuestionList(),
             q = lq[state.index];
           if (!q) return;
           var ta = document.getElementById("ans-input"),
             val = ta ? ta.value : "";
-          var pass = gradeQuestion(q, val);
+          var gradeBtn = document.querySelector('[data-action="grade"]');
+          if (gradeBtn) { gradeBtn.disabled = true; gradeBtn.textContent = '채점 중...'; }
+          var executionOutput = null;
+          var pass;
+          if (serverAvailable) {
+            var result = await gradeByExecution(q, val);
+            if (result !== null) {
+              pass = result.pass;
+              executionOutput = result.output;
+            } else {
+              pass = gradeQuestion(q, val);
+            }
+          } else {
+            pass = gradeQuestion(q, val);
+          }
+          if (gradeBtn) { gradeBtn.disabled = false; gradeBtn.textContent = '채점'; }
           state.progress[q.id] = { status: pass ? "pass" : "fail", input: val };
-          pushLog(q.id, pass);
+          pushLog(q.id, pass, executionOutput);
           saveProgress();
           render();
         }
@@ -1762,8 +1906,10 @@
         });
 
         /* ============ 시작 ============ */
+        loadPosition();
         render();
         loadProgress().then(render);
+        checkServer();
       })();
     </script>
   </body>
