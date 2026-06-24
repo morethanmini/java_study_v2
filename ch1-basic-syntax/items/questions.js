@@ -556,26 +556,24 @@ window.CHAPTER_DATA[1].questions = [
     concept:
       "메서드가 예외를 직접 처리하지 않고 호출한 쪽으로 떠넘기겠다고 선언할 때 throws를 씁니다. 그러면 그 메서드를 호출하는 쪽에서 대신 처리해야 합니다.",
     before: [
-      "// parseAge 메서드는 throws NumberFormatException으로 선언되어 있다고 가정",
-      "// public static int parseAge(String s) throws NumberFormatException { return Integer.parseInt(s); }",
       'String input = "abc";',
     ],
     placeholder: [
-      '// TODO: parseAge(input) 호출을 try로 감싸고, NumberFormatException 발생 시 "invalid number" 출력',
+      '// TODO: Integer.parseInt(input) 호출을 try로 감싸고, NumberFormatException 발생 시 "invalid number" 출력',
     ],
     rows: 4,
     after: [],
     expected: "invalid number",
     answer: [
       "try {",
-      "    int age = parseAge(input);",
+      "    int age = Integer.parseInt(input);",
       "} catch (NumberFormatException e) {",
       '    System.out.println("invalid number");',
       "}",
     ],
-    note: 'throws는 메서드가 "이 예외는 내가 처리 안 하고 호출한 쪽에 떠넘긴다"고 선언하는 키워드입니다. throw(예외를 직접 발생시키는 키워드)와 철자가 비슷하니 헷갈리지 마세요.',
+    note: 'Integer.parseInt()는 내부적으로 throws NumberFormatException이 선언되어 있어, 숫자가 아닌 문자열을 넣으면 이 예외를 던집니다. throw(예외를 직접 발생시키는 키워드)와 throws(호출부로 떠넘긴다는 선언)를 혼동하지 마세요.',
     regex: [
-      /try\s*\{[\s\S]*parseAge\s*\(\s*input\s*\)[\s\S]*\}\s*catch\s*\(\s*NumberFormatException\s+\w+\s*\)\s*\{[\s\S]*println\s*\(\s*"invalid number"\s*\)[\s\S]*\}/,
+      /try\s*\{[\s\S]*Integer\.parseInt\s*\(\s*input\s*\)[\s\S]*\}\s*catch\s*\(\s*NumberFormatException\s+\w+\s*\)\s*\{[\s\S]*println\s*\(\s*"invalid number"\s*\)[\s\S]*\}/,
     ],
   },
 

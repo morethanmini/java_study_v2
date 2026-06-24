@@ -7,7 +7,7 @@ window.CHAPTER_DATA[4].questions = [
      before:['Deque<Integer> stack = new ArrayDeque<>();'],
      placeholder:['// TODO','// (1, 2, 3 순서로 push 한 뒤, 맨 위 값을 꺼내 top에 저장)'], rows:4,
      after:['System.out.println(top);','System.out.println(stack);'],
-     expected:'3, [2, 1]',
+     expected:'3\n[2, 1]',
      answer:['stack.push(1);','stack.push(2);','stack.push(3);','int top = stack.pop();'],
      note:'ArrayDeque를 스택처럼 쓸 때 push()/pop()은 모두 앞쪽을 기준으로 동작합니다. 그래서 toString()으로 출력하면 가장 나중에 넣은 값이 맨 앞에 나옵니다.',
      regex:[/push\s*\(\s*1\s*\)/, /push\s*\(\s*2\s*\)/, /push\s*\(\s*3\s*\)/, /int\s+top\s*=\s*stack\.pop\s*\(\s*\)/]},
@@ -17,7 +17,7 @@ window.CHAPTER_DATA[4].questions = [
      before:['Deque<Integer> stack = new ArrayDeque<>();','stack.push(10);','stack.push(20);','stack.push(30);'],
      placeholder:['int top = /* TODO */;'],
      after:['System.out.println(top);','System.out.println(stack.size());'],
-     expected:'30, 3',
+     expected:'30\n3',
      answer:['int top = stack.peek();'], note:'',
      regex:[/int\s+top\s*=\s*stack\.peek\s*\(\s*\)/]},
 
@@ -46,7 +46,7 @@ window.CHAPTER_DATA[4].questions = [
      before:['Deque<Integer> stack = new ArrayDeque<>();'],
      placeholder:['// TODO','// (addFirst로 10, 20, 30 순서로 넣고, pollFirst로 하나 꺼내 top에 저장)'], rows:4,
      after:['System.out.println(top);','System.out.println(stack.peekFirst());'],
-     expected:'30, 20',
+     expected:'30\n20',
      answer:['stack.addFirst(10);','stack.addFirst(20);','stack.addFirst(30);','int top = stack.pollFirst();'],
      note:'push() = addFirst(), pop() = pollFirst(), peek() = peekFirst() — 모두 같은 동작의 다른 이름입니다.',
      regex:[/addFirst\s*\(\s*10\s*\)/, /addFirst\s*\(\s*20\s*\)/, /addFirst\s*\(\s*30\s*\)/, /int\s+top\s*=\s*stack\.pollFirst\s*\(\s*\)/]},
@@ -57,7 +57,7 @@ window.CHAPTER_DATA[4].questions = [
      before:['Queue<Integer> queue = new LinkedList<>();'],
      placeholder:['// TODO','// (1, 2, 3 순서로 offer 한 뒤, 맨 앞 값을 꺼내 first에 저장)'], rows:4,
      after:['System.out.println(first);','System.out.println(queue);'],
-     expected:'1, [2, 3]',
+     expected:'1\n[2, 3]',
      answer:['queue.offer(1);','queue.offer(2);','queue.offer(3);','int first = queue.poll();'], note:'',
      regex:[/offer\s*\(\s*1\s*\)/, /offer\s*\(\s*2\s*\)/, /offer\s*\(\s*3\s*\)/, /int\s+first\s*=\s*queue\.poll\s*\(\s*\)/]},
 
@@ -66,7 +66,7 @@ window.CHAPTER_DATA[4].questions = [
      before:['Queue<Integer> queue = new LinkedList<>();','queue.offer(5);','queue.offer(6);','queue.offer(7);'],
      placeholder:['int first = /* TODO */;'],
      after:['System.out.println(first);','System.out.println(queue.size());'],
-     expected:'5, 3',
+     expected:'5\n3',
      answer:['int first = queue.peek();'], note:'',
      regex:[/int\s+first\s*=\s*queue\.peek\s*\(\s*\)/]},
 
@@ -105,7 +105,7 @@ window.CHAPTER_DATA[4].questions = [
      before:['Deque<Integer> deque = new ArrayDeque<>();'],
      placeholder:['// TODO','// (addLast로 1, 2를 넣고, addFirst로 0을 넣은 뒤, 맨 앞 값을 꺼내 first에 저장)'], rows:4,
      after:['System.out.println(first);','System.out.println(deque);'],
-     expected:'0, [1, 2]',
+     expected:'0\n[1, 2]',
      answer:['deque.addLast(1);','deque.addLast(2);','deque.addFirst(0);','int first = deque.pollFirst();'], note:'',
      regex:[/addLast\s*\(\s*1\s*\)/, /addLast\s*\(\s*2\s*\)/, /addFirst\s*\(\s*0\s*\)/, /int\s+first\s*=\s*deque\.pollFirst\s*\(\s*\)/]},
 
@@ -114,7 +114,7 @@ window.CHAPTER_DATA[4].questions = [
      before:['Deque<Integer> deque = new ArrayDeque<>();','deque.addLast(1);','deque.addLast(2);','deque.addLast(3);'],
      placeholder:['int last = /* TODO */;'],
      after:['System.out.println(last);','System.out.println(deque);'],
-     expected:'3, [1, 2]',
+     expected:'3\n[1, 2]',
      answer:['int last = deque.pollLast();'], note:'',
      regex:[/int\s+last\s*=\s*deque\.pollLast\s*\(\s*\)/]},
 
@@ -201,7 +201,7 @@ window.CHAPTER_DATA[4].questions = [
      before:['Deque<Integer> stack = new ArrayDeque<>();'],
      placeholder:['// TODO','// (7, 8, 9 순서로 push한 뒤, 맨 위 값을 꺼내 top에 저장)'], rows:4,
      after:['System.out.println(top);','System.out.println(stack);'],
-     expected:'9, [8, 7]',
+     expected:'9\n[8, 7]',
      answer:['stack.push(7);','stack.push(8);','stack.push(9);','int top = stack.pop();'], note:'',
      regex:[/push\s*\(\s*7\s*\)/, /push\s*\(\s*8\s*\)/, /push\s*\(\s*9\s*\)/, /int\s+top\s*=\s*stack\.pop\s*\(\s*\)/]},
 
