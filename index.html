@@ -353,7 +353,8 @@
       }
       .blank {
         width: 100%;
-        resize: vertical;
+        resize: none;
+        overflow: hidden;
         background: #deeaf4;
         border: 1px dashed var(--accent-soft);
         border-radius: 6px;
@@ -1714,7 +1715,7 @@
               : (state.progress[q.id] && state.progress[q.id].input) || "";
           html +=
             '<textarea class="blank" id="ans-input" rows="' +
-            (q.rows || 2) +
+            (q.rows || 5) +
             '" placeholder="여기에 코드를 입력하세요"></textarea>';
           q.after.forEach(function (l) {
             html += '<div class="cl muted">' + esc(l) + "</div>";
@@ -1794,11 +1795,17 @@
           updateServerBadge();
           var ta = document.getElementById("ans-input");
           if (ta) {
+            function autoResize() {
+              ta.style.height = "auto";
+              ta.style.height = ta.scrollHeight + "px";
+            }
             ta.value = savedInput;
+            autoResize();
             pushUndo(q, ta);
             ta.addEventListener("input", function () {
               state.inputs[q.id] = ta.value;
               scheduleUndo(q, ta);
+              autoResize();
             });
             ta.addEventListener("keydown", function (e) {
               handleEditorKeydown(e, ta, q);
