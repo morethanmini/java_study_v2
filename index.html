@@ -111,6 +111,13 @@
         color: #191309;
         font-weight: 700;
       }
+      .ch-btn.ch-done {
+        background: var(--accent-soft);
+        border-color: var(--accent-soft);
+        color: #191309;
+        font-weight: 600;
+        opacity: 0.65;
+      }
 
       #app {
         max-width: 1180px;
@@ -1060,6 +1067,7 @@
           try {
             await store.set(STORAGE_KEY, JSON.stringify(state.progress));
           } catch (e) {}
+          updateChDoneBadges();
         }
         function savePosition() {
           try {
@@ -1282,6 +1290,25 @@
               switchChapter(ch);
             }
           });
+
+        /* ============ ch-done 뱃지 ============ */
+        function updateChDoneBadges() {
+          document.querySelectorAll(".ch-btn[data-ch]").forEach(function (btn) {
+            var ch = parseInt(btn.getAttribute("data-ch"));
+            if (!ch || !CHAPTER_DATA[ch]) return;
+            var chData = CHAPTER_DATA[ch];
+            var progress = {};
+            try {
+              var raw = localStorage.getItem(chData.storageKey);
+              if (raw) progress = JSON.parse(raw).progress || {};
+            } catch (e) {}
+            var qs = chData.questions;
+            var allDone = qs.length > 0 && qs.every(function (q) {
+              return progress[q.id] && progress[q.id].status === 'pass';
+            });
+            btn.classList.toggle('ch-done', allDone);
+          });
+        }
 
         /* ============ 유틸 ============ */
         function esc(s) {
@@ -2096,7 +2123,7 @@
         /* ============ 시작 ============ */
         loadPosition();
         render();
-        loadProgress().then(render);
+        loadProgress().then(function () { render(); updateChDoneBadges(); });
         checkServer();
       })();
     </script>
