@@ -134,43 +134,70 @@
       .ch-btn[data-ch="0"] {
         position: relative;
         overflow: hidden;
+        flex-shrink: 0;
       }
       .ch-btn[data-ch="0"] span.ch-text {
         position: relative;
         z-index: 2;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
       }
-      /* fill 영역: 파도 strip 10px 전까지만 채워 겹침 없음 */
+      .ch-btn[data-ch="0"] .ov-pct {
+        font-size: 10px;
+        font-weight: 700;
+        opacity: 0.8;
+        letter-spacing: 0;
+        color: var(--accent);
+      }
+      /* fill 영역: shimmer + 진행도별 색상, 파도 strip 12px 전까지 */
       .ch-btn[data-ch="0"]::before {
         content: '';
         position: absolute;
         top: 0; left: 0;
         height: 100%;
-        width: max(0%, calc(var(--ch-pct, 0%) - 10px));
-        background: rgba(77, 163, 212, 0.32);
+        width: max(0%, calc(var(--ch-pct, 0%) - 12px));
+        background:
+          linear-gradient(105deg,
+            transparent 30%,
+            rgba(255,255,255,0.18) 50%,
+            transparent 70%
+          ),
+          linear-gradient(to right,
+            color-mix(in srgb, #4DA3D4 var(--ch-pct, 0%), #7ecff7) 0%,
+            color-mix(in srgb, #2376b5 var(--ch-pct, 0%), #4DA3D4) 100%
+          );
+        opacity: 0.55;
         z-index: 0;
         transition: width 0.8s ease;
         pointer-events: none;
+        animation: shimmer 2.4s linear infinite;
+        background-size: 200% 100%, 100% 100%;
       }
-      /* 물결: fill 영역 끝 10px 전부터 시작해 겹침 없이 이어지는 SVG 사인파 */
+      @keyframes shimmer {
+        from { background-position: -100% 0, 0 0; }
+        to   { background-position:  100% 0, 0 0; }
+      }
+      /* 물결: SVG 사인파 타일 수직 스크롤 */
       .ch-btn[data-ch="0"]::after {
         content: '';
         position: absolute;
         top: 0;
-        left: max(0px, calc(var(--ch-pct, 0%) - 10px));
-        width: 20px;
+        left: max(0px, calc(var(--ch-pct, 0%) - 12px));
+        width: 24px;
         height: 100%;
         z-index: 1;
         pointer-events: none;
         transition: left 0.8s ease;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 40'%3E%3Cpath d='M0%2C0 L12%2C0 Q22%2C10 12%2C20 Q2%2C30 12%2C40 L0%2C40 Z' fill='%234DA3D4' fill-opacity='0.35'/%3E%3C/svg%3E");
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 40'%3E%3Cpath d='M0%2C0 L12%2C0 Q22%2C10 12%2C20 Q2%2C30 12%2C40 L0%2C40 Z' fill='%234DA3D4' fill-opacity='0.55'/%3E%3C/svg%3E");
         background-repeat: repeat-y;
         background-size: 24px 40px;
-        width: 24px;
         animation: wave-scroll 0.9s linear infinite;
       }
       @keyframes wave-scroll {
         from { background-position: 0 0; }
-        to   { background-position: 0 32px; }
+        to   { background-position: 0 40px; }
       }
 
       #app {
@@ -991,7 +1018,7 @@
   </head>
   <body>
     <div id="chapter-nav">
-      <button class="ch-btn" data-ch="0"><span class="ch-text">📋 전체 개요</span></button>
+      <button class="ch-btn" data-ch="0"><span class="ch-text">📋 전체 개요<span class="ov-pct"></span></span></button>
       <button class="ch-btn ch-active" data-ch="1"><span class="ch-text">Ch1. 기본 문법</span></button>
       <button class="ch-btn" data-ch="2"><span class="ch-text">Ch2. OOP 기초</span></button>
       <button class="ch-btn" data-ch="3"><span class="ch-text">Ch3. 컬렉션</span></button>
@@ -1441,6 +1468,8 @@
             if (ovBtn) {
               var pct = totalAll > 0 ? Math.round(passedAll / totalAll * 100) : 0;
               ovBtn.style.setProperty('--ch-pct', pct + '%');
+              var pctEl = ovBtn.querySelector('.ov-pct');
+              if (pctEl) pctEl.textContent = pct > 0 ? pct + '%' : '';
             }
           });
         }
