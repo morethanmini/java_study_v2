@@ -893,6 +893,11 @@
           lines.push("import java.io.*;");
           lines.push("import java.util.*;");
           lines.push("import java.util.stream.*;");
+          lines.push("import java.lang.annotation.*;");
+          (q.topLevel || []).forEach(function (l) { lines.push(l); });
+          if (q.userInputAtTopLevel) {
+            userInput.split("\n").forEach(function (l) { lines.push(l); });
+          }
           lines.push("public class Main {");
           (q.classLevel || []).forEach(function (l) {
             // inner class는 static이어야 static context(main/static 메서드)에서 사용 가능
@@ -931,7 +936,7 @@
           (q.before || []).forEach(function (l) {
             lines.push("    " + l);
           });
-          if (!q.userInputAtClassLevel && !q.methodWrapper) {
+          if (!q.userInputAtClassLevel && !q.methodWrapper && !q.userInputAtTopLevel) {
             userInput.split("\n").forEach(function (l) {
               lines.push("    " + l);
             });
