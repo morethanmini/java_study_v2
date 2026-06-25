@@ -894,15 +894,48 @@
           lines.push("import java.util.*;");
           lines.push("import java.util.stream.*;");
           lines.push("public class Main {");
+          (q.classLevel || []).forEach(function (l) {
+            // inner class는 static이어야 static context(main/static 메서드)에서 사용 가능
+            var line = /^\s*class\s/.test(l) ? "static " + l.trim() : l;
+            lines.push("  " + line);
+          });
+          if (q.userInputAtClassLevel) {
+            // 사용자 코드가 클래스 선언 등 class 레벨에 들어가야 하는 경우
+            // inner class가 static context(main)에서 쓰이려면 static이 필요
+            userInput.split("\n").forEach(function (l, i) {
+              if (i === 0 && /^\s*class\s/.test(l)) {
+                lines.push("  static " + l.trim());
+              } else {
+                lines.push("  " + l);
+              }
+            });
+          }
+          if (q.methodWrapper) {
+            // methodWrapper: 배열 중 '~~~'를 기준으로 위는 메서드 시작, 아래는 메서드 끝
+            // 사용자 코드가 class 레벨 메서드 안에 들어가야 하는 경우
+            var hitMarker = false;
+            q.methodWrapper.forEach(function (l) {
+              if (l === "~~~") {
+                hitMarker = true;
+                userInput.split("\n").forEach(function (ul) {
+                  lines.push("    " + ul);
+                });
+              } else {
+                lines.push("  " + l);
+              }
+            });
+          }
           lines.push(
             "  public static void main(String[] args) throws Exception {",
           );
           (q.before || []).forEach(function (l) {
             lines.push("    " + l);
           });
-          userInput.split("\n").forEach(function (l) {
-            lines.push("    " + l);
-          });
+          if (!q.userInputAtClassLevel && !q.methodWrapper) {
+            userInput.split("\n").forEach(function (l) {
+              lines.push("    " + l);
+            });
+          }
           (q.after || []).forEach(function (l) {
             lines.push("    " + l);
           });
