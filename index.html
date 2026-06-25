@@ -151,53 +151,28 @@
         letter-spacing: 0;
         color: var(--accent);
       }
-      /* fill 영역: shimmer + 진행도별 색상, 파도 strip 12px 전까지 */
+      /* SVG가 fill+wave를 담당 — shimmer만 ::before로 오버레이 */
+      .ch-btn[data-ch="0"] .ov-wave-svg {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        pointer-events: none;
+        z-index: 0;
+      }
       .ch-btn[data-ch="0"]::before {
         content: '';
         position: absolute;
         top: 0; left: 0;
-        height: 100%;
-        width: max(0%, calc(var(--ch-pct, 0%) - 12px));
-        background:
-          linear-gradient(105deg,
-            transparent 30%,
-            rgba(255,255,255,0.18) 50%,
-            transparent 70%
-          ),
-          linear-gradient(to right,
-            color-mix(in srgb, #4DA3D4 var(--ch-pct, 0%), #7ecff7) 0%,
-            color-mix(in srgb, #2376b5 var(--ch-pct, 0%), #4DA3D4) 100%
-          );
-        opacity: 0.55;
-        z-index: 0;
-        transition: width 0.8s ease;
-        pointer-events: none;
-        animation: shimmer 2.4s linear infinite;
-        background-size: 200% 100%, 100% 100%;
-      }
-      @keyframes shimmer {
-        from { background-position: -100% 0, 0 0; }
-        to   { background-position:  100% 0, 0 0; }
-      }
-      /* 물결: SVG 사인파 타일 수직 스크롤 */
-      .ch-btn[data-ch="0"]::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: max(0px, calc(var(--ch-pct, 0%) - 12px));
-        width: 24px;
-        height: 100%;
+        width: 100%; height: 100%;
+        background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
+        background-size: 200% 100%;
         z-index: 1;
         pointer-events: none;
-        transition: left 0.8s ease;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 40'%3E%3Cpath d='M0%2C0 L12%2C0 Q22%2C10 12%2C20 Q2%2C30 12%2C40 L0%2C40 Z' fill='%234DA3D4' fill-opacity='0.55'/%3E%3C/svg%3E");
-        background-repeat: repeat-y;
-        background-size: 24px 40px;
-        animation: wave-scroll 0.9s linear infinite;
+        animation: shimmer 2.4s linear infinite;
       }
-      @keyframes wave-scroll {
-        from { background-position: 0 0; }
-        to   { background-position: 0 40px; }
+      @keyframes shimmer {
+        from { background-position: -100% 0; }
+        to   { background-position:  100% 0; }
       }
 
       #app {
@@ -1154,6 +1129,37 @@
         var QUESTIONS = CHAPTER_DATA[1].questions;
         var STORAGE_KEY = CHAPTER_DATA[1].storageKey;
         var BOOKMARK_KEY = CHAPTER_DATA[1].bookmarkKey;
+
+        /* ============ 전체개요 버튼 SVG 물결 (동기 초기화) ============ */
+        (function () {
+          var btn = document.querySelector('.ch-btn[data-ch="0"]');
+          if (!btn) return;
+          var ns = 'http://www.w3.org/2000/svg';
+          var svg = document.createElementNS(ns, 'svg');
+          svg.setAttribute('class', 'ov-wave-svg');
+          svg.setAttribute('preserveAspectRatio', 'none');
+          var wavePath = document.createElementNS(ns, 'path');
+          wavePath.setAttribute('fill', 'rgba(77,163,212,0.45)');
+          svg.appendChild(wavePath);
+          btn.insertBefore(svg, btn.firstChild);
+          var phase = 0;
+          function tick() {
+            var W = btn.offsetWidth, H = btn.offsetHeight;
+            var pctStr = btn.style.getPropertyValue('--ch-pct');
+            var fillX = W * (parseFloat(pctStr) || 0) / 100;
+            var amp = 5, period = H * 1.6, steps = 30;
+            var d = 'M0,0 L' + fillX + ',0 ';
+            for (var i = 0; i <= steps; i++) {
+              var y = (i / steps) * H;
+              var x = fillX + Math.sin((y / period) * Math.PI * 2 + phase) * amp;
+              d += 'L' + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+            }
+            d += 'L0,' + H + ' Z';
+            wavePath.setAttribute('d', d);
+            phase -= 0.04;
+          }
+          setInterval(tick, 16);
+        })();
 
         /* ============ 앱 상태 ============ */
         var state = {
