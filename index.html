@@ -53,10 +53,41 @@
         background: var(--surface);
         border-bottom: 1px solid var(--border);
         display: flex;
+        align-items: center;
         gap: 4px;
         padding: 10px 20px;
         overflow-x: auto;
       }
+      .ch-reset-btn {
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        cursor: pointer;
+        transition: 0.15s;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .ch-reset-btn:hover { border-color: var(--fail); color: var(--fail); }
+      .lv-reset-btn {
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--muted);
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 5px 10px;
+        cursor: pointer;
+        transition: 0.15s;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .lv-reset-btn:hover { border-color: var(--fail); color: var(--fail); }
       .ch-btn {
         font-family: var(--mono);
         font-size: 12px;
@@ -845,6 +876,7 @@
       <button class="ch-btn" data-ch="3">Ch3. 컬렉션</button>
       <button class="ch-btn" data-ch="4">Ch4. 자료구조 응용</button>
       <button class="ch-btn" data-ch="5">Ch5. 람다·Stream·IO</button>
+      <button class="ch-reset-btn" data-action="reset-all">전체 초기화</button>
     </div>
     <div id="level-nav"></div>
 
@@ -1234,6 +1266,10 @@
         document
           .getElementById("chapter-nav")
           .addEventListener("click", function (e) {
+            if (e.target.closest("[data-action='reset-all']")) {
+              doResetAll();
+              return;
+            }
             var btn = e.target.closest(".ch-btn");
             if (!btn) return;
             var ch = parseInt(btn.getAttribute("data-ch"));
@@ -1639,7 +1675,7 @@
             Math.round((passed / QUESTIONS.length) * 100) +
             '%"></div></div>';
           html +=
-            '</div><button class="reset-btn" data-action="reset">진행 초기화</button></div></div>';
+            '</div><button class="reset-btn" data-action="reset-level">현재 장 초기화</button></div></div>';
 
           /* --- level nav bar --- */
           var failCount = failedQuestions().length,
@@ -1681,6 +1717,7 @@
             '" data-action="toggle-bookmark-mode">🔖 즐겨찾기 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
             bmCount +
             "</span></button>";
+          lhtml += '<button class="lv-reset-btn" data-action="reset-chapter">장 전체 초기화</button>';
           lnav.innerHTML = lhtml;
 
           html += '<div class="layout">';
@@ -1945,18 +1982,44 @@
           saveProgress();
           render();
         }
-        function doReset() {
-          if (
-            window.confirm("모든 진행 상황을 초기화할까요? 되돌릴 수 없습니다.")
-          ) {
-            state.progress = {};
-            state.inputs = {};
-            state.revealed = {};
-            state.log = [];
-            state.reviewMode = false;
-            saveProgress();
-            render();
-          }
+        function doResetLevel() {
+          var lvName = LEVELS[state.level] ? LEVELS[state.level].name : '현재 장';
+          if (!window.confirm('"' + lvName + '" 문제를 모두 초기화할까요? 되돌릴 수 없습니다.')) return;
+          questionsOfLevel(state.level).forEach(function (q) {
+            delete state.progress[q.id];
+            delete state.inputs[q.id];
+            delete state.revealed[q.id];
+          });
+          state.index = 0;
+          state.reviewMode = false;
+          saveProgress();
+          render();
+        }
+        function doResetChapter() {
+          var chName = CHAPTER_DATA[currentCh] ? CHAPTER_DATA[currentCh].brandTitle : '현재 챕터';
+          if (!window.confirm('"' + chName + '" 전체 장을 초기화할까요? 되돌릴 수 없습니다.')) return;
+          state.progress = {};
+          state.inputs = {};
+          state.revealed = {};
+          state.log = [];
+          state.index = 0;
+          state.reviewMode = false;
+          saveProgress();
+          render();
+        }
+        function doResetAll() {
+          if (!window.confirm('모든 챕터의 진행 상황을 초기화할까요? 되돌릴 수 없습니다.')) return;
+          Object.values(CHAPTER_DATA).forEach(function (chData) {
+            if (chData.storageKey) localStorage.removeItem(chData.storageKey);
+          });
+          state.progress = {};
+          state.inputs = {};
+          state.revealed = {};
+          state.log = [];
+          state.index = 0;
+          state.reviewMode = false;
+          saveProgress();
+          render();
         }
         function focusAnswerInput() {
           var ta = document.getElementById("ans-input");
@@ -1979,7 +2042,8 @@
           else if (action === "toggle-bookmark")
             doToggleBookmark(el.getAttribute("data-qid"));
           else if (action === "grade") doGrade();
-          else if (action === "reset") doReset();
+          else if (action === "reset-level") doResetLevel();
+          else if (action === "reset-chapter") doResetChapter();
           else if (action === "go-chapter") {
             var ch = parseInt(el.getAttribute("data-ch"), 10);
             isOverview = false;
