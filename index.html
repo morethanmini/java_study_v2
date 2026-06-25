@@ -2207,7 +2207,8 @@
         function doResetAll() {
           if (!window.confirm('모든 챕터의 진행 상황을 초기화할까요? 되돌릴 수 없습니다.')) return;
           Object.values(CHAPTER_DATA).forEach(function (chData) {
-            if (chData.storageKey) localStorage.removeItem(chData.storageKey);
+            if (chData.storageKey) store.set(chData.storageKey, '{}');
+            if (chData.bookmarkKey) store.set(chData.bookmarkKey, '{}');
           });
           state.progress = {};
           state.inputs = {};
