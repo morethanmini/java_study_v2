@@ -53,7 +53,7 @@ window.CHAPTER_DATA[2].questions = [
      answer:['people[0] = new Person("철수");','people[1] = new Person("영희");'], note:'',
      regex:[/people\[\s*0\s*\]\s*=\s*new\s*Person\s*\(\s*"철수"\s*\)/, /people\[\s*1\s*\]\s*=\s*new\s*Person\s*\(\s*"영희"\s*\)/]},
 
-    /* ---------------- 2장 상속 ---------------- */,
+    /* ---------------- 2장 상속 ---------------- */
     {id:'IH1', level:1, title:'extends로 상속',
      concept:'한 클래스가 다른 클래스의 필드와 메서드를 물려받게 하려면 extends를 씁니다. 부모(상위) 클래스의 멤버를 자식(하위) 클래스에서도 그대로 쓸 수 있습니다.',
      before:['class Animal {','    String name = "동물";','    void sound() { System.out.println("소리"); }','}'],
@@ -113,7 +113,7 @@ window.CHAPTER_DATA[2].questions = [
      note:'자식 클래스에서 같은 시그니처로 breathe()를 다시 정의하려고 하면 컴파일 에러가 납니다.',
      regex:[/final\s+void\s+breathe\s*\(\s*\)\s*\{/, /숨쉬기/]},
 
-    /* ---------------- 3장 인터페이스 ---------------- */,
+    /* ---------------- 3장 인터페이스 ---------------- */
     {id:'IF1', level:2, title:'interface 정의와 구현',
      concept:'인터페이스는 메서드의 이름과 시그니처만 정의하고, 본문(구현)은 갖지 않습니다. 클래스가 implements로 인터페이스를 구현할 때는, 선언된 모든 메서드를 반드시 직접 작성해야 합니다.',
      before:['interface Flyable {','    void fly();','}','class Bird implements Flyable {'],
@@ -167,7 +167,7 @@ window.CHAPTER_DATA[2].questions = [
      answer:['    public int compareTo(Person other) {','        return this.age - other.age;','    }'], note:'',
      regex:[/public\s+int\s+compareTo\s*\(\s*Person\s+\w+\s*\)/, /this\.age\s*-\s*\w+\.age|Integer\.compare\s*\(\s*this\.age\s*,\s*\w+\.age\s*\)/]},
 
-    /* ---------------- 4장 추상화 · 캡슐화 ---------------- */,
+    /* ---------------- 4장 추상화 · 캡슐화 ---------------- */
     {id:'AC1', level:3, title:'private 필드와 getter',
      concept:'필드를 private으로 막아두면 클래스 바깥에서 직접 접근할 수 없습니다. 대신 값을 읽을 수 있는 getter 메서드를 공개(public)로 따로 제공하는 게 캡슐화(encapsulation)의 기본 패턴입니다.',
      before:['class Account {','    private int balance = 1000;'],
@@ -220,7 +220,7 @@ window.CHAPTER_DATA[2].questions = [
      note:'System.out.println(객체)는 내부적으로 객체의 toString()을 자동으로 호출합니다.',
      regex:[/public\s+String\s+toString\s*\(\s*\)\s*\{/, /return\s+"\("\s*\+\s*x\s*\+\s*",\s*"\s*\+\s*y\s*\+\s*"\)"/]},
 
-    /* ---------------- 5장 람다 표현식 ---------------- */,
+    /* ---------------- 5장 람다 표현식 ---------------- */
     {id:'V1', level:4, title:'🔁 변형: 생성자 (다른 데이터)',
      concept:'CL1과 같은 패턴입니다. 생성자에서 this로 필드를 초기화합니다.',
      before:['class Book {','    String title;','    int pages;'],

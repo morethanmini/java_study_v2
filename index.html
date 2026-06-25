@@ -123,6 +123,55 @@
         color: #191309;
         font-weight: 700;
       }
+      /* 전체 개요 버튼: 활성 상태엔 테두리만 */
+      .ch-btn[data-ch="0"].ch-active {
+        background: transparent;
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 700;
+      }
+      /* 전체 개요 버튼 liquid fill wave */
+      .ch-btn[data-ch="0"] {
+        position: relative;
+        overflow: hidden;
+      }
+      .ch-btn[data-ch="0"] span.ch-text {
+        position: relative;
+        z-index: 2;
+      }
+      /* fill 영역: 파도 strip 10px 전까지만 채워 겹침 없음 */
+      .ch-btn[data-ch="0"]::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        height: 100%;
+        width: max(0%, calc(var(--ch-pct, 0%) - 10px));
+        background: rgba(77, 163, 212, 0.32);
+        z-index: 0;
+        transition: width 0.8s ease;
+        pointer-events: none;
+      }
+      /* 물결: fill 영역 끝 10px 전부터 시작해 겹침 없이 이어지는 SVG 사인파 */
+      .ch-btn[data-ch="0"]::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: max(0px, calc(var(--ch-pct, 0%) - 10px));
+        width: 20px;
+        height: 100%;
+        z-index: 1;
+        pointer-events: none;
+        transition: left 0.8s ease;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 40'%3E%3Cpath d='M0%2C0 L12%2C0 Q22%2C10 12%2C20 Q2%2C30 12%2C40 L0%2C40 Z' fill='%234DA3D4' fill-opacity='0.35'/%3E%3C/svg%3E");
+        background-repeat: repeat-y;
+        background-size: 24px 40px;
+        width: 24px;
+        animation: wave-scroll 0.9s linear infinite;
+      }
+      @keyframes wave-scroll {
+        from { background-position: 0 0; }
+        to   { background-position: 0 32px; }
+      }
 
       #app {
         max-width: 1180px;
@@ -617,6 +666,66 @@
         font-size: 13px;
       }
 
+      /* ---------- overview wave bar ---------- */
+      .ov-wave-wrap {
+        margin: 24px 0 28px;
+      }
+      .ov-wave-label {
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .ov-wave-label b { color: var(--text); font-weight: 600; }
+      .ov-wave-track {
+        position: relative;
+        height: 28px;
+        border-radius: 99px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        overflow: hidden;
+      }
+      .ov-wave-fill {
+        position: absolute;
+        top: 0; left: 0;
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), var(--accent-soft));
+        border-radius: 99px;
+        transition: width 0.6s ease;
+        overflow: hidden;
+      }
+      /* 물결: fill 위에 SVG 패턴을 clip처럼 씌움 */
+      .ov-wave-fill::after {
+        content: '';
+        position: absolute;
+        right: -60px;
+        top: -10px;
+        width: 120px;
+        height: 48px;
+        background: var(--bg);
+        border-radius: 40%;
+        animation: wave 1.6s ease-in-out infinite;
+      }
+      @keyframes wave {
+        0%   { transform: translateY(0)   rotate(0deg); }
+        50%  { transform: translateY(-6px) rotate(180deg); }
+        100% { transform: translateY(0)   rotate(360deg); }
+      }
+      .ov-wave-pct {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text);
+        mix-blend-mode: difference;
+        pointer-events: none;
+      }
+
       /* ---------- overview ---------- */
       .ov-grid {
         display: grid;
@@ -882,12 +991,12 @@
   </head>
   <body>
     <div id="chapter-nav">
-      <button class="ch-btn" data-ch="0">📋 전체 개요</button>
-      <button class="ch-btn ch-active" data-ch="1">Ch1. 기본 문법</button>
-      <button class="ch-btn" data-ch="2">Ch2. OOP 기초</button>
-      <button class="ch-btn" data-ch="3">Ch3. 컬렉션</button>
-      <button class="ch-btn" data-ch="4">Ch4. 자료구조 응용</button>
-      <button class="ch-btn" data-ch="5">Ch5. 람다·Stream·IO</button>
+      <button class="ch-btn" data-ch="0"><span class="ch-text">📋 전체 개요</span></button>
+      <button class="ch-btn ch-active" data-ch="1"><span class="ch-text">Ch1. 기본 문법</span></button>
+      <button class="ch-btn" data-ch="2"><span class="ch-text">Ch2. OOP 기초</span></button>
+      <button class="ch-btn" data-ch="3"><span class="ch-text">Ch3. 컬렉션</span></button>
+      <button class="ch-btn" data-ch="4"><span class="ch-text">Ch4. 자료구조 응용</span></button>
+      <button class="ch-btn" data-ch="5"><span class="ch-text">Ch5. 람다·Stream·IO</span></button>
       <button class="ch-reset-btn" data-action="reset-all">전체 초기화</button>
     </div>
     <div id="level-nav"></div>
@@ -1273,7 +1382,7 @@
             );
           });
           render();
-          loadProgress().then(render);
+          loadProgress().then(function () { render(); updateChDoneBadges(); });
         }
 
         document
@@ -1298,20 +1407,41 @@
 
         /* ============ ch-done 뱃지 ============ */
         function updateChDoneBadges() {
-          document.querySelectorAll(".ch-btn[data-ch]").forEach(function (btn) {
+          var buttons = Array.from(document.querySelectorAll(".ch-btn[data-ch]")).filter(function (btn) {
             var ch = parseInt(btn.getAttribute("data-ch"));
-            if (!ch || !CHAPTER_DATA[ch]) return;
-            var chData = CHAPTER_DATA[ch];
-            var progress = {};
-            try {
-              var raw = localStorage.getItem(chData.storageKey);
-              if (raw) progress = JSON.parse(raw) || {};
-            } catch (e) {}
-            var qs = chData.questions;
-            var allDone = qs.length > 0 && qs.every(function (q) {
-              return progress[q.id] && progress[q.id].status === 'pass';
+            return ch && CHAPTER_DATA[ch];
+          });
+          var promises = buttons.map(function (btn) {
+            var ch = parseInt(btn.getAttribute("data-ch"));
+            return store.get(CHAPTER_DATA[ch].storageKey).then(function (raw) {
+              var progress = {};
+              try { if (raw) progress = JSON.parse(raw) || {}; } catch (e) { console.error('[ch-done] ch'+ch+' JSON parse error', e); }
+              var qs = CHAPTER_DATA[ch].questions;
+              var passed = qs.filter(function (q) {
+                return progress[q.id] && progress[q.id].status === 'pass';
+              }).length;
+              if (ch === 2) {
+                var missing = qs.filter(function(q){ return !(progress[q.id] && progress[q.id].status === 'pass'); }).map(function(q){ return q.id; });
+                console.log('[ch-done] ch2 미매칭 IDs:', JSON.stringify(missing));
+              }
+              console.log('[ch-done] ch' + ch + ': qs=' + qs.length + ' passed=' + passed + ' raw존재=' + !!raw);
+              return { btn: btn, ch: ch, qs: qs.length, passed: passed };
             });
-            btn.classList.toggle('ch-done', allDone);
+          });
+          Promise.all(promises).then(function (results) {
+            var totalAll = 0, passedAll = 0;
+            results.forEach(function (r) {
+              totalAll += r.qs;
+              passedAll += r.passed;
+              var done = r.qs > 0 && r.passed === r.qs;
+              r.btn.classList.toggle('ch-done', done);
+              console.log('[ch-done] ch' + r.ch + ' toggle ch-done=' + done + ' 현재클래스:', r.btn.className);
+            });
+            var ovBtn = document.querySelector('.ch-btn[data-ch="0"]');
+            if (ovBtn) {
+              var pct = totalAll > 0 ? Math.round(passedAll / totalAll * 100) : 0;
+              ovBtn.style.setProperty('--ch-pct', pct + '%');
+            }
           });
         }
 
