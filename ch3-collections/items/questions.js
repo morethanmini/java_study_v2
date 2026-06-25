@@ -71,7 +71,7 @@ window.CHAPTER_DATA[3].questions = [
      regex:[/map\.put\s*\(\s*"apple"\s*,\s*5\s*\)\s*;?/]},
 {id:'Q20', level:1, title:'Map에서 key 삭제',
      concept:'맵에서 특정 키를 지우는 연산은, 그 키가 원래 없었어도 예외 없이 조용히 넘어갑니다.',
-     before:['// map에 "apple"=5가 들어있는 상태'], placeholder:['// TODO'],
+     before:['Map<String, Integer> map = new HashMap<>();', 'map.put("apple", 5);'], placeholder:['// TODO'],
      after:['System.out.println(map.size());'],
      expected:'0', answer:['map.remove("apple");'], note:'',
      regex:[/map\.remove\s*\(\s*"apple"\s*\)\s*;?/]},
