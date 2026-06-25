@@ -1300,7 +1300,7 @@
             var progress = {};
             try {
               var raw = localStorage.getItem(chData.storageKey);
-              if (raw) progress = JSON.parse(raw).progress || {};
+              if (raw) progress = JSON.parse(raw) || {};
             } catch (e) {}
             var qs = chData.questions;
             var allDone = qs.length > 0 && qs.every(function (q) {
