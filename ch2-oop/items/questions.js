@@ -437,6 +437,7 @@ window.CHAPTER_DATA[2].questions = [
 
   {id:'GEN3', level:8, title:'상한 경계 와일드카드 (? extends)',
    concept:'<? extends 타입>은 해당 타입이거나 그 하위 타입만 허용하도록 제한합니다. 숫자처럼 특정 기능이 있는 타입만 받고 싶을 때 씁니다. 읽기는 가능하지만 쓰기(add)는 불가합니다.',
+   userInputAtClassLevel: true,
    before:['// TODO: Number 또는 그 하위 타입(Integer, Double 등)의 List를 받아 합계를 반환하는', '//       static double sum(List<? extends Number> list) 메서드 작성'], rows:5,
    placeholder:['// (메서드 작성)'],
    after:['System.out.println(sum(Arrays.asList(1, 2, 3)));'],
@@ -447,9 +448,10 @@ window.CHAPTER_DATA[2].questions = [
 
   {id:'GEN4', level:8, title:'하한 경계 와일드카드 (? super) — PECS',
    concept:'<? super 타입>은 해당 타입이거나 그 상위 타입만 허용합니다. 주로 컬렉션에 값을 추가(쓰기)할 때 씁니다. PECS 원칙: 꺼낼(produce) 때 → extends, 넣을(consume) 때 → super.',
-   before:['static void addNumbers(List<? super Integer> list) {'],
+   methodWrapper:['static void addNumbers(List<? super Integer> list) {', '~~~', '}'],
+   before:['// static void addNumbers(List<? super Integer> list) {'],
    placeholder:['    // TODO: list에 1, 2, 3을 차례로 add'], rows:3,
-   after:['}', 'List<Number> nums = new ArrayList<>();', 'addNumbers(nums);', 'System.out.println(nums);'],
+   after:['List<Number> nums = new ArrayList<>();', 'addNumbers(nums);', 'System.out.println(nums);'],
    expected:'[1, 2, 3]',
    answer:['    list.add(1);', '    list.add(2);', '    list.add(3);'],
    note:'? super Integer는 Integer의 상위 타입(Integer, Number, Object) List를 모두 받을 수 있습니다.',
