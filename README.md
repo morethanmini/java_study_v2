@@ -23,6 +23,18 @@
 node server.js
 ```
 
+서버 상태 확인:
+
+```bash
+lsof -i :3000
+```
+
+서버 종료:
+
+```bash
+pkill -f "server.js"
+```
+
 ## 채점 방식
 
 코드 제출 시 로컬 서버(`http://localhost:3000/run`)로 전송하고, 서버에서 임시 파일을 생성해 `javac` → `java` 순으로 실행합니다. 실제 출력값과 기대 출력값을 비교하여 채점합니다.
