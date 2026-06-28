@@ -567,7 +567,7 @@
     qNavHtml += '</div>';
 
     html += '<div class="topbar-bottom">';
-    html += '<div class="kbd-hint"><div><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 · <kbd>R</kbd> 정답 보기</div></div>';
+    html += '<div class="kbd-hint"><div><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 · <kbd>R</kbd> 정답 보기</div><div><kbd>Esc</kbd> 입력창 빠져나오기 · <kbd>Enter</kbd> 입력창 포커스</div></div>';
     html += '<div class="top-qnav">' + qNavHtml + '</div>';
     html += '</div></div>';
 
