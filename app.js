@@ -956,8 +956,8 @@
         var dst = state.progress[dq.id] && state.progress[dq.id].status;
         var dcls = 'dot' +
           (di === state.index ? ' current' : '') +
-          (dst === 'pass' ? ' pass' : dst === 'fail' ? ' fail' : '') +
-          (state.bookmarks[dq.id] ? ' bookmarked' : '');
+          (!state.bookmarkMode && dst === 'pass' ? ' pass' : !state.bookmarkMode && dst === 'fail' ? ' fail' : '') +
+          (!state.bookmarkMode && state.bookmarks[dq.id] ? ' bookmarked' : '');
         qNavHtml += '<div class="' + dcls + '" data-action="jump" data-index="' + di +
           '" title="' + esc(dq.id) + '">' + (di + 1) + '</div>';
       } else {
@@ -1053,11 +1053,18 @@
     html += '<div class="layout">';
 
     html += '<div class="content"><div class="card">';
-    var eyebrow = state.reviewMode
-      ? "📌 오답 노트 (복습 모드)"
-      : state.bookmarkMode
-        ? "🔖 즐겨찾기 모드"
-        : esc(LEVELS[state.level].name);
+    var eyebrow;
+    if (state.reviewMode) {
+      eyebrow = "📌 오답 노트 (복습 모드)";
+    } else if (state.bookmarkMode) {
+      var lvIdx = questionsOfLevel(q.level).indexOf(q) + 1;
+      var lvName2 = LEVELS[q.level] ? LEVELS[q.level].name : '';
+      var lvChNum = lvName2.match(/^(\d+)장/);
+      var lvLabel = lvChNum ? (lvChNum[1] + "장") : lvName2;
+      eyebrow = "🔖 즐겨찾기 · " + lvLabel + " " + lvIdx + "번";
+    } else {
+      eyebrow = esc(LEVELS[state.level].name);
+    }
     html +=
       '<div class="card-eyebrow">' +
       eyebrow +
@@ -1065,8 +1072,7 @@
       (state.index + 1) +
       " / " +
       levelQs.length +
-      " · " +
-      esc(q.id) +
+      (state.bookmarkMode ? "" : " · " + esc(q.id)) +
       "</div>";
     html +=
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
@@ -1147,20 +1153,44 @@
     }
     var outputHtml = "";
     if (lastOutput !== null && lastOutput !== undefined) {
-      var userInputStart2 = getUserInputStartLine(q);
-      var displayOutput = lastOutput.replace(/^⚠ /, '').replace(/\/[^\s]*Main\.java:(\d+):/g, function (_, n) {
-        var fullLine = parseInt(n, 10);
-        var rel = fullLine - userInputStart2 + 1;
-        return '[' + (rel > 0 ? '내 코드 ' + rel + '번째 줄' : '전체 ' + fullLine + '번째 줄') + ']';
-      });
       var isErrOutput = lastOutput.indexOf('⚠') === 0;
-      outputHtml =
-        '<div class="output-box">' +
-        '<span class="output-label">출력</span>' +
-        '<pre class="output-val' + (isErrOutput ? ' output-val-error' : '') + '">' +
-        esc(displayOutput) +
-        "</pre>" +
-        "</div>";
+      if (isErrOutput) {
+        var userInputStart2 = getUserInputStartLine(q);
+        var displayOutput = lastOutput.replace(/^⚠ /, '').replace(/\/[^\s]*Main\.java:(\d+):/g, function (_, n) {
+          var fullLine = parseInt(n, 10);
+          var rel = fullLine - userInputStart2 + 1;
+          return '[' + (rel > 0 ? '내 코드 ' + rel + '번째 줄' : '전체 ' + fullLine + '번째 줄') + ']';
+        });
+        outputHtml =
+          '<div class="output-box">' +
+          '<span class="output-label">출력</span>' +
+          '<pre class="output-val output-val-error">' + esc(displayOutput) + '</pre>' +
+          '</div>';
+      } else {
+        var actualLines = lastOutput.split('\n');
+        var expectedLines = String(q.expected).trim().split('\n');
+        var maxLen = Math.max(actualLines.length, expectedLines.length);
+        var diffRows = '';
+        for (var di = 0; di < maxLen; di++) {
+          var aLine = actualLines[di] !== undefined ? actualLines[di] : '';
+          var eLine = expectedLines[di] !== undefined ? expectedLines[di] : '';
+          var match = aLine === eLine;
+          var rowCls = match ? 'diff-row diff-match' : 'diff-row diff-mismatch';
+          diffRows +=
+            '<div class="' + rowCls + '">' +
+            '<span class="diff-cell diff-expected">' + esc(eLine) + '</span>' +
+            '<span class="diff-cell diff-actual">' + esc(aLine) + '</span>' +
+            '</div>';
+        }
+        outputHtml =
+          '<div class="output-box output-box-diff">' +
+          '<div class="diff-header">' +
+          '<span class="output-label">기대 출력</span>' +
+          '<span class="output-label">실제 출력</span>' +
+          '</div>' +
+          '<div class="diff-body">' + diffRows + '</div>' +
+          '</div>';
+      }
     }
     html +=
       '<div class="actions"><button class="btn btn-grade" data-action="grade">채점</button>';
