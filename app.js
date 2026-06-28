@@ -132,7 +132,9 @@
     function tick() {
       var W = btn.offsetWidth, H = btn.offsetHeight;
       var pctStr = btn.style.getPropertyValue('--ch-pct');
-      var fillX = W * (parseFloat(pctStr) || 0) / 100;
+      var pctVal = parseFloat(pctStr) || 0;
+      if (pctVal === 0) { wavePath.setAttribute('d', ''); return; }
+      var fillX = W * pctVal / 100;
       var amp = 5, period = H * 1.6, steps = 30;
       var d = 'M0,0 L' + fillX + ',0 ';
       for (var i = 0; i <= steps; i++) {
@@ -511,10 +513,10 @@
       });
       var ovBtn = document.querySelector('.ch-btn[data-ch="0"]');
       if (ovBtn) {
-        var pct = totalAll > 0 ? Math.round(passedAll / totalAll * 100) : 0;
+        var pct = totalAll > 0 ? Math.round(passedAll / totalAll * 1000) / 10 : 0;
         ovBtn.style.setProperty('--ch-pct', pct + '%');
         var pctEl = ovBtn.querySelector('.ov-pct');
-        if (pctEl) pctEl.textContent = pct > 0 ? pct + '%' : '';
+        if (pctEl) pctEl.textContent = pct > 0 ? pct.toFixed(1) + '%' : '';
       }
     });
   }
