@@ -1,0 +1,1411 @@
+(function () {
+  /* ============ 현재 챕터 상태 ============ */
+  var currentCh = 1;
+  var chCollapsed = false;
+  var SERVER_URL = "http://localhost:3000/run";
+  var serverAvailable = false;
+
+  function checkServer() {
+    fetch(SERVER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: 'public class Main { public static void main(String[] args) { System.out.println("ok"); } }',
+      }),
+      signal: AbortSignal.timeout(2000),
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        serverAvailable = d.output === "ok";
+        updateServerBadge();
+      })
+      .catch(function () {
+        serverAvailable = false;
+        updateServerBadge();
+      });
+  }
+
+  function updateServerBadge() {
+    var badge = document.getElementById("server-badge");
+    if (!badge) return;
+    badge.textContent = serverAvailable
+      ? "● 실행 채점"
+      : "● regex 채점 (서버 꺼짐)";
+    badge.style.color = serverAvailable ? "#4caf50" : "#aaa";
+  }
+
+  function buildJavaCode(q, userInput) {
+    var lines = [];
+    lines.push("import java.io.*;");
+    lines.push("import java.util.*;");
+    lines.push("import java.util.stream.*;");
+    lines.push("import java.lang.annotation.*;");
+    (q.topLevel || []).forEach(function (l) { lines.push(l); });
+    if (q.userInputAtTopLevel) {
+      userInput.split("\n").forEach(function (l) { lines.push(l); });
+    }
+    lines.push("public class Main {");
+    (q.classLevel || []).forEach(function (l) {
+      var line = /^\s*class\s/.test(l) ? "static " + l.trim() : l;
+      lines.push("  " + line);
+    });
+    if (q.userInputAtClassLevel) {
+      userInput.split("\n").forEach(function (l, i) {
+        if (i === 0 && /^\s*class\s/.test(l)) {
+          lines.push("  static " + l.trim());
+        } else {
+          lines.push("  " + l);
+        }
+      });
+    }
+    if (q.methodWrapper) {
+      q.methodWrapper.forEach(function (l) {
+        if (l === "~~~") {
+          userInput.split("\n").forEach(function (ul) {
+            lines.push("    " + ul);
+          });
+        } else {
+          lines.push("  " + l);
+        }
+      });
+    }
+    lines.push(
+      "  public static void main(String[] args) throws Exception {",
+    );
+    (q.before || []).forEach(function (l) {
+      lines.push("    " + l);
+    });
+    if (!q.userInputAtClassLevel && !q.methodWrapper && !q.userInputAtTopLevel) {
+      userInput.split("\n").forEach(function (l) {
+        lines.push("    " + l);
+      });
+    }
+    (q.after || []).forEach(function (l) {
+      lines.push("    " + l);
+    });
+    lines.push("  }");
+    lines.push("}");
+    return lines.join("\n");
+  }
+
+  function gradeByExecution(q, input) {
+    return fetch(SERVER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: buildJavaCode(q, input) }),
+      signal: AbortSignal.timeout(5000),
+    })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        var out = d.output ? d.output.trim() : "";
+        var err = d.error ? d.error.trim() : "";
+        if (!out && err)
+          return { pass: false, output: "⚠ " + err.split("\n")[0] };
+        return { pass: out === String(q.expected).trim(), output: out };
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+  var LEVELS = CHAPTER_DATA[1].levels;
+  var QUESTIONS = CHAPTER_DATA[1].questions;
+  var STORAGE_KEY = CHAPTER_DATA[1].storageKey;
+  var BOOKMARK_KEY = CHAPTER_DATA[1].bookmarkKey;
+
+  /* ============ 전체개요 버튼 SVG 물결 (동기 초기화) ============ */
+  (function () {
+    var btn = document.querySelector('.ch-btn[data-ch="0"]');
+    if (!btn) return;
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'ov-wave-svg');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    var wavePath = document.createElementNS(ns, 'path');
+    wavePath.setAttribute('fill', 'rgba(77,163,212,0.45)');
+    svg.appendChild(wavePath);
+    btn.insertBefore(svg, btn.firstChild);
+    var phase = 0;
+    function tick() {
+      var W = btn.offsetWidth, H = btn.offsetHeight;
+      var pctStr = btn.style.getPropertyValue('--ch-pct');
+      var fillX = W * (parseFloat(pctStr) || 0) / 100;
+      var amp = 5, period = H * 1.6, steps = 30;
+      var d = 'M0,0 L' + fillX + ',0 ';
+      for (var i = 0; i <= steps; i++) {
+        var y = (i / steps) * H;
+        var x = fillX + Math.sin((y / period) * Math.PI * 2 + phase) * amp;
+        d += 'L' + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+      }
+      d += 'L0,' + H + ' Z';
+      wavePath.setAttribute('d', d);
+      phase -= 0.04;
+    }
+    setInterval(tick, 16);
+  })();
+
+  /* ============ 앱 상태 ============ */
+  var state = {
+    loaded: false,
+    progress: {},
+    inputs: {},
+    revealed: {},
+    bookmarks: {},
+    level: 0,
+    index: 0,
+    log: [],
+    reviewMode: false,
+    bookmarkMode: false,
+  };
+
+  /* ============ 저장소 ============ */
+  var store = {
+    get: function (key) {
+      if (window.storage && window.storage.get) {
+        return window.storage.get(key, false).then(function (res) {
+          return res && res.value ? res.value : null;
+        });
+      }
+      return Promise.resolve(localStorage.getItem(key));
+    },
+    set: function (key, val) {
+      if (window.storage && window.storage.set)
+        return window.storage.set(key, val, false);
+      try {
+        localStorage.setItem(key, val);
+      } catch (e) {}
+      return Promise.resolve();
+    },
+  };
+
+  async function loadProgress() {
+    try {
+      var v = await store.get(STORAGE_KEY);
+      if (v) state.progress = JSON.parse(v) || {};
+    } catch (e) {
+      state.progress = {};
+    }
+    try {
+      var b = await store.get(BOOKMARK_KEY);
+      if (b) state.bookmarks = JSON.parse(b) || {};
+    } catch (e) {
+      state.bookmarks = {};
+    }
+    state.loaded = true;
+  }
+  async function saveProgress() {
+    try {
+      await store.set(STORAGE_KEY, JSON.stringify(state.progress));
+    } catch (e) {}
+    updateChDoneBadges();
+  }
+  function savePosition() {
+    try {
+      localStorage.setItem(
+        "java_study_pos",
+        JSON.stringify({
+          ch: currentCh,
+          level: state.level,
+          index: state.index,
+        }),
+      );
+    } catch (e) {}
+  }
+  function loadPosition() {
+    try {
+      var pos = JSON.parse(localStorage.getItem("java_study_pos"));
+      if (!pos || !CHAPTER_DATA[pos.ch]) return;
+      if (pos.ch !== currentCh) switchChapter(pos.ch);
+      state.level = pos.level || 0;
+      state.index = pos.index || 0;
+    } catch (e) {}
+  }
+  async function saveBookmarks() {
+    try {
+      await store.set(BOOKMARK_KEY, JSON.stringify(state.bookmarks));
+    } catch (e) {}
+  }
+
+  /* ============ 개요 페이지 ============ */
+  var isOverview = false;
+
+  var OV_INFO = [
+    {
+      ch: 1,
+      color: "#D98C3D",
+      keywords: [
+        "기본형 · 참조형",
+        "형 변환 (캐스팅)",
+        "String 메서드",
+        "예외처리 (try-catch-finally)",
+        "제어 흐름 · Math · 삼항",
+        "배열 (1D / 2D)",
+      ],
+    },
+    {
+      ch: 2,
+      color: "#6B9FD4",
+      keywords: [
+        "클래스 · 생성자 · overloading",
+        "상속 (extends) · overriding",
+        "인터페이스 · abstract class",
+        "캡슐화 · equals · toString",
+        "Comparator · enum",
+        "접근 제어자 · import · 동적 바인딩",
+        "사용자 정의 예외",
+        "Generic · 와일드카드 · PECS",
+      ],
+    },
+    {
+      ch: 3,
+      color: "#6FD9A0",
+      keywords: [
+        "배열 · ArrayList (List 계열)",
+        "HashSet (Set 계열)",
+        "HashMap (Map 계열)",
+        "정렬 · 탐색 · 집합 연산",
+        "오토박싱 · 빈도수 카운팅",
+        "TreeMap · copyOfRange · computeIfAbsent",
+      ],
+    },
+    {
+      ch: 4,
+      color: "#C77DFF",
+      keywords: [
+        "Stack — LIFO · 괄호검사",
+        "Queue — FIFO · BFS",
+        "Deque — 슬라이딩 윈도우",
+        "PriorityQueue — 힙 · 다익스트라",
+      ],
+    },
+    {
+      ch: 5,
+      color: "#FF9A3C",
+      keywords: [
+        "Lambda · @FunctionalInterface",
+        "Predicate · Function · Consumer",
+        "Stream API (filter·map·collect)",
+        "Scanner · BufferedReader (표준입력)",
+        "FileWriter · BufferedReader (파일)",
+        "Files.readAllLines · try-with-resources",
+      ],
+    },
+  ];
+
+  function renderOverview() {
+    isOverview = true;
+    document.querySelectorAll(".ch-btn").forEach(function (b) {
+      b.classList.toggle("ch-active", b.getAttribute("data-ch") === "0");
+    });
+    var lnavOv = document.getElementById("level-nav");
+    lnavOv.innerHTML = "";
+    lnavOv.style.display = "none";
+    lnavOv.classList.add("lnav-collapsed");
+    var html = "";
+    html += '<div style="padding-top:24px;margin-bottom:24px;">';
+    html +=
+      '<div class="brand-eyebrow">$ java --curriculum overview</div>';
+    html += '<h1 class="brand-title">Java 커리큘럼 전체 개요</h1>';
+    html +=
+      '<div class="brand-sub">각 챕터의 학습 주제와 키워드를 한눈에 확인하세요. 카드를 클릭하면 해당 챕터로 이동합니다.</div>';
+    html += "</div>";
+
+    html += '<div class="ov-flow">';
+    var flowNames = [
+      "기본 문법",
+      "OOP 기초",
+      "컬렉션",
+      "자료구조",
+      "람다·IO",
+    ];
+    flowNames.forEach(function (name, i) {
+      if (i > 0) html += '<span class="ov-arrow">→</span>';
+      html +=
+        '<span class="ov-flow-item">Ch' +
+        (i + 1) +
+        ". " +
+        name +
+        "</span>";
+    });
+    html += "</div>";
+    html +=
+      '<div class="ov-notice">Java 파트 커리큘럼 순서 (XML 챕터 제외)</div>';
+
+    html += '<div style="height:20px;"></div>';
+    html += '<div class="ov-grid">';
+    OV_INFO.forEach(function (info) {
+      var chData = CHAPTER_DATA[info.ch];
+      var totalQs = chData.questions.length;
+      var totalLevels = chData.levels.length;
+      html +=
+        '<div class="ov-card" data-action="go-chapter" data-ch="' +
+        info.ch +
+        '">';
+      html +=
+        '<div class="ov-card-head" style="border-bottom-color:' +
+        info.color +
+        ';">';
+      html +=
+        '<span class="ov-ch-label" style="color:' +
+        info.color +
+        ';">Ch' +
+        info.ch +
+        "</span>";
+      html +=
+        '<span class="ov-ch-title">' +
+        esc(chData.brandTitle.replace(" 자동채점", "")) +
+        "</span>";
+      html +=
+        '<span class="ov-ch-stats">' +
+        totalQs +
+        "문제 · " +
+        totalLevels +
+        "장</span>";
+      html += "</div>";
+      html += '<ul class="ov-kw-list">';
+      info.keywords.forEach(function (kw) {
+        html += "<li>" + esc(kw) + "</li>";
+      });
+      html += "</ul>";
+      html += '<div class="ov-card-footer">학습 시작 →</div>';
+      html += "</div>";
+    });
+    html += "</div>";
+
+    document.getElementById("app").innerHTML = html;
+  }
+
+  /* ============ lv-btn 커스텀 툴팁 ============ */
+  (function () {
+    var tooltip = document.getElementById('lv-tooltip');
+    var showTimer = null;
+
+    document.addEventListener('mouseover', function (e) {
+      var btn = e.target.closest('.lv-btn');
+      if (!btn) return;
+      clearTimeout(showTimer);
+      showTimer = setTimeout(function () {
+        var textEl = btn.querySelector('.ch-text') || btn;
+        tooltip.textContent = textEl.textContent.trim();
+        var rect = btn.getBoundingClientRect();
+        tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+        tooltip.style.top = rect.top + 'px';
+        tooltip.style.minWidth = rect.width + 'px';
+        tooltip.getBoundingClientRect();
+        tooltip.classList.add('visible');
+      }, 40);
+    });
+
+    document.addEventListener('mouseout', function (e) {
+      var btn = e.target.closest('.lv-btn, .ch-btn');
+      if (!btn) return;
+      clearTimeout(showTimer);
+      tooltip.classList.remove('visible');
+    });
+  })();
+
+  /* ============ level-nav 열기/닫기 애니메이션 ============ */
+  function setLnavCollapsed(lnav, collapsed) {
+    if (collapsed) {
+      lnav.classList.add('lnav-collapsed');
+      lnav.addEventListener('transitionend', function handler() {
+        lnav.removeEventListener('transitionend', handler);
+        if (lnav.classList.contains('lnav-collapsed')) lnav.style.display = 'none';
+      });
+    } else {
+      lnav.style.display = '';
+      lnav.getBoundingClientRect();
+      lnav.classList.remove('lnav-collapsed');
+    }
+  }
+
+  /* ============ 챕터 전환 ============ */
+  function switchChapter(ch) {
+    chCollapsed = false;
+    var lnavReset = document.getElementById('level-nav');
+    if (lnavReset) {
+      lnavReset.style.display = 'none';
+      lnavReset.classList.add('lnav-collapsed');
+    }
+    currentCh = ch;
+    LEVELS = CHAPTER_DATA[ch].levels;
+    QUESTIONS = CHAPTER_DATA[ch].questions;
+    STORAGE_KEY = CHAPTER_DATA[ch].storageKey;
+    BOOKMARK_KEY = CHAPTER_DATA[ch].bookmarkKey;
+    state = {
+      loaded: false,
+      progress: {},
+      inputs: {},
+      revealed: {},
+      bookmarks: {},
+      level: 0,
+      index: 0,
+      qNavPage: 0,
+      log: [],
+      reviewMode: false,
+      bookmarkMode: false,
+    };
+    document.querySelectorAll(".ch-btn").forEach(function (b) {
+      b.classList.toggle(
+        "ch-active",
+        parseInt(b.getAttribute("data-ch")) === ch,
+      );
+    });
+    render();
+    loadProgress().then(function () { render(); updateChDoneBadges(); });
+  }
+
+  document
+    .getElementById("sidebar")
+    .addEventListener("click", function (e) {
+      if (e.target.closest("[data-action='reset-all']")) {
+        doResetAll();
+        return;
+      }
+      var btn = e.target.closest(".ch-btn");
+      if (!btn) return;
+      var ch = parseInt(btn.getAttribute("data-ch"));
+      if (ch === 0) {
+        renderOverview();
+        return;
+      }
+      if (isOverview || ch !== currentCh) {
+        isOverview = false;
+        chCollapsed = false;
+        switchChapter(ch);
+      } else {
+        chCollapsed = !chCollapsed;
+        var lnav = document.getElementById('level-nav');
+        if (lnav) setLnavCollapsed(lnav, chCollapsed);
+      }
+    });
+
+  /* ============ ch-done 뱃지 ============ */
+  function updateChDoneBadges() {
+    var buttons = Array.from(document.querySelectorAll(".ch-btn[data-ch]")).filter(function (btn) {
+      var ch = parseInt(btn.getAttribute("data-ch"));
+      return ch && CHAPTER_DATA[ch];
+    });
+    var promises = buttons.map(function (btn) {
+      var ch = parseInt(btn.getAttribute("data-ch"));
+      return store.get(CHAPTER_DATA[ch].storageKey).then(function (raw) {
+        var progress = {};
+        try { if (raw) progress = JSON.parse(raw) || {}; } catch (e) {}
+        var qs = CHAPTER_DATA[ch].questions;
+        var passed = qs.filter(function (q) {
+          return progress[q.id] && progress[q.id].status === 'pass';
+        }).length;
+        return { btn: btn, ch: ch, qs: qs.length, passed: passed };
+      });
+    });
+    Promise.all(promises).then(function (results) {
+      var totalAll = 0, passedAll = 0;
+      results.forEach(function (r) {
+        totalAll += r.qs;
+        passedAll += r.passed;
+        var done = r.qs > 0 && r.passed === r.qs;
+        r.btn.classList.toggle('ch-done', done);
+      });
+      var ovBtn = document.querySelector('.ch-btn[data-ch="0"]');
+      if (ovBtn) {
+        var pct = totalAll > 0 ? Math.round(passedAll / totalAll * 100) : 0;
+        ovBtn.style.setProperty('--ch-pct', pct + '%');
+        var pctEl = ovBtn.querySelector('.ov-pct');
+        if (pctEl) pctEl.textContent = pct > 0 ? pct + '%' : '';
+      }
+    });
+  }
+
+  /* ============ 유틸 ============ */
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+  function questionsOfLevel(lv) {
+    return QUESTIONS.filter(function (q) {
+      return q.level === lv;
+    });
+  }
+  function failedQuestions() {
+    return QUESTIONS.filter(function (q) {
+      return (
+        state.progress[q.id] && state.progress[q.id].status === "fail"
+      );
+    });
+  }
+  function bookmarkedQuestions() {
+    return QUESTIONS.filter(function (q) {
+      return !!state.bookmarks[q.id];
+    });
+  }
+  function activeQuestionList() {
+    if (state.reviewMode) return failedQuestions();
+    if (state.bookmarkMode) return bookmarkedQuestions();
+    return questionsOfLevel(state.level);
+  }
+  function totalPassed() {
+    var n = 0;
+    Object.keys(state.progress).forEach(function (k) {
+      if (state.progress[k] && state.progress[k].status === "pass") n++;
+    });
+    return n;
+  }
+  function levelPassed(lv) {
+    var n = 0;
+    questionsOfLevel(lv).forEach(function (q) {
+      if (state.progress[q.id] && state.progress[q.id].status === "pass")
+        n++;
+    });
+    return n;
+  }
+
+  /* ============ 채점 ============ */
+  function gradeQuestion(q, input) {
+    return q.regex.every(function (r) {
+      return r.test(input);
+    });
+  }
+  async function gradeQuestionSmart(q, input) {
+    if (serverAvailable) {
+      var result = await gradeByExecution(q, input);
+      if (result !== null) return result;
+    }
+    return gradeQuestion(q, input);
+  }
+  function pushLog(qid, pass, output) {
+    state.log.push({
+      cmd: "check " + qid,
+      pass: pass,
+      output: output || null,
+    });
+    if (state.log.length > 40) state.log.shift();
+  }
+
+  /* ============ 에디터 보조 ============ */
+  var BRACKET_OPEN_CLOSE = { "(": ")", "[": "]", "{": "}" };
+  var BRACKET_CLOSE_CHARS = { ")": true, "]": true, "}": true };
+  var QUOTE_CHARS = { '"': true, "'": true };
+  var INDENT_UNIT = "    ";
+  function lineBoundsOf(v, s, e) {
+    var ls = v.lastIndexOf("\n", s - 1) + 1,
+      le = v.indexOf("\n", e);
+    if (le === -1) le = v.length;
+    return { lineStart: ls, lineEnd: le };
+  }
+  function indentSelection(ta, q) {
+    var v = ta.value,
+      s = ta.selectionStart,
+      e = ta.selectionEnd;
+    if (s === e) {
+      ta.value = v.slice(0, s) + INDENT_UNIT + v.slice(s);
+      ta.selectionStart = ta.selectionEnd = s + INDENT_UNIT.length;
+      state.inputs[q.id] = ta.value;
+      return;
+    }
+    var b = lineBoundsOf(v, s, e),
+      lines = v.slice(b.lineStart, b.lineEnd).split("\n"),
+      ind = lines
+        .map(function (l) {
+          return INDENT_UNIT + l;
+        })
+        .join("\n");
+    ta.value = v.slice(0, b.lineStart) + ind + v.slice(b.lineEnd);
+    ta.selectionStart = s + INDENT_UNIT.length;
+    ta.selectionEnd = e + INDENT_UNIT.length * lines.length;
+    state.inputs[q.id] = ta.value;
+  }
+  function outdentSelection(ta, q) {
+    var v = ta.value,
+      s = ta.selectionStart,
+      e = ta.selectionEnd,
+      b = lineBoundsOf(v, s, e),
+      lines = v.slice(b.lineStart, b.lineEnd).split("\n"),
+      removed = [],
+      out = lines
+        .map(function (l) {
+          var m = l.match(/^( {1,4}|\t)/),
+            n = m ? m[0].length : 0;
+          removed.push(n);
+          return l.slice(n);
+        })
+        .join("\n");
+    ta.value = v.slice(0, b.lineStart) + out + v.slice(b.lineEnd);
+    var fr = removed[0] || 0,
+      tr = removed.reduce(function (a, c) {
+        return a + c;
+      }, 0);
+    ta.selectionStart = Math.max(b.lineStart, s - fr);
+    ta.selectionEnd = Math.max(ta.selectionStart, e - tr);
+    state.inputs[q.id] = ta.value;
+  }
+  function autoIndentNewline(ta, q) {
+    var v = ta.value,
+      pos = ta.selectionStart,
+      ls = v.lastIndexOf("\n", pos - 1) + 1,
+      cur = v.slice(ls, pos),
+      im = cur.match(/^[ \t]*/),
+      ind = im ? im[0] : "",
+      lns = v.slice(0, pos).replace(/\s+$/, "").slice(-1),
+      ex = lns === "{" ? INDENT_UNIT : "",
+      ins = "\n" + ind + ex;
+    ta.value = v.slice(0, pos) + ins + v.slice(pos);
+    var np = pos + ins.length;
+    ta.selectionStart = ta.selectionEnd = np;
+    state.inputs[q.id] = ta.value;
+  }
+  function handleBracketKeydown(e, ta, q) {
+    var key = e.key;
+    if (e.ctrlKey || e.metaKey || e.altKey) return false;
+    if (BRACKET_OPEN_CLOSE[key]) {
+      var s = ta.selectionStart,
+        en = ta.selectionEnd,
+        v = ta.value,
+        cl = BRACKET_OPEN_CLOSE[key];
+      if (s !== en) {
+        var sel = v.slice(s, en);
+        ta.value = v.slice(0, s) + key + sel + cl + v.slice(en);
+        ta.selectionStart = s + 1;
+        ta.selectionEnd = en + 1;
+      } else {
+        ta.value = v.slice(0, s) + key + cl + v.slice(s);
+        ta.selectionStart = ta.selectionEnd = s + 1;
+      }
+      state.inputs[q.id] = ta.value;
+      e.preventDefault();
+      return true;
+    }
+    if (QUOTE_CHARS[key]) {
+      var s = ta.selectionStart,
+        en = ta.selectionEnd,
+        v = ta.value;
+      if (s !== en) {
+        var sel = v.slice(s, en);
+        ta.value = v.slice(0, s) + key + sel + key + v.slice(en);
+        ta.selectionStart = s + 1;
+        ta.selectionEnd = en + 1;
+        state.inputs[q.id] = ta.value;
+        e.preventDefault();
+        return true;
+      }
+      if (v[s] === key) {
+        ta.selectionStart = ta.selectionEnd = s + 1;
+        e.preventDefault();
+        return true;
+      }
+      ta.value = v.slice(0, s) + key + key + v.slice(s);
+      ta.selectionStart = ta.selectionEnd = s + 1;
+      state.inputs[q.id] = ta.value;
+      e.preventDefault();
+      return true;
+    }
+    if (BRACKET_CLOSE_CHARS[key]) {
+      var p = ta.selectionStart;
+      if (ta.selectionStart === ta.selectionEnd && ta.value[p] === key) {
+        ta.selectionStart = ta.selectionEnd = p + 1;
+        e.preventDefault();
+        return true;
+      }
+      return false;
+    }
+    if (key === "Backspace") {
+      var ss = ta.selectionStart,
+        se = ta.selectionEnd;
+      if (ss === se && ss > 0) {
+        var pc = ta.value[ss - 1],
+          nc = ta.value[ss];
+        if (
+          (BRACKET_OPEN_CLOSE[pc] && BRACKET_OPEN_CLOSE[pc] === nc) ||
+          (QUOTE_CHARS[pc] && pc === nc)
+        ) {
+          ta.value = ta.value.slice(0, ss - 1) + ta.value.slice(ss + 1);
+          ta.selectionStart = ta.selectionEnd = ss - 1;
+          state.inputs[q.id] = ta.value;
+          e.preventDefault();
+          return true;
+        }
+      }
+      return false;
+    }
+    return false;
+  }
+  /* ============ undo 스택 ============ */
+  var undoStack = {};
+  var undoPointer = {};
+  var undoTimer = null;
+
+  function pushUndo(q, ta) {
+    var id = q.id;
+    if (!undoStack[id]) {
+      undoStack[id] = [];
+      undoPointer[id] = -1;
+    }
+    var stack = undoStack[id];
+    stack.splice(undoPointer[id] + 1);
+    stack.push({
+      value: ta.value,
+      ss: ta.selectionStart,
+      se: ta.selectionEnd,
+    });
+    if (stack.length > 100) stack.shift();
+    undoPointer[id] = stack.length - 1;
+  }
+
+  function doUndo(q, ta) {
+    var id = q.id;
+    if (!undoStack[id] || undoPointer[id] <= 0) return;
+    undoPointer[id]--;
+    var snap = undoStack[id][undoPointer[id]];
+    ta.value = snap.value;
+    ta.selectionStart = snap.ss;
+    ta.selectionEnd = snap.se;
+    state.inputs[id] = ta.value;
+  }
+
+  function scheduleUndo(q, ta) {
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(function () {
+      pushUndo(q, ta);
+    }, 300);
+  }
+
+  function handleEditorKeydown(e, ta, q) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
+      e.preventDefault();
+      doUndo(q, ta);
+      return;
+    }
+    if (e.key === "Tab" && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      pushUndo(q, ta);
+      if (e.shiftKey) outdentSelection(ta, q);
+      else indentSelection(ta, q);
+      return;
+    }
+    if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      pushUndo(q, ta);
+      autoIndentNewline(ta, q);
+      return;
+    }
+    handleBracketKeydown(e, ta, q);
+  }
+
+  /* ============ 렌더링 ============ */
+  function renderEmptySpecial() {
+    var app = document.getElementById("app"),
+      passed = totalPassed(),
+      isB = state.bookmarkMode;
+    var title = isB
+      ? "🔖 아직 즐겨찾기한 문제가 없습니다"
+      : "🎉 지금은 틀린 문제가 없습니다";
+    var failCount = failedQuestions().length,
+      bmCount = Object.keys(state.bookmarks).filter(function (k) {
+        return state.bookmarks[k];
+      }).length;
+    var lnav = document.getElementById("level-nav"),
+      lhtml = "";
+    LEVELS.forEach(function (lv) {
+      var p = levelPassed(lv.id),
+        qs = questionsOfLevel(lv.id).length;
+      var isDone = p === qs && qs > 0;
+      lhtml +=
+        '<button class="lv-btn' +
+        (isDone ? " lv-done" : "") +
+        '" data-action="select-level" data-level="' +
+        lv.id +
+        '">' +
+        esc(lv.name) +
+        ' <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+        p +
+        "/" +
+        qs +
+        "</span></button>";
+    });
+    lhtml += '<div class="lv-sep"></div>';
+    lhtml +=
+      '<button class="lv-btn lv-special' +
+      (state.reviewMode ? " lv-on" : "") +
+      '" data-action="toggle-review">📌 오답노트 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+      failCount +
+      "</span></button>";
+    lhtml +=
+      '<button class="lv-btn lv-special' +
+      (state.bookmarkMode ? " lv-on" : "") +
+      '" data-action="toggle-bookmark-mode">🔖 즐겨찾기 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+      bmCount +
+      "</span></button>";
+    lnav.innerHTML = lhtml;
+    (function () {
+      var activeChBtn = document.querySelector('#chapter-nav .ch-btn[data-ch="' + currentCh + '"]');
+      if (activeChBtn) activeChBtn.parentNode.insertBefore(lnav, activeChBtn.nextSibling);
+      var alreadyOpen = lnav.style.display !== 'none' && !lnav.classList.contains('lnav-collapsed');
+      if (chCollapsed) {
+        lnav.style.display = 'none';
+        lnav.classList.add('lnav-collapsed');
+      } else if (alreadyOpen) {
+        lnav.classList.remove('lnav-collapsed');
+      } else {
+        lnav.style.display = 'none';
+        lnav.classList.add('lnav-no-transition', 'lnav-collapsed');
+        lnav.getBoundingClientRect();
+        lnav.classList.remove('lnav-no-transition');
+        setLnavCollapsed(lnav, false);
+      }
+    })();
+    var html = "";
+    html +=
+      '<div class="topbar"><div class="topbar-left"><div class="brand-eyebrow">$ run --suite ' +
+      CHAPTER_DATA[currentCh].suite +
+      '</div><h1 class="brand-title">' +
+      CHAPTER_DATA[currentCh].brandTitle +
+      "</h1></div>";
+    html +=
+      '<div class="top-stats"><button class="reset-btn" data-action="reset">진행 초기화</button></div></div>';
+    html +=
+      '<div class="card" style="text-align:center;padding:50px 24px;"><div class="card-title">' +
+      title +
+      "</div>";
+    html +=
+      '<p style="color:var(--muted);font-size:13.5px;margin:10px 0 18px;">전체 진행: ' +
+      passed +
+      " / " +
+      QUESTIONS.length +
+      "</p>";
+    html +=
+      '<button class="btn btn-grade" data-action="exit-review">전체 문제로 돌아가기</button></div>';
+    app.innerHTML = html;
+    updateServerBadge();
+  }
+
+  function render() {
+    var app = document.getElementById("app");
+    if (!state.loaded) {
+      app.innerHTML =
+        '<div class="loading">진행 상황 불러오는 중...</div>';
+      return;
+    }
+    var levelQs = activeQuestionList();
+    if (
+      (state.reviewMode || state.bookmarkMode) &&
+      levelQs.length === 0
+    ) {
+      renderEmptySpecial();
+      return;
+    }
+    if (state.index >= levelQs.length) state.index = 0;
+    // auto-adjust qNavPage to keep current dot visible
+    var Q_PAGE_SIZE = 6;
+    if (!state.qNavPage) state.qNavPage = 0;
+    if (state.index < state.qNavPage * Q_PAGE_SIZE ||
+        state.index >= state.qNavPage * Q_PAGE_SIZE + Q_PAGE_SIZE) {
+      state.qNavPage = Math.floor(state.index / Q_PAGE_SIZE);
+    }
+    var maxQPage = Math.max(0, Math.ceil(levelQs.length / Q_PAGE_SIZE) - 1);
+    if (state.qNavPage > maxQPage) state.qNavPage = maxQPage;
+
+    var q = levelQs[state.index],
+      passed = totalPassed(),
+      html = "";
+
+    // Build dot-nav HTML (always 6 fixed slots)
+    var qNavHtml = '<div class="q-nav">';
+    qNavHtml += '<button class="q-nav-arrow" data-action="prev"' +
+      (state.index === 0 ? ' disabled' : '') + '>&#8249;</button>';
+    qNavHtml += '<div class="q-nav-dots">';
+    var dotStart = state.qNavPage * Q_PAGE_SIZE;
+    for (var di = dotStart; di < dotStart + Q_PAGE_SIZE; di++) {
+      if (di < levelQs.length) {
+        var dq = levelQs[di];
+        var dst = state.progress[dq.id] && state.progress[dq.id].status;
+        var dcls = 'dot' +
+          (di === state.index ? ' current' : '') +
+          (dst === 'pass' ? ' pass' : dst === 'fail' ? ' fail' : '') +
+          (state.bookmarks[dq.id] ? ' bookmarked' : '');
+        qNavHtml += '<div class="' + dcls + '" data-action="jump" data-index="' + di +
+          '" title="' + esc(dq.id) + '">' + (di + 1) + '</div>';
+      } else {
+        qNavHtml += '<div class="dot dot-empty"></div>';
+      }
+    }
+    qNavHtml += '</div>';
+    qNavHtml += '<button class="q-nav-arrow" data-action="next"' +
+      (state.index >= levelQs.length - 1 ? ' disabled' : '') + '>&#8250;</button>';
+    qNavHtml += '</div>';
+
+    // stats HTML (우상단)
+    var statsHtml = '<div class="top-stats-box">';
+    statsHtml += '<div class="progress-wrap"><div class="progress-label"><span>전체 진행</span><b>' +
+      passed + ' / ' + QUESTIONS.length + '</b></div>';
+    statsHtml += '<div class="progress-track"><div class="progress-fill" style="width:' +
+      Math.round((passed / QUESTIONS.length) * 100) + '%"></div></div></div>';
+    statsHtml += '<button class="reset-btn" data-action="reset-level">현재 장 초기화</button>';
+    statsHtml += '</div>';
+
+    html += '<div class="topbar">';
+    html += '<div class="topbar-main"><div class="topbar-left">';
+    html += '<div class="brand-eyebrow">$ run --suite ' + CHAPTER_DATA[currentCh].suite + '</div>';
+    html += '<h1 class="brand-title">' + CHAPTER_DATA[currentCh].brandTitle + '</h1>';
+    html += '<div class="brand-sub">코드를 입력하고 채점 버튼을 누르세요. <span id="server-badge" style="font-size:0.85em;">● regex 채점 (서버 꺼짐)</span></div>';
+    html += '</div>' + statsHtml + '</div>';
+    html += '<div class="topbar-bottom">';
+    html += '<div class="kbd-hint"><div><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 문제 · <kbd>R</kbd> 정답 보기</div><div><kbd>Esc</kbd> 입력창 빠져나오기 · <kbd>Enter</kbd> 입력창 포커스</div></div>';
+    html += '<div class="top-qnav">' + qNavHtml + '</div>';
+    html += '</div>';
+    html += '</div>';
+
+    /* --- level nav bar --- */
+    var failCount = failedQuestions().length,
+      bmCount = Object.keys(state.bookmarks).filter(function (k) {
+        return state.bookmarks[k];
+      }).length;
+    var lnav = document.getElementById("level-nav"),
+      lhtml = "";
+    LEVELS.forEach(function (lv) {
+      var p = levelPassed(lv.id),
+        qs = questionsOfLevel(lv.id).length;
+      var isActive =
+        !state.reviewMode && !state.bookmarkMode && state.level === lv.id;
+      var isDone = p === qs && qs > 0;
+      lhtml +=
+        '<button class="lv-btn' +
+        (isDone ? " lv-done" : "") +
+        (isActive ? " lv-active" : "") +
+        '" data-action="select-level" data-level="' +
+        lv.id +
+        '">' +
+        esc(lv.name) +
+        ' <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+        p +
+        "/" +
+        qs +
+        "</span></button>";
+    });
+    lhtml += '<div class="lv-sep"></div>';
+    lhtml +=
+      '<button class="lv-btn lv-special' +
+      (state.reviewMode ? " lv-on" : "") +
+      '" data-action="toggle-review">📌 오답노트 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+      failCount +
+      "</span></button>";
+    lhtml +=
+      '<button class="lv-btn lv-special' +
+      (state.bookmarkMode ? " lv-on" : "") +
+      '" data-action="toggle-bookmark-mode">🔖 즐겨찾기 <span style="font-family:var(--mono);font-size:10px;opacity:.7;">' +
+      bmCount +
+      "</span></button>";
+    lhtml += '<button class="lv-reset-btn" data-action="reset-chapter">장 전체 초기화</button>';
+    lnav.innerHTML = lhtml;
+    (function () {
+      var activeChBtn = document.querySelector('#chapter-nav .ch-btn[data-ch="' + currentCh + '"]');
+      if (activeChBtn) activeChBtn.parentNode.insertBefore(lnav, activeChBtn.nextSibling);
+      var alreadyOpen = lnav.style.display !== 'none' && !lnav.classList.contains('lnav-collapsed');
+      if (chCollapsed) {
+        lnav.style.display = 'none';
+        lnav.classList.add('lnav-collapsed');
+      } else if (alreadyOpen) {
+        lnav.classList.remove('lnav-collapsed');
+      } else {
+        lnav.style.display = 'none';
+        lnav.classList.add('lnav-no-transition', 'lnav-collapsed');
+        lnav.getBoundingClientRect();
+        lnav.classList.remove('lnav-no-transition');
+        setLnavCollapsed(lnav, false);
+      }
+    })();
+
+    html += '<div class="layout">';
+
+    html += '<div class="content"><div class="card">';
+    var eyebrow = state.reviewMode
+      ? "📌 오답 노트 (복습 모드)"
+      : state.bookmarkMode
+        ? "🔖 즐겨찾기 모드"
+        : esc(LEVELS[state.level].name);
+    html +=
+      '<div class="card-eyebrow">' +
+      eyebrow +
+      " · 문항 " +
+      (state.index + 1) +
+      " / " +
+      levelQs.length +
+      " · " +
+      esc(q.id) +
+      "</div>";
+    html +=
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
+    html +=
+      '<h2 class="card-title" style="margin:0;">' +
+      esc(q.title) +
+      "</h2>";
+    html +=
+      '<button class="btn btn-ghost" style="padding:5px 10px;font-size:12px;white-space:nowrap;" data-action="toggle-bookmark" data-qid="' +
+      esc(q.id) +
+      '">' +
+      (state.bookmarks[q.id] ? "🔖 즐겨찾기 해제" : "☆ 즐겨찾기 추가") +
+      "</button></div>";
+    if (state.reviewMode || state.bookmarkMode)
+      html +=
+        '<button class="btn btn-ghost" style="align-self:flex-start;padding:5px 10px;font-size:12px;" data-action="exit-review">← 전체 문제로 돌아가기</button>';
+    html +=
+      '<div class="concept"><b>핵심 개념</b> — ' +
+      esc(q.concept) +
+      "</div>";
+    html += '<div class="codebox">';
+    q.before.forEach(function (l) {
+      html += '<div class="cl muted">' + esc(l) + "</div>";
+    });
+    q.placeholder.forEach(function (l) {
+      html += '<div class="cl muted">' + esc(l) + "</div>";
+    });
+    var savedInput =
+      state.inputs[q.id] !== undefined
+        ? state.inputs[q.id]
+        : (state.progress[q.id] && state.progress[q.id].input) || "";
+    html +=
+      '<textarea class="blank" id="ans-input" rows="' +
+      (q.rows || 5) +
+      '" placeholder="여기에 코드를 입력하세요"></textarea>';
+    q.after.forEach(function (l) {
+      html += '<div class="cl muted">' + esc(l) + "</div>";
+    });
+    html += "</div>";
+    html +=
+      '<div class="expected">기대 출력: <code>' +
+      esc(q.expected) +
+      "</code></div>";
+    var fb = state.progress[q.id],
+      fbClass = "",
+      fbText = "";
+    var lastLog = state.log.filter(function (l) {
+      return l.cmd === "check " + q.id;
+    });
+    var lastOutput = lastLog.length
+      ? lastLog[lastLog.length - 1].output
+      : null;
+    if (fb && fb.status === "pass") {
+      fbClass = "pass show";
+      fbText = "✓ PASS — 정답입니다.";
+    } else if (fb && fb.status === "fail") {
+      fbClass = "fail show";
+      fbText = "✗ FAIL — 문법을 다시 확인해보세요.";
+    }
+    var outputHtml = "";
+    if (lastOutput !== null && lastOutput !== undefined) {
+      outputHtml =
+        '<div class="output-box">' +
+        '<span class="output-label">출력</span>' +
+        '<pre class="output-val">' +
+        esc(lastOutput) +
+        "</pre>" +
+        "</div>";
+    }
+    html +=
+      '<div class="actions"><button class="btn btn-grade" data-action="grade">채점</button>';
+    html +=
+      '<button class="btn btn-ghost" data-action="reveal">' +
+      (state.revealed[q.id] ? "정답 숨기기" : "정답 보기") +
+      "</button></div>";
+    html +=
+      '<div class="feedback ' +
+      fbClass +
+      '" id="fb-msg">' +
+      fbText +
+      "</div>";
+    html += outputHtml;
+    html +=
+      '<div class="answer-box' +
+      (state.revealed[q.id] ? " show" : "") +
+      '">';
+    html += '<div class="lbl">🔍 정답</div>';
+    q.answer.forEach(function (l) {
+      html += '<div class="al">' + esc(l) + "</div>";
+    });
+    if (q.note) html += '<div class="note">' + esc(q.note) + "</div>";
+    html += "</div>";
+    html += '<div class="nav-row">';
+    html +=
+      '<button class="btn btn-nav" data-action="prev" ' +
+      (state.index === 0 ? "disabled" : "") +
+      ">← 이전</button>";
+    html +=
+      '<span class="pos">' +
+      (state.index + 1) +
+      " / " +
+      levelQs.length +
+      "</span>";
+    html +=
+      '<button class="btn btn-nav" data-action="next" ' +
+      (state.index === levelQs.length - 1 ? "disabled" : "") +
+      ">다음 →</button>";
+    html += "</div></div></div>";
+
+    app.innerHTML = html;
+    updateServerBadge();
+    var ta = document.getElementById("ans-input");
+    if (ta) {
+      function autoResize() {
+        ta.style.height = "auto";
+        ta.style.height = ta.scrollHeight + "px";
+      }
+      ta.value = savedInput;
+      autoResize();
+      pushUndo(q, ta);
+      ta.addEventListener("input", function () {
+        state.inputs[q.id] = ta.value;
+        scheduleUndo(q, ta);
+        autoResize();
+      });
+      ta.addEventListener("keydown", function (e) {
+        handleEditorKeydown(e, ta, q);
+      });
+    }
+  }
+
+  /* ============ 액션 ============ */
+  function doSelectLevel(lv) {
+    state.reviewMode = false;
+    state.bookmarkMode = false;
+    state.level = lv;
+    state.index = 0;
+    savePosition();
+    render();
+  }
+  function doToggleReview() {
+    state.reviewMode = !state.reviewMode;
+    if (state.reviewMode) state.bookmarkMode = false;
+    state.index = 0;
+    render();
+  }
+  function doToggleBookmarkMode() {
+    state.bookmarkMode = !state.bookmarkMode;
+    if (state.bookmarkMode) state.reviewMode = false;
+    state.index = 0;
+    render();
+  }
+  function doExitSpecialMode() {
+    state.reviewMode = false;
+    state.bookmarkMode = false;
+    state.index = 0;
+    render();
+  }
+  function doJump(i) {
+    state.index = i;
+    state.qNavPage = Math.floor(i / 6);
+    savePosition();
+    render();
+  }
+  function doQNavPrev() {
+    if (state.qNavPage > 0) { state.qNavPage--; render(); }
+  }
+  function doQNavNext() {
+    var lq = activeQuestionList();
+    var maxPage = Math.max(0, Math.ceil(lq.length / 6) - 1);
+    if (state.qNavPage < maxPage) { state.qNavPage++; render(); }
+  }
+  function doPrev() {
+    if (state.index > 0) {
+      state.index--;
+      savePosition();
+      render();
+    }
+  }
+  function doNext() {
+    var lq = activeQuestionList();
+    if (state.index < lq.length - 1) {
+      state.index++;
+      savePosition();
+      render();
+    }
+  }
+  function doReveal() {
+    var lq = activeQuestionList(),
+      q = lq[state.index];
+    if (!q) return;
+    state.revealed[q.id] = !state.revealed[q.id];
+    render();
+  }
+  function doToggleBookmark(qid) {
+    if (!qid) return;
+    if (state.bookmarks[qid]) delete state.bookmarks[qid];
+    else state.bookmarks[qid] = true;
+    saveBookmarks();
+    render();
+  }
+  async function doGrade() {
+    var lq = activeQuestionList(),
+      q = lq[state.index];
+    if (!q) return;
+    var ta = document.getElementById("ans-input"),
+      val = ta ? ta.value : "";
+    var gradeBtn = document.querySelector('[data-action="grade"]');
+    if (gradeBtn) {
+      gradeBtn.disabled = true;
+      gradeBtn.textContent = "채점 중...";
+    }
+    var executionOutput = null;
+    var pass;
+    if (serverAvailable) {
+      var result = await gradeByExecution(q, val);
+      if (result !== null) {
+        pass = result.pass;
+        executionOutput = result.output;
+      } else {
+        pass = gradeQuestion(q, val);
+      }
+    } else {
+      pass = gradeQuestion(q, val);
+    }
+    if (gradeBtn) {
+      gradeBtn.disabled = false;
+      gradeBtn.textContent = "채점";
+    }
+    state.progress[q.id] = { status: pass ? "pass" : "fail", input: val };
+    pushLog(q.id, pass, executionOutput);
+    saveProgress();
+    render();
+  }
+  function doResetLevel() {
+    var lvName = LEVELS[state.level] ? LEVELS[state.level].name : '현재 장';
+    if (!window.confirm('"' + lvName + '" 문제를 모두 초기화할까요? 되돌릴 수 없습니다.')) return;
+    questionsOfLevel(state.level).forEach(function (q) {
+      delete state.progress[q.id];
+      delete state.inputs[q.id];
+      delete state.revealed[q.id];
+    });
+    state.index = 0;
+    state.reviewMode = false;
+    saveProgress();
+    render();
+  }
+  function doResetChapter() {
+    var chName = CHAPTER_DATA[currentCh] ? CHAPTER_DATA[currentCh].brandTitle : '현재 챕터';
+    if (!window.confirm('"' + chName + '" 전체 장을 초기화할까요? 되돌릴 수 없습니다.')) return;
+    state.progress = {};
+    state.inputs = {};
+    state.revealed = {};
+    state.log = [];
+    state.index = 0;
+    state.reviewMode = false;
+    saveProgress();
+    render();
+  }
+  function doResetAll() {
+    if (!window.confirm('모든 챕터의 진행 상황을 초기화할까요? 되돌릴 수 없습니다.')) return;
+    Object.values(CHAPTER_DATA).forEach(function (chData) {
+      if (chData.storageKey) store.set(chData.storageKey, '{}');
+      if (chData.bookmarkKey) store.set(chData.bookmarkKey, '{}');
+    });
+    state.progress = {};
+    state.inputs = {};
+    state.revealed = {};
+    state.log = [];
+    state.index = 0;
+    state.reviewMode = false;
+    saveProgress();
+    render();
+  }
+  function focusAnswerInput() {
+    var ta = document.getElementById("ans-input");
+    if (ta) ta.focus();
+  }
+
+  /* ============ 이벤트 ============ */
+  function handleAction(el) {
+    var action = el.getAttribute("data-action");
+    if (action === "select-level")
+      doSelectLevel(parseInt(el.getAttribute("data-level"), 10));
+    else if (action === "toggle-review") doToggleReview();
+    else if (action === "toggle-bookmark-mode") doToggleBookmarkMode();
+    else if (action === "exit-review") doExitSpecialMode();
+    else if (action === "jump")
+      doJump(parseInt(el.getAttribute("data-index"), 10));
+    else if (action === "prev") doPrev();
+    else if (action === "next") doNext();
+    else if (action === "qnav-prev") doQNavPrev();
+    else if (action === "qnav-next") doQNavNext();
+    else if (action === "reveal") doReveal();
+    else if (action === "toggle-bookmark")
+      doToggleBookmark(el.getAttribute("data-qid"));
+    else if (action === "grade") doGrade();
+    else if (action === "reset-level") doResetLevel();
+    else if (action === "reset-chapter") doResetChapter();
+    else if (action === "go-chapter") {
+      var ch = parseInt(el.getAttribute("data-ch"), 10);
+      isOverview = false;
+      switchChapter(ch);
+    }
+  }
+  document
+    .getElementById("level-nav")
+    .addEventListener("click", function (e) {
+      var el = e.target.closest("[data-action]");
+      if (!el) return;
+      handleAction(el);
+    });
+  document.getElementById("app").addEventListener("click", function (e) {
+    var el = e.target.closest("[data-action]");
+    if (!el) return;
+    handleAction(el);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    var ta = document.getElementById("ans-input"),
+      taf = document.activeElement === ta;
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      doGrade();
+      return;
+    }
+    if (taf) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        ta.blur();
+      }
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      focusAnswerInput();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      doPrev();
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      doNext();
+    } else if (e.key === "r" || e.key === "R") {
+      e.preventDefault();
+      doReveal();
+    }
+  });
+
+  /* ============ 사이드바 핀 ============ */
+  (function () {
+    var sidebar = document.getElementById('sidebar');
+    var pinBtn = document.getElementById('sidebar-pin');
+    function applyPinned(pinned) {
+      sidebar.classList.toggle('pinned', pinned);
+      pinBtn.title = pinned ? '사이드바 고정 해제' : '사이드바 고정';
+    }
+    if (localStorage.getItem('sidebar_pinned') === '1') applyPinned(true);
+    pinBtn.addEventListener('click', function () {
+      var next = !sidebar.classList.contains('pinned');
+      applyPinned(next);
+      localStorage.setItem('sidebar_pinned', next ? '1' : '0');
+    });
+  })();
+
+  /* ============ 시작 ============ */
+  // progress 로드 완료 후 위치 복원 → 렌더링 (타이밍 race condition 방지)
+  render();
+  loadProgress().then(function () {
+    loadPosition();
+    render();
+    updateChDoneBadges();
+  });
+  checkServer();
+})();
