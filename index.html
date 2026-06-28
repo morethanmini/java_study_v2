@@ -45,90 +45,258 @@
         min-height: 100vh;
       }
 
-      /* ---------- chapter nav ---------- */
-      #chapter-nav {
-        position: sticky;
-        top: 0;
-        z-index: 100;
-        background: var(--surface);
-        border-bottom: 1px solid var(--border);
+      /* ---------- page layout ---------- */
+      #page-wrap {
+        min-height: 100vh;
+      }
+      #sidebar {
+        position: fixed;
+        left: 0; top: 0;
+        height: 100vh;
+        width: 52px;
+        z-index: 200;
+        background: #f9fafb;
+        border-right: 1px solid rgba(0,0,0,0.07);
+        display: flex;
+        flex-direction: column;
+        overflow-x: hidden;
+        overflow-y: auto;
+        scrollbar-width: none;
+        transition: width 0.22s ease, box-shadow 0.22s ease;
+      }
+      #sidebar::-webkit-scrollbar { display: none; }
+      #sidebar:hover {
+        width: 216px;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+      }
+      #sidebar.pinned {
+        width: 216px;
+        box-shadow: none;
+      }
+      #sidebar-header {
+        padding: 12px 10px 10px;
+        border-bottom: 1px solid var(--border-soft);
+        flex-shrink: 0;
         display: flex;
         align-items: center;
-        gap: 4px;
-        padding: 10px 20px;
-        overflow-x: auto;
+        gap: 8px;
+        min-height: 52px;
+      }
+      .sidebar-brand-wrap {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      .sidebar-brand {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--text);
+        line-height: 1.3;
+        white-space: nowrap;
+      }
+      .sidebar-sub {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--muted);
+        margin-top: 2px;
+        white-space: nowrap;
+      }
+      #sidebar-pin {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.1s, color 0.1s;
+      }
+      #sidebar-pin:hover { background: rgba(0,0,0,0.06); color: var(--text); }
+      #sidebar.pinned #sidebar-pin {
+        background: rgba(46,134,193,0.12);
+        color: var(--accent);
+      }
+
+      /* overview 전용 섹션 */
+      #sidebar-overview {
+        padding: 8px 8px 6px;
+        flex-shrink: 0;
+      }
+      .sidebar-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 0 8px;
+        flex-shrink: 0;
+      }
+      #sidebar-section-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding: 8px 14px 4px;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      #sidebar-levels-label {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding: 8px 14px 4px;
+        border-top: 1px solid var(--border-soft);
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      #sidebar-footer {
+        margin-top: auto;
+        padding: 10px 8px;
+        border-top: 1px solid var(--border-soft);
+        flex-shrink: 0;
+      }
+      #main-wrap {
+        margin-left: 52px;
+        min-height: 100vh;
+        transition: margin-left 0.22s ease;
+      }
+      #sidebar.pinned ~ #main-wrap {
+        margin-left: 216px;
+      }
+
+      /* ch-icon: 항상 보이는 아이콘 */
+      .ch-icon {
+        flex-shrink: 0;
+        font-size: 13px;
+        width: 18px;
+        text-align: center;
+        display: inline-block;
+      }
+      .ch-text {
+        flex: 1;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      /* 아코디언: level-nav가 chapter-nav 안에 들어갔을 때 기본 숨김 */
+      #chapter-nav #level-nav {
+        display: none;
+      }
+      #sidebar:hover #chapter-nav #level-nav,
+      #sidebar.pinned #chapter-nav #level-nav {
+        display: flex;
+        flex-direction: column;
+        padding: 2px 4px 4px 22px;
+        border-left: 2px solid rgba(0,0,0,0.06);
+        margin-left: 12px;
+        margin-bottom: 2px;
+      }
+
+      /* 좁은 상태(hover/pin 아닐 때) 텍스트·레이블 숨김 */
+      #sidebar-section-label,
+      .sidebar-divider,
+      .ch-text {
+        visibility: hidden;
+        transition: visibility 0s 0.1s;
+      }
+      #sidebar:hover #sidebar-section-label,
+      #sidebar:hover .sidebar-divider,
+      #sidebar:hover .ch-text,
+      #sidebar.pinned #sidebar-section-label,
+      #sidebar.pinned .sidebar-divider,
+      #sidebar.pinned .ch-text {
+        visibility: visible;
+        transition: visibility 0s 0.08s;
+      }
+
+      /* ---------- chapter nav ---------- */
+      #chapter-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 8px;
+        flex-shrink: 0;
       }
       .ch-reset-btn {
-        margin-left: auto;
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--muted);
-        background: transparent;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 6px 10px;
-        cursor: pointer;
-        transition: 0.15s;
-        white-space: nowrap;
-        flex-shrink: 0;
-      }
-      .ch-reset-btn:hover { border-color: var(--fail); color: var(--fail); }
-      .lv-reset-btn {
-        margin-left: auto;
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--muted);
-        background: transparent;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 5px 10px;
-        cursor: pointer;
-        transition: 0.15s;
-        white-space: nowrap;
-        flex-shrink: 0;
-      }
-      .lv-reset-btn:hover { border-color: var(--fail); color: var(--fail); }
-      .ch-btn {
-        font-family: var(--mono);
+        width: 100%;
+        font-family: var(--body);
         font-size: 12px;
-        font-weight: 500;
-        background: transparent;
-        border: 1px solid var(--border);
-        border-radius: 8px;
         color: var(--muted);
-        padding: 7px 14px;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        padding: 5px 8px;
         cursor: pointer;
-        transition: 0.15s;
+        transition: background 0.1s, color 0.1s;
+        white-space: nowrap;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .ch-reset-btn:hover { background: rgba(192,57,43,0.07); color: var(--fail); }
+      .lv-reset-btn {
+        width: 100%;
+        font-family: var(--body);
+        font-size: 12px;
+        color: var(--muted);
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        padding: 5px 8px;
+        cursor: pointer;
+        transition: background 0.1s, color 0.1s;
+        white-space: nowrap;
+        text-align: left;
+      }
+      .lv-reset-btn:hover { background: rgba(192,57,43,0.07); color: var(--fail); }
+      .ch-btn {
+        font-family: var(--body);
+        font-size: 13px;
+        font-weight: 400;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        color: var(--muted);
+        padding: 5px 8px;
+        cursor: pointer;
+        width: 100%;
+        text-align: left;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.1s, color 0.1s;
         white-space: nowrap;
       }
       .ch-btn:hover {
-        border-color: var(--accent-soft);
+        background: rgba(0,0,0,0.05);
         color: var(--text);
       }
       .ch-btn.ch-active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #191309;
-        font-weight: 700;
+        background: rgba(0,0,0,0.07);
+        color: var(--text);
+        font-weight: 600;
       }
       .ch-btn.ch-done {
-        background: #b3d9f0;
-        border-color: #8ec6e8;
+        color: #2471a3;
+      }
+      .ch-btn.ch-done.ch-active {
+        background: rgba(46,134,193,0.1);
         color: #1a4a6b;
         font-weight: 600;
       }
-      .ch-btn.ch-done.ch-active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #191309;
-        font-weight: 700;
-      }
-      /* 전체 개요 버튼: 활성 상태엔 테두리만 */
+      /* 전체 개요 버튼: 활성 상태 */
       .ch-btn[data-ch="0"].ch-active {
-        background: transparent;
-        border-color: var(--accent);
+        background: rgba(46,134,193,0.08);
         color: var(--accent);
-        font-weight: 700;
+        font-weight: 600;
       }
       /* 전체 개요 버튼 liquid fill wave */
       .ch-btn[data-ch="0"] {
@@ -136,12 +304,10 @@
         overflow: hidden;
         flex-shrink: 0;
       }
-      .ch-btn[data-ch="0"] span.ch-text {
+      .ch-btn[data-ch="0"] .ch-icon,
+      .ch-btn[data-ch="0"] .ch-text {
         position: relative;
         z-index: 2;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
         white-space: nowrap;
       }
       .ch-btn[data-ch="0"] .ov-pct {
@@ -176,47 +342,101 @@
       }
 
       #app {
-        max-width: 1180px;
+        max-width: 900px;
         margin: 0 auto;
-        padding: 28px 20px 60px;
+        padding: 0 32px 60px;
       }
+      #app > .topbar + * { margin-top: 28px; }
 
       /* ---------- topbar ---------- */
       .topbar {
         display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        gap: 20px;
-        flex-wrap: wrap;
-        margin-bottom: 22px;
+        flex-direction: column;
+        padding: 24px 0 0;
       }
+      .topbar-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 10px;
+      }
+      .topbar-left { display: flex; flex-direction: column; gap: 0; flex: 1; min-width: 0; }
+      .top-stats-box {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+        padding-top: 25px;
+      }
+      .top-stats-box .progress-wrap { min-width: 180px; }
+      .topbar-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 8px 0 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      .top-qnav {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .q-nav {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        flex-shrink: 0;
+      }
+      .q-nav-arrow {
+        width: 28px; height: 30px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 15px;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: 0.12s;
+        line-height: 1;
+        padding: 0;
+        flex-shrink: 0;
+      }
+      .q-nav-arrow:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+      .q-nav-arrow:disabled { opacity: 0.3; cursor: default; }
+      /* fixed width: 6 × 32px + 5 × 5px gap = 217px */
+      .q-nav-dots { display: flex; gap: 5px; width: 217px; flex-shrink: 0; }
       .brand-eyebrow {
         font-family: var(--mono);
         font-size: 11px;
         letter-spacing: 0.14em;
         color: var(--accent-soft);
         text-transform: uppercase;
-        margin-bottom: 6px;
+        margin-bottom: 10px;
       }
       .brand-title {
         font-family: var(--display);
         font-weight: 700;
-        font-size: 28px;
-        letter-spacing: -0.01em;
-        margin: 0;
+        font-size: 30px;
+        letter-spacing: -0.02em;
+        margin: 0 0 6px;
+        line-height: 1.1;
       }
       .brand-sub {
         color: var(--muted);
-        font-size: 13px;
-        margin-top: 4px;
+        font-size: 13.5px;
+        margin-bottom: 3px;
       }
-      .top-stats {
+      .top-qnav {
         display: flex;
         align-items: center;
-        gap: 14px;
+        flex-shrink: 0;
+        padding-top: 4px;
       }
       .progress-wrap {
-        min-width: 220px;
+        min-width: 240px;
       }
       .progress-label {
         display: flex;
@@ -224,14 +444,14 @@
         font-family: var(--mono);
         font-size: 12px;
         color: var(--muted);
-        margin-bottom: 6px;
+        margin-bottom: 7px;
       }
       .progress-label b {
         color: var(--text);
         font-weight: 600;
       }
       .progress-track {
-        height: 8px;
+        height: 6px;
         border-radius: 99px;
         background: var(--surface2);
         border: 1px solid var(--border);
@@ -244,14 +464,18 @@
       }
       .reset-btn {
         font-family: var(--mono);
-        font-size: 12px;
+        font-size: 11px;
         color: var(--muted);
         background: transparent;
         border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 8px 12px;
+        border-radius: 6px;
+        padding: 0 10px;
+        height: 30px;
         cursor: pointer;
         transition: 0.15s;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
       }
       .reset-btn:hover {
         border-color: var(--fail);
@@ -260,68 +484,58 @@
 
       /* ---------- level nav ---------- */
       #level-nav {
-        position: sticky;
-        top: 44px;
-        z-index: 99;
-        background: var(--bg);
-        border-bottom: 1px solid var(--border);
         display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 20px;
-        overflow-x: auto;
-        scrollbar-width: none;
-      }
-      #level-nav::-webkit-scrollbar {
-        display: none;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 8px;
+        flex-shrink: 0;
       }
       .lv-btn {
         font-family: var(--body);
         font-size: 12px;
-        font-weight: 500;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 8px;
+        font-weight: 400;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
         color: var(--muted);
-        padding: 6px 12px;
+        padding: 5px 8px;
         cursor: pointer;
         white-space: nowrap;
-        transition: 0.15s;
-        flex: 0 0 auto;
+        transition: background 0.1s, color 0.1s;
+        width: 100%;
+        text-align: left;
       }
       .lv-btn:hover {
-        border-color: var(--accent-soft);
+        background: rgba(0,0,0,0.05);
         color: var(--text);
       }
       .lv-btn.lv-active {
-        background: var(--surface2);
-        border-color: var(--accent);
+        background: rgba(0,0,0,0.07);
         color: var(--text);
+        font-weight: 600;
       }
       .lv-btn.lv-done {
-        background: rgba(111, 217, 160, 0.12);
-        border-color: rgba(111, 217, 160, 0.3);
-        color: var(--success);
+        background: rgba(26,138,86,0.08);
+        color: var(--text);
       }
       .lv-btn.lv-done.lv-active {
-        background: rgba(111, 217, 160, 0.22);
-        border-color: rgba(111, 217, 160, 0.5);
-        color: var(--success);
+        background: rgba(26,138,86,0.14);
+        color: var(--text);
+        font-weight: 600;
       }
       .lv-btn.lv-special {
-        border-color: var(--border);
+        color: var(--muted);
       }
       .lv-btn.lv-special.lv-on {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #191309;
+        background: rgba(46,134,193,0.08);
+        color: var(--accent);
+        font-weight: 600;
       }
       .lv-sep {
-        width: 1px;
-        height: 20px;
+        height: 1px;
+        width: 100%;
         background: var(--border);
-        flex: 0 0 auto;
-        margin: 0 4px;
+        margin: 4px 0;
       }
 
       /* ---------- layout ---------- */
@@ -343,7 +557,7 @@
         gap: 6px;
       }
       .dot {
-        aspect-ratio: 1;
+        width: 32px; height: 30px;
         border-radius: 6px;
         border: 1px solid var(--border);
         background: var(--surface2);
@@ -351,10 +565,11 @@
         align-items: center;
         justify-content: center;
         font-family: var(--mono);
-        font-size: 10px;
+        font-size: 12px;
         color: var(--muted);
         cursor: pointer;
         transition: 0.15s;
+        flex-shrink: 0;
       }
       .dot:hover {
         border-color: var(--accent-soft);
@@ -366,7 +581,7 @@
       .dot.pass {
         background: rgba(111, 217, 160, 0.14);
         border-color: var(--success);
-        color: var(--success);
+        color: var(--text);
       }
       .dot.fail {
         background: rgba(226, 96, 79, 0.14);
@@ -377,12 +592,23 @@
         outline: 2px solid var(--accent-soft);
         outline-offset: 1px;
       }
+      .dot.dot-empty {
+        border-color: transparent;
+        background: transparent;
+        pointer-events: none;
+        cursor: default;
+      }
 
       .kbd-hint {
         font-family: var(--mono);
         font-size: 11px;
         color: var(--muted);
-        margin-top: 6px;
+        opacity: 0.75;
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
       .kbd-hint kbd {
         background: var(--surface2);
@@ -844,15 +1070,72 @@
       }
 
       /* ========== 모바일 반응형 ========== */
-      @media (max-width: 600px) {
-        /* chapter nav */
-        #chapter-nav {
-          padding: 8px 12px;
-          gap: 6px;
+      @media (max-width: 700px) {
+        #sidebar {
+          width: 100%;
+          height: auto;
+          position: fixed;
+          top: 0; left: 0;
+          flex-direction: row;
+          overflow-x: auto;
+          overflow-y: hidden;
+          border-right: none;
+          border-bottom: 1px solid var(--border);
+          box-shadow: none !important;
+          z-index: 200;
         }
+        #sidebar:hover { width: 100%; box-shadow: none !important; }
+        #sidebar.pinned { width: 100%; }
+        #sidebar-header { display: none; }
+        #sidebar-overview { padding: 6px 4px; }
+        #sidebar-section-label,
+        #sidebar-levels-label { display: none; }
+        #chapter-nav {
+          flex-direction: row;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          padding: 6px 4px;
+          gap: 4px;
+          scrollbar-width: none;
+        }
+        #chapter-nav::-webkit-scrollbar { display: none; }
         .ch-btn {
+          width: auto;
           font-size: 11px;
-          padding: 6px 10px;
+          padding: 6px 8px;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .ch-text { display: none; }
+        .ch-reset-btn { display: none; }
+        #sidebar-footer { display: none; }
+        #level-nav {
+          flex-direction: row;
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          padding: 6px 4px;
+          gap: 4px;
+          scrollbar-width: none;
+          border-top: none;
+          border-left: 1px solid var(--border-soft);
+        }
+        #level-nav::-webkit-scrollbar { display: none; }
+        .lv-btn {
+          width: auto;
+          font-size: 11px;
+          padding: 5px 10px;
+          flex-shrink: 0;
+        }
+        .lv-reset-btn { display: none; }
+        .lv-sep { display: none; }
+        .sidebar-divider { display: none; }
+        #main-wrap {
+          margin-left: 0;
+          margin-top: 52px;
+        }
+        #sidebar.pinned ~ #main-wrap {
+          margin-left: 0;
+          margin-top: 52px;
         }
 
         /* app 패딩 */
@@ -883,17 +1166,6 @@
         .reset-btn {
           font-size: 11px;
           padding: 6px 10px;
-        }
-
-        /* level nav */
-        #level-nav {
-          top: 38px;
-          padding: 6px 12px;
-          gap: 5px;
-        }
-        .lv-btn {
-          font-size: 11px;
-          padding: 5px 10px;
         }
 
         /* dot grid */
@@ -992,23 +1264,47 @@
     <script src="ch5-lambda-stream-io/items/questions.js"></script>
   </head>
   <body>
-    <div id="chapter-nav">
-      <button class="ch-btn" data-ch="0"><span class="ch-text">📋 전체 개요<span class="ov-pct"></span></span></button>
-      <button class="ch-btn ch-active" data-ch="1"><span class="ch-text">Ch1. 기본 문법</span></button>
-      <button class="ch-btn" data-ch="2"><span class="ch-text">Ch2. OOP 기초</span></button>
-      <button class="ch-btn" data-ch="3"><span class="ch-text">Ch3. 컬렉션</span></button>
-      <button class="ch-btn" data-ch="4"><span class="ch-text">Ch4. 자료구조 응용</span></button>
-      <button class="ch-btn" data-ch="5"><span class="ch-text">Ch5. 람다·Stream·IO</span></button>
-      <button class="ch-reset-btn" data-action="reset-all">전체 초기화</button>
+    <div id="page-wrap">
+      <nav id="sidebar">
+        <div id="sidebar-header">
+          <button id="sidebar-pin" title="사이드바 고정/해제">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+          </button>
+          <div class="sidebar-brand-wrap">
+            <div class="sidebar-brand">Java 문법 채점기</div>
+            <div class="sidebar-sub">$ java --curriculum</div>
+          </div>
+        </div>
+        <div id="sidebar-overview">
+          <button class="ch-btn" data-ch="0"><span class="ch-icon">📋</span><span class="ch-text">전체 개요<span class="ov-pct"></span></span></button>
+        </div>
+        <div class="sidebar-divider"></div>
+        <div id="sidebar-section-label">챕터</div>
+        <div id="chapter-nav">
+          <button class="ch-btn ch-active" data-ch="1"><span class="ch-icon">①</span><span class="ch-text">기본 문법</span></button>
+          <button class="ch-btn" data-ch="2"><span class="ch-icon">②</span><span class="ch-text">OOP 기초</span></button>
+          <button class="ch-btn" data-ch="3"><span class="ch-icon">③</span><span class="ch-text">컬렉션</span></button>
+          <button class="ch-btn" data-ch="4"><span class="ch-icon">④</span><span class="ch-text">자료구조 응용</span></button>
+          <button class="ch-btn" data-ch="5"><span class="ch-icon">⑤</span><span class="ch-text">람다·Stream·IO</span></button>
+        </div>
+        <div id="level-nav"></div>
+        <div id="sidebar-footer">
+          <button class="ch-reset-btn" data-action="reset-all"><span class="ch-icon">🗑</span><span class="ch-text">전체 초기화</span></button>
+        </div>
+      </nav>
+      <div id="main-wrap">
+        <div id="app"><div class="loading">진행 상황 불러오는 중...</div></div>
+      </div>
     </div>
-    <div id="level-nav"></div>
-
-    <div id="app"><div class="loading">진행 상황 불러오는 중...</div></div>
 
     <script>
       (function () {
         /* ============ 현재 챕터 상태 ============ */
         var currentCh = 1;
+        var chCollapsed = false;
         var SERVER_URL = "http://localhost:3000/run";
         var serverAvailable = false;
 
@@ -1404,6 +1700,7 @@
             bookmarks: {},
             level: 0,
             index: 0,
+            qNavPage: 0,
             log: [],
             reviewMode: false,
             bookmarkMode: false,
@@ -1419,7 +1716,7 @@
         }
 
         document
-          .getElementById("chapter-nav")
+          .getElementById("sidebar")
           .addEventListener("click", function (e) {
             if (e.target.closest("[data-action='reset-all']")) {
               doResetAll();
@@ -1434,7 +1731,12 @@
             }
             if (isOverview || ch !== currentCh) {
               isOverview = false;
+              chCollapsed = false;
               switchChapter(ch);
+            } else {
+              chCollapsed = !chCollapsed;
+              var lnav = document.getElementById('level-nav');
+              if (lnav) lnav.style.display = chCollapsed ? 'none' : '';
             }
           });
 
@@ -1802,9 +2104,14 @@
             bmCount +
             "</span></button>";
           lnav.innerHTML = lhtml;
+          (function () {
+            var activeChBtn = document.querySelector('#chapter-nav .ch-btn[data-ch="' + currentCh + '"]');
+            if (activeChBtn) activeChBtn.parentNode.insertBefore(lnav, activeChBtn.nextSibling);
+            if (chCollapsed) lnav.style.display = 'none';
+          })();
           var html = "";
           html +=
-            '<div class="topbar"><div><div class="brand-eyebrow">$ run --suite ' +
+            '<div class="topbar"><div class="topbar-left"><div class="brand-eyebrow">$ run --suite ' +
             CHAPTER_DATA[currentCh].suite +
             '</div><h1 class="brand-title">' +
             CHAPTER_DATA[currentCh].brandTitle +
@@ -1843,36 +2150,67 @@
             return;
           }
           if (state.index >= levelQs.length) state.index = 0;
+          // auto-adjust qNavPage to keep current dot visible
+          var Q_PAGE_SIZE = 6;
+          if (!state.qNavPage) state.qNavPage = 0;
+          if (state.index < state.qNavPage * Q_PAGE_SIZE ||
+              state.index >= state.qNavPage * Q_PAGE_SIZE + Q_PAGE_SIZE) {
+            state.qNavPage = Math.floor(state.index / Q_PAGE_SIZE);
+          }
+          var maxQPage = Math.max(0, Math.ceil(levelQs.length / Q_PAGE_SIZE) - 1);
+          if (state.qNavPage > maxQPage) state.qNavPage = maxQPage;
+
           var q = levelQs[state.index],
             passed = totalPassed(),
             html = "";
 
-          html += '<div class="topbar"><div>';
-          html +=
-            '<div class="brand-eyebrow">$ run --suite ' +
-            CHAPTER_DATA[currentCh].suite +
-            "</div>";
-          html +=
-            '<h1 class="brand-title">' +
-            CHAPTER_DATA[currentCh].brandTitle +
-            "</h1>";
-          html +=
-            '<div class="brand-sub">코드를 입력하고 채점 버튼을 누르세요. <span id="server-badge" style="font-size:0.85em;">● regex 채점 (서버 꺼짐)</span></div>';
-          html +=
-            '<div class="kbd-hint"><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 문제 · <kbd>R</kbd> 정답 보기 · <kbd>Esc</kbd> 입력창 빠져나오기 · <kbd>Enter</kbd> 입력창 포커스</div>';
-          html += '</div><div class="top-stats"><div class="progress-wrap">';
-          html +=
-            '<div class="progress-label"><span>전체 진행</span><b>' +
-            passed +
-            " / " +
-            QUESTIONS.length +
-            "</b></div>";
-          html +=
-            '<div class="progress-track"><div class="progress-fill" style="width:' +
-            Math.round((passed / QUESTIONS.length) * 100) +
-            '%"></div></div>';
-          html +=
-            '</div><button class="reset-btn" data-action="reset-level">현재 장 초기화</button></div></div>';
+          // Build dot-nav HTML (always 6 fixed slots)
+          var qNavHtml = '<div class="q-nav">';
+          qNavHtml += '<button class="q-nav-arrow" data-action="prev"' +
+            (state.index === 0 ? ' disabled' : '') + '>&#8249;</button>';
+          qNavHtml += '<div class="q-nav-dots">';
+          var dotStart = state.qNavPage * Q_PAGE_SIZE;
+          for (var di = dotStart; di < dotStart + Q_PAGE_SIZE; di++) {
+            if (di < levelQs.length) {
+              var dq = levelQs[di];
+              var dst = state.progress[dq.id] && state.progress[dq.id].status;
+              var dcls = 'dot' +
+                (di === state.index ? ' current' : '') +
+                (dst === 'pass' ? ' pass' : dst === 'fail' ? ' fail' : '') +
+                (state.bookmarks[dq.id] ? ' bookmarked' : '');
+              qNavHtml += '<div class="' + dcls + '" data-action="jump" data-index="' + di +
+                '" title="' + esc(dq.id) + '">' + (di + 1) + '</div>';
+            } else {
+              qNavHtml += '<div class="dot dot-empty"></div>';
+            }
+          }
+          qNavHtml += '</div>';
+          qNavHtml += '<button class="q-nav-arrow" data-action="next"' +
+            (state.index >= levelQs.length - 1 ? ' disabled' : '') + '>&#8250;</button>';
+          qNavHtml += '</div>';
+
+          // stats HTML (우상단)
+          var statsHtml = '<div class="top-stats-box">';
+          statsHtml += '<div class="progress-wrap"><div class="progress-label"><span>전체 진행</span><b>' +
+            passed + ' / ' + QUESTIONS.length + '</b></div>';
+          statsHtml += '<div class="progress-track"><div class="progress-fill" style="width:' +
+            Math.round((passed / QUESTIONS.length) * 100) + '%"></div></div></div>';
+          statsHtml += '<button class="reset-btn" data-action="reset-level">현재 장 초기화</button>';
+          statsHtml += '</div>';
+
+          html += '<div class="topbar">';
+          // 상단 row: 좌=eyebrow+제목+서브, 우=전체진행+초기화
+          html += '<div class="topbar-main"><div class="topbar-left">';
+          html += '<div class="brand-eyebrow">$ run --suite ' + CHAPTER_DATA[currentCh].suite + '</div>';
+          html += '<h1 class="brand-title">' + CHAPTER_DATA[currentCh].brandTitle + '</h1>';
+          html += '<div class="brand-sub">코드를 입력하고 채점 버튼을 누르세요. <span id="server-badge" style="font-size:0.85em;">● regex 채점 (서버 꺼짐)</span></div>';
+          html += '</div>' + statsHtml + '</div>';
+          // 하단 row: 좌=kbd-hint(줄바꿈), 우=문항번호 dots
+          html += '<div class="topbar-bottom">';
+          html += '<div class="kbd-hint"><div><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 문제 · <kbd>R</kbd> 정답 보기</div><div><kbd>Esc</kbd> 입력창 빠져나오기 · <kbd>Enter</kbd> 입력창 포커스</div></div>';
+          html += '<div class="top-qnav">' + qNavHtml + '</div>';
+          html += '</div>';
+          html += '</div>';
 
           /* --- level nav bar --- */
           var failCount = failedQuestions().length,
@@ -1916,28 +2254,13 @@
             "</span></button>";
           lhtml += '<button class="lv-reset-btn" data-action="reset-chapter">장 전체 초기화</button>';
           lnav.innerHTML = lhtml;
+          (function () {
+            var activeChBtn = document.querySelector('#chapter-nav .ch-btn[data-ch="' + currentCh + '"]');
+            if (activeChBtn) activeChBtn.parentNode.insertBefore(lnav, activeChBtn.nextSibling);
+            if (chCollapsed) lnav.style.display = 'none';
+          })();
 
           html += '<div class="layout">';
-          html += '<div class="dot-grid-wrap"><div class="dot-grid">';
-          levelQs.forEach(function (qq, i) {
-            var st = state.progress[qq.id] && state.progress[qq.id].status;
-            var cls =
-              "dot" +
-              (i === state.index ? " current" : "") +
-              (st === "pass" ? " pass" : st === "fail" ? " fail" : "") +
-              (state.bookmarks[qq.id] ? " bookmarked" : "");
-            html +=
-              '<div class="' +
-              cls +
-              '" data-action="jump" data-index="' +
-              i +
-              '" title="' +
-              esc(qq.id) +
-              '">' +
-              (st === "pass" ? "✓" : st === "fail" ? "✗" : i + 1) +
-              "</div>";
-          });
-          html += "</div></div>";
 
           html += '<div class="content"><div class="card">';
           var eyebrow = state.reviewMode
@@ -2114,8 +2437,17 @@
         }
         function doJump(i) {
           state.index = i;
+          state.qNavPage = Math.floor(i / 6);
           savePosition();
           render();
+        }
+        function doQNavPrev() {
+          if (state.qNavPage > 0) { state.qNavPage--; render(); }
+        }
+        function doQNavNext() {
+          var lq = activeQuestionList();
+          var maxPage = Math.max(0, Math.ceil(lq.length / 6) - 1);
+          if (state.qNavPage < maxPage) { state.qNavPage++; render(); }
         }
         function doPrev() {
           if (state.index > 0) {
@@ -2236,6 +2568,8 @@
             doJump(parseInt(el.getAttribute("data-index"), 10));
           else if (action === "prev") doPrev();
           else if (action === "next") doNext();
+          else if (action === "qnav-prev") doQNavPrev();
+          else if (action === "qnav-next") doQNavNext();
           else if (action === "reveal") doReveal();
           else if (action === "toggle-bookmark")
             doToggleBookmark(el.getAttribute("data-qid"));
@@ -2290,6 +2624,22 @@
             doReveal();
           }
         });
+
+        /* ============ 사이드바 핀 ============ */
+        (function () {
+          var sidebar = document.getElementById('sidebar');
+          var pinBtn = document.getElementById('sidebar-pin');
+          function applyPinned(pinned) {
+            sidebar.classList.toggle('pinned', pinned);
+            pinBtn.title = pinned ? '사이드바 고정 해제' : '사이드바 고정';
+          }
+          if (localStorage.getItem('sidebar_pinned') === '1') applyPinned(true);
+          pinBtn.addEventListener('click', function () {
+            var next = !sidebar.classList.contains('pinned');
+            applyPinned(next);
+            localStorage.setItem('sidebar_pinned', next ? '1' : '0');
+          });
+        })();
 
         /* ============ 시작 ============ */
         loadPosition();
