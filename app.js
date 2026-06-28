@@ -284,13 +284,130 @@
     lastErrorLines: [],
   };
 
-  function todayStr() {
-    return new Date().toISOString().slice(0, 10);
+  function getToday() {
+    var _override = new URLSearchParams(location.search).get('testDate');
+    return _override ? new Date(_override) : new Date();
   }
+  function todayStr() {
+    var d = getToday();
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return yyyy + '-' + mm + '-' + dd;
+  }
+  /* ============ 잔디 ============ */
+  var GRASS_KEY = 'java_study_grass';
+
+  function loadGrass() {
+    try { return JSON.parse(localStorage.getItem(GRASS_KEY)) || {}; } catch(e) { return {}; }
+  }
+
+  function saveGrass(g) {
+    try { localStorage.setItem(GRASS_KEY, JSON.stringify(g)); } catch(e) {}
+  }
+
+  function recordGrass() {
+    var g = loadGrass();
+    var today = todayStr();
+    g[today] = (g[today] || 0) + 1;
+    saveGrass(g);
+    renderGrass();
+  }
+
+  function renderGrass() {
+    var grid = document.getElementById('grass-grid');
+    if (!grid) return;
+    var g = loadGrass();
+    var today = todayStr();
+
+    // 10주, 일요일 기준 시작
+    var WEEKS = 10;
+    var todayDate = getToday();
+    var startDate = new Date(todayDate);
+    startDate.setDate(startDate.getDate() - WEEKS * 7 + 1);
+    var dow = startDate.getDay();
+    startDate.setDate(startDate.getDate() - dow);
+
+    var maxVal = 0;
+    for (var k in g) { if (g[k] > maxVal) maxVal = g[k]; }
+
+    // 날짜 목록 수집 (열 단위)
+    var cols = [];
+    var cur = new Date(startDate);
+    var endDate = new Date(todayDate);
+    endDate.setHours(23, 59, 59);
+    var colDates = [];
+    while (cur <= endDate) {
+      var yyyy = cur.getFullYear();
+      var mm = String(cur.getMonth() + 1).padStart(2, '0');
+      var dd = String(cur.getDate()).padStart(2, '0');
+      colDates.push({ ds: yyyy+'-'+mm+'-'+dd, d: cur.getDate(), m: cur.getMonth()+1, dow: cur.getDay() });
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    // 그리드 셀 렌더 (7행 순수 셀만, 레이블 행 없음)
+    var gridHtml = '';
+    var totalCols = Math.ceil(colDates.length / 7);
+    for (var i = 0; i < colDates.length; i++) {
+      var info = colDates[i];
+      var val = g[info.ds] || 0;
+      var level = 0;
+      if (val >= 1) level = 1;
+      if (val >= 3) level = 2;
+      if (val >= 6) level = 3;
+      if (val >= 10) level = 4;
+      var isToday = info.ds === today;
+      gridHtml += '<div class="grass-cell lv' + level + (isToday ? ' grass-today' : '') +
+        '" data-date="' + info.ds + '" data-count="' + val + '"></div>';
+    }
+    grid.innerHTML = gridHtml;
+
+    // X축 레이블: 각 열 좌측 기준 절대 위치 (셀 10px + gap 2px = 12px per col)
+    var xAxis = document.getElementById('grass-x-axis');
+    if (xAxis) {
+      var xHtml = '';
+      var prevMonth = colDates.length > 0 ? colDates[0].m : -1;
+      for (var c = 0; c < totalCols; c++) {
+        var cellIdx = c * 7;
+        if (cellIdx >= colDates.length) break;
+        var ci = colDates[cellIdx];
+        if (ci.m !== prevMonth) {
+          prevMonth = ci.m;
+          var left = c * 14;
+          xHtml += '<span class="grass-x-lbl" style="left:' + left + 'px">' + ci.m + '월</span>';
+        }
+      }
+      xAxis.innerHTML = xHtml;
+    }
+
+    // 툴팁 이벤트 (최초 1회만 등록)
+    var tooltip = document.getElementById('grass-tooltip');
+    if (tooltip && !grid._grassTooltipBound) {
+      grid._grassTooltipBound = true;
+      grid.addEventListener('mouseover', function(e) {
+        var cell = e.target.closest('.grass-cell');
+        if (!cell) return;
+        var ds = cell.dataset.date;
+        var cnt = parseInt(cell.dataset.count, 10) || 0;
+        tooltip.textContent = ds + ' · ' + (cnt > 0 ? cnt + '문제 정답' : '풀이 없음');
+        tooltip.classList.add('show');
+      });
+      grid.addEventListener('mouseout', function(e) {
+        if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('#grass-grid')) {
+          tooltip.classList.remove('show');
+        }
+      });
+    }
+  }
+
   function addDays(dateStr, n) {
-    var d = new Date(dateStr);
+    var parts = dateStr.split('-');
+    var d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
     d.setDate(d.getDate() + n);
-    return d.toISOString().slice(0, 10);
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return yyyy + '-' + mm + '-' + dd;
   }
   function loadDailyHistory() {
     try { return JSON.parse(localStorage.getItem(DAILY_HISTORY_KEY)) || {}; } catch(e) { return {}; }
@@ -740,6 +857,7 @@
     updateChDoneBadges();
 
     dailyState.log[q.id] = { pass: pass, output: executionOutput };
+    if (pass) recordGrass();
 
     var history = loadDailyHistory();
     var h = history[q.id];
@@ -1890,6 +2008,7 @@
     state.progress[q.id] = { status: pass ? "pass" : "fail", input: val };
     pushLog(q.id, pass, executionOutput);
     saveProgress();
+    if (pass) recordGrass();
     render();
   }
   function doResetLevel() {
@@ -2059,6 +2178,7 @@
   /* ============ 시작 ============ */
   // progress 로드 완료 후 위치 복원 → 렌더링 (타이밍 race condition 방지)
   render();
+  renderGrass();
   loadProgress().then(function () {
     loadPosition();
     if (!isDailyMode && !isOverview) render();

@@ -1489,3 +1489,112 @@ body {
   opacity: 1;
   transform: translateX(-50%) scaleX(1) scaleY(1);
 }
+
+/* ============ 잔디 ============ */
+#grass-wrap {
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  position: relative;
+}
+#sidebar:hover #grass-wrap,
+#sidebar.pinned #grass-wrap {
+  opacity: 1;
+  pointer-events: auto;
+}
+.grass-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+.grass-chart {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  justify-content: center;
+}
+.grass-y-axis {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 15px; /* x축 영역(13px) + gap(2px) */
+}
+.grass-y-axis span {
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 12px;
+  height: 12px;
+  display: block;
+}
+.grass-col-wrap {
+  min-width: 0;
+}
+#grass-x-axis {
+  position: relative;
+  height: 13px;
+  margin-bottom: 2px;
+}
+.grass-x-lbl {
+  position: absolute;
+  font-size: 9px;
+  color: var(--muted);
+  white-space: nowrap;
+  line-height: 13px;
+}
+#grass-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 12px);
+  grid-auto-columns: 12px;
+  grid-auto-flow: column;
+  row-gap: 2px;
+  column-gap: 2px;
+}
+.grass-cell {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #ffffff;
+  border: 1px solid #e0e7ef;
+  cursor: default;
+  box-sizing: border-box;
+}
+.grass-cell.lv-empty {
+  background: transparent;
+  border-color: transparent;
+  pointer-events: none;
+}
+.grass-cell.lv1 { background: #cce8f7; border-color: #cce8f7; }
+.grass-cell.lv2 { background: #7ec8e3; border-color: #7ec8e3; }
+.grass-cell.lv3 { background: #2e86c1; border-color: #2e86c1; }
+.grass-cell.lv4 { background: #1a5f8a; border-color: #1a5f8a; }
+.grass-cell.grass-today {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 0px;
+}
+
+#grass-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% - 4px);
+  left: 12px;
+  right: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 10px;
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  z-index: 300;
+}
+#grass-tooltip.show {
+  display: block;
+}
