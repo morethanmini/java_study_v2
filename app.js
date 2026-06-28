@@ -239,9 +239,11 @@
       localStorage.setItem(
         "java_study_pos",
         JSON.stringify({
+          mode: isOverview ? 'overview' : isDailyMode ? 'daily' : 'chapter',
           ch: currentCh,
           level: state.level,
           index: state.index,
+          dailyIndex: dailyState.index,
         }),
       );
     } catch (e) {}
@@ -249,7 +251,10 @@
   function loadPosition() {
     try {
       var pos = JSON.parse(localStorage.getItem("java_study_pos"));
-      if (!pos || !CHAPTER_DATA[pos.ch]) return;
+      if (!pos) return;
+      if (pos.mode === 'overview') { renderOverview(); return; }
+      if (pos.mode === 'daily') { enterDailyMode(); return; }
+      if (!CHAPTER_DATA[pos.ch]) return;
       if (pos.ch !== currentCh) switchChapter(pos.ch);
       state.level = pos.level || 0;
       state.index = pos.index || 0;
@@ -259,6 +264,490 @@
     try {
       await store.set(BOOKMARK_KEY, JSON.stringify(state.bookmarks));
     } catch (e) {}
+  }
+
+  /* ============ 데일리 모드 ============ */
+  var isDailyMode = false;
+  var DAILY_HISTORY_KEY = 'java_daily_history';
+  var DAILY_SET_KEY = 'java_daily_set';
+  var DAILY_COUNT = 10;
+  var SRS_INTERVALS = [1, 3, 7, 14, 30];
+
+  var dailyState = {
+    questions: [],   // [{ch, q}]
+    index: 0,
+    qNavPage: 0,
+    inputs: {},
+    revealed: {},
+    log: {},         // qid -> {pass, output}
+    chProgress: {},  // ch -> progress object
+    lastErrorLines: [],
+  };
+
+  function todayStr() {
+    return new Date().toISOString().slice(0, 10);
+  }
+  function addDays(dateStr, n) {
+    var d = new Date(dateStr);
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+  function loadDailyHistory() {
+    try { return JSON.parse(localStorage.getItem(DAILY_HISTORY_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveDailyHistory(h) {
+    try { localStorage.setItem(DAILY_HISTORY_KEY, JSON.stringify(h)); } catch(e) {}
+  }
+  function nextSRSInterval(h, pass) {
+    if (!pass) return 1;
+    if (!h || !h.correct) return 3;
+    var idx = SRS_INTERVALS.indexOf(h.interval);
+    return SRS_INTERVALS[Math.min(idx < 0 ? 1 : idx + 1, SRS_INTERVALS.length - 1)];
+  }
+
+  function pickDailyQuestions() {
+    var today = todayStr();
+    try {
+      var saved = JSON.parse(localStorage.getItem(DAILY_SET_KEY));
+      if (saved && saved.date === today && Array.isArray(saved.questions) && saved.questions.length) {
+        var restored = saved.questions.map(function(ref) {
+          var chData = CHAPTER_DATA[ref.ch];
+          if (!chData) return null;
+          var q = chData.questions.find(function(q) { return q.id === ref.id; });
+          return q ? { ch: ref.ch, q: q } : null;
+        }).filter(Boolean);
+        if (restored.length > 0) return restored;
+      }
+    } catch(e) {}
+
+    var history = loadDailyHistory();
+    var allDue = [], allNotDue = [];
+
+    [1, 2, 3, 4, 5].forEach(function(ch) {
+      var chData = CHAPTER_DATA[ch];
+      if (!chData) return;
+      chData.questions.forEach(function(q) {
+        var h = history[q.id];
+        var due, priority;
+        if (!h) {
+          due = true; priority = 1;
+        } else if (!h.correct) {
+          due = addDays(h.lastSeen, h.interval) <= today;
+          priority = 0;
+        } else {
+          due = addDays(h.lastSeen, h.interval) <= today;
+          priority = 2;
+        }
+        var entry = { ch: ch, q: q, priority: priority, h: h || null };
+        (due ? allDue : allNotDue).push(entry);
+      });
+    });
+
+    var byChapter = {};
+    allDue.forEach(function(e) {
+      if (!byChapter[e.ch]) byChapter[e.ch] = [];
+      byChapter[e.ch].push(e);
+    });
+    [1,2,3,4,5].forEach(function(ch) {
+      if (!byChapter[ch]) return;
+      byChapter[ch].sort(function(a, b) {
+        if (a.priority !== b.priority) return a.priority - b.priority;
+        var aDate = a.h ? a.h.lastSeen : '0000-00-00';
+        var bDate = b.h ? b.h.lastSeen : '0000-00-00';
+        return aDate < bDate ? -1 : 1;
+      });
+    });
+
+    var picked = [], chIdx = 0, chapters = [1,2,3,4,5];
+    while (picked.length < DAILY_COUNT) {
+      var found = false;
+      for (var i = 0; i < chapters.length; i++) {
+        var ch = chapters[(chIdx + i) % chapters.length];
+        if (byChapter[ch] && byChapter[ch].length > 0) {
+          picked.push(byChapter[ch].shift());
+          chIdx = (chIdx + i + 1) % chapters.length;
+          found = true;
+          break;
+        }
+      }
+      if (!found) break;
+    }
+
+    if (picked.length < DAILY_COUNT) {
+      allNotDue.sort(function(a, b) {
+        var aNext = a.h ? addDays(a.h.lastSeen, a.h.interval) : '9999-99-99';
+        var bNext = b.h ? addDays(b.h.lastSeen, b.h.interval) : '9999-99-99';
+        return aNext < bNext ? -1 : 1;
+      });
+      picked = picked.concat(allNotDue.slice(0, DAILY_COUNT - picked.length));
+    }
+
+    // Fisher-Yates 셔플
+    for (var si = picked.length - 1; si > 0; si--) {
+      var sj = Math.floor(Math.random() * (si + 1));
+      var tmp = picked[si]; picked[si] = picked[sj]; picked[sj] = tmp;
+    }
+
+    try {
+      localStorage.setItem(DAILY_SET_KEY, JSON.stringify({
+        date: today,
+        questions: picked.map(function(e) { return { ch: e.ch, id: e.q.id }; })
+      }));
+    } catch(e) {}
+
+    return picked.map(function(e) { return { ch: e.ch, q: e.q }; });
+  }
+
+  function updateDailyBadge() {
+    var badge = document.querySelector('.daily-badge');
+    if (!badge) return;
+    var today = todayStr();
+    try {
+      var saved = JSON.parse(localStorage.getItem(DAILY_SET_KEY));
+      if (saved && saved.date === today && Array.isArray(saved.questions)) {
+        var history = loadDailyHistory();
+        var done = saved.questions.filter(function(ref) {
+          var h = history[ref.id];
+          return h && h.lastSeen === today;
+        }).length;
+        var total = saved.questions.length;
+        badge.textContent = done > 0 ? ' ' + done + '/' + total : '';
+        return;
+      }
+    } catch(e) {}
+    badge.textContent = '';
+  }
+
+  async function enterDailyMode() {
+    isDailyMode = true;
+    isOverview = false;
+    document.querySelectorAll('.ch-btn').forEach(function(b) {
+      b.classList.toggle('ch-active', b.getAttribute('data-ch') === '-1');
+    });
+    var lnav = document.getElementById('level-nav');
+    lnav.innerHTML = '';
+    lnav.style.display = 'none';
+    lnav.classList.add('lnav-collapsed');
+
+    document.getElementById('app').innerHTML = '<div class="loading">데일리 문제를 준비 중...</div>';
+
+    dailyState.questions = pickDailyQuestions();
+    try {
+      var savedPos = JSON.parse(localStorage.getItem('java_study_pos'));
+      dailyState.index = (savedPos && savedPos.mode === 'daily' && savedPos.dailyIndex) ? Math.min(savedPos.dailyIndex, dailyState.questions.length - 1) : 0;
+    } catch(e) { dailyState.index = 0; }
+    dailyState.qNavPage = Math.floor(dailyState.index / 6);
+    dailyState.inputs = {};
+    dailyState.revealed = {};
+    dailyState.log = {};
+    dailyState.lastErrorLines = [];
+    dailyState.chProgress = {};
+
+    var chapters = [];
+    dailyState.questions.forEach(function(e) {
+      if (chapters.indexOf(e.ch) === -1) chapters.push(e.ch);
+    });
+
+    await Promise.all(chapters.map(function(ch) {
+      return store.get(CHAPTER_DATA[ch].storageKey).then(function(raw) {
+        try { dailyState.chProgress[ch] = JSON.parse(raw) || {}; } catch(e) { dailyState.chProgress[ch] = {}; }
+      });
+    }));
+
+    savePosition();
+
+    // 오늘 데일리에서 직접 푼 기록만 복원
+    var history = loadDailyHistory();
+    var today = todayStr();
+    dailyState.questions.forEach(function(e) {
+      var h = history[e.q.id];
+      if (h && h.lastSeen === today) {
+        dailyState.log[e.q.id] = { pass: h.correct, output: null };
+        // input도 오늘 데일리에서 푼 경우에만 복원
+        var cp = dailyState.chProgress[e.ch];
+        if (cp && cp[e.q.id] && cp[e.q.id].input) {
+          dailyState.inputs[e.q.id] = cp[e.q.id].input;
+        }
+      }
+    });
+
+    renderDaily();
+  }
+
+  var DAILY_CH_COLORS = { 1: '#D98C3D', 2: '#6B9FD4', 3: '#6FD9A0', 4: '#C77DFF', 5: '#FF9A3C' };
+  var DAILY_CH_NAMES  = { 1: 'Ch1 기본문법', 2: 'Ch2 OOP', 3: 'Ch3 컬렉션', 4: 'Ch4 자료구조', 5: 'Ch5 람다·IO' };
+
+  function renderDailyDone() {
+    var history = loadDailyHistory();
+    var html = '';
+    html += '<div style="padding-top:32px;margin-bottom:24px;">';
+    html += '<div class="brand-eyebrow">$ java --daily complete</div>';
+    html += '<h1 class="brand-title">오늘의 데일리 완료!</h1>';
+    html += '<div class="brand-sub">오늘 세트를 모두 풀었습니다. 내일 또 돌아오세요.</div>';
+    html += '</div>';
+    html += '<div class="card" style="padding:24px;">';
+    html += '<div class="card-title" style="margin-bottom:16px;">오늘 결과</div>';
+    dailyState.questions.forEach(function(e, i) {
+      var log = dailyState.log[e.q.id];
+      var pass = log && log.pass;
+      var h = history[e.q.id];
+      var nextDue = h ? addDays(h.lastSeen, h.interval) : '-';
+      var color = DAILY_CH_COLORS[e.ch] || '#888';
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">';
+      html += '<span style="font-family:var(--mono);font-size:12px;color:var(--muted);width:20px;">' + (i+1) + '</span>';
+      html += '<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + color + '22;color:' + color + ';">' + (DAILY_CH_NAMES[e.ch]||'') + '</span>';
+      html += '<span style="flex:1;font-size:13px;">' + esc(e.q.title) + '</span>';
+      html += '<span style="font-size:12px;' + (pass ? 'color:var(--pass)' : log ? 'color:var(--fail)' : 'color:var(--muted)') + ';">';
+      html += pass ? '✓ PASS' : (log ? '✗ FAIL' : '미풀이');
+      html += '</span>';
+      if (h) html += '<span style="font-size:11px;color:var(--muted);width:80px;text-align:right;">다음: ' + nextDue + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div style="margin-top:16px;display:flex;gap:10px;">';
+    html += '<button class="btn btn-ghost" data-action="daily-restart">다시 풀기</button>';
+    html += '</div>';
+    document.getElementById('app').innerHTML = html;
+  }
+
+  function renderDaily() {
+    var app = document.getElementById('app');
+    if (!dailyState.questions.length) {
+      app.innerHTML = '<div class="card" style="text-align:center;padding:50px 24px;"><div class="card-title">오늘 풀 문제가 없습니다</div></div>';
+      return;
+    }
+
+    var entry = dailyState.questions[dailyState.index];
+    var ch = entry.ch, q = entry.q;
+    var total = dailyState.questions.length;
+    var history = loadDailyHistory();
+    var h = history[q.id];
+    var gradedCount = dailyState.questions.filter(function(e) { return !!dailyState.log[e.q.id]; }).length;
+
+    var html = '';
+
+    // Topbar
+    html += '<div class="topbar">';
+    html += '<div class="topbar-main"><div class="topbar-left">';
+    html += '<div class="brand-eyebrow">$ java --daily ' + todayStr() + '</div>';
+    html += '<h1 class="brand-title">데일리 문제</h1>';
+    html += '<div class="brand-sub">오늘의 10문제를 풀어보세요. <span id="server-badge" style="font-size:0.85em;">● regex 채점 (서버 꺼짐)</span></div>';
+    html += '</div>';
+    html += '<div class="top-stats-box">';
+    html += '<div class="progress-wrap"><div class="progress-label"><span>오늘 진행</span><b>' + gradedCount + ' / ' + total + '</b></div>';
+    html += '<div class="progress-track"><div class="progress-fill" style="width:' + Math.round(gradedCount / total * 100) + '%"></div></div></div>';
+    html += '</div></div>';
+
+    // Q-nav dots (페이지네이션, 6개씩)
+    var D_PAGE = 6;
+    if (dailyState.index < dailyState.qNavPage * D_PAGE ||
+        dailyState.index >= dailyState.qNavPage * D_PAGE + D_PAGE) {
+      dailyState.qNavPage = Math.floor(dailyState.index / D_PAGE);
+    }
+    var maxDPage = Math.max(0, Math.ceil(total / D_PAGE) - 1);
+    if (dailyState.qNavPage > maxDPage) dailyState.qNavPage = maxDPage;
+    var dDotStart = dailyState.qNavPage * D_PAGE;
+
+    var qNavHtml = '<div class="q-nav">';
+    qNavHtml += '<button class="q-nav-arrow" data-action="daily-qnav-prev"' + (dailyState.qNavPage === 0 ? ' disabled' : '') + '>&#8249;</button>';
+    qNavHtml += '<div class="q-nav-dots">';
+    for (var ddi = dDotStart; ddi < dDotStart + D_PAGE; ddi++) {
+      if (ddi < total) {
+        var de2 = dailyState.questions[ddi];
+        var dlog = dailyState.log[de2.q.id];
+        var ddst = dlog ? (dlog.pass ? 'pass' : 'fail') : '';
+        var dcls = 'dot' + (ddi === dailyState.index ? ' current' : '') + (ddst ? ' ' + ddst : '');
+        qNavHtml += '<div class="' + dcls + '" data-action="daily-jump" data-index="' + ddi + '" title="' + esc(de2.q.id) + '">' + (ddi+1) + '</div>';
+      } else {
+        qNavHtml += '<div class="dot dot-empty"></div>';
+      }
+    }
+    qNavHtml += '</div>';
+    qNavHtml += '<button class="q-nav-arrow" data-action="daily-qnav-next"' + (dailyState.qNavPage >= maxDPage ? ' disabled' : '') + '>&#8250;</button>';
+    qNavHtml += '</div>';
+
+    html += '<div class="topbar-bottom">';
+    html += '<div class="kbd-hint"><div><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd> 채점 · <kbd>←</kbd><kbd>→</kbd> 이전/다음 · <kbd>R</kbd> 정답 보기</div></div>';
+    html += '<div class="top-qnav">' + qNavHtml + '</div>';
+    html += '</div></div>';
+
+    // Card
+    html += '<div class="layout"><div class="content"><div class="card">';
+
+    var color = DAILY_CH_COLORS[ch] || '#888';
+    var srsLabel = h ? (h.correct ? ' · ✓ ' + h.interval + '일 간격' : ' · ✗ 복습 중') : ' · 첫 풀이';
+    html += '<div class="card-eyebrow" style="display:flex;align-items:center;gap:8px;">';
+    html += '<span style="font-size:11px;padding:2px 8px;border-radius:4px;background:' + color + '22;color:' + color + ';">' + (DAILY_CH_NAMES[ch]||'') + '</span>';
+    html += '<span>' + esc(q.id) + srsLabel + ' · ' + (dailyState.index + 1) + ' / ' + total + '</span>';
+    html += '</div>';
+
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">';
+    html += '<h2 class="card-title" style="margin:0;">' + esc(q.title) + '</h2>';
+    html += '</div>';
+
+    html += '<div class="concept"><b>핵심 개념</b> — ' + esc(q.concept) + '</div>';
+
+    // Code box
+    html += '<div class="codebox">';
+    html += '<button class="codebox-copy-btn" data-action="copy-code" title="전체 코드 복사">';
+    html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>';
+
+    var userInputStart = getUserInputStartLine(q);
+    var beforeStart = userInputStart - (q.before || []).length;
+    q.before.forEach(function(l, i) {
+      html += '<div class="cl muted" data-codeline="' + (beforeStart + i) + '">' + esc(l) + '</div>';
+    });
+    q.placeholder.forEach(function(l) {
+      html += '<div class="cl muted">' + esc(l) + '</div>';
+    });
+
+    var savedInput = dailyState.inputs[q.id] !== undefined ? dailyState.inputs[q.id] : '';
+    var errLines = dailyState.lastErrorLines || [];
+    var userLineCount = savedInput ? savedInput.split('\n').length : 0;
+    var taErrLines = errLines.filter(function(ln) {
+      return ln >= userInputStart && ln < userInputStart + userLineCount;
+    }).map(function(ln) { return ln - userInputStart + 1; });
+
+    html += '<textarea class="blank' + (taErrLines.length ? ' textarea-has-error' : '') + '" id="ans-input" rows="' + (q.rows || 5) + '" placeholder="여기에 코드를 입력하세요"></textarea>';
+    if (taErrLines.length) {
+      html += '<div class="textarea-error-hint">↑ 내 코드 ' + taErrLines.map(function(n){ return n + '번째 줄'; }).join(', ') + '에 오류</div>';
+    }
+    var afterStart = userInputStart + userLineCount;
+    q.after.forEach(function(l, i) {
+      html += '<div class="cl muted" data-codeline="' + (afterStart + i) + '">' + esc(l) + '</div>';
+    });
+    html += '</div>';
+    html += '<div class="expected">기대 출력: <code>' + esc(q.expected) + '</code></div>';
+
+    // Feedback
+    var log = dailyState.log[q.id];
+    var fbClass = '', fbText = '';
+    if (log && log.pass) {
+      fbClass = 'pass show'; fbText = '✓ PASS — 정답입니다.';
+    } else if (log && !log.pass) {
+      fbClass = 'fail show';
+      fbText = (log.output && log.output.indexOf('⚠') === 0)
+        ? '✗ FAIL — 문법을 다시 확인해보세요.'
+        : '✗ FAIL — 출력값이 다릅니다.';
+    }
+
+    // Output diff
+    var outputHtml = '';
+    if (log && log.output !== null && log.output !== undefined) {
+      var isErrOutput = log.output.indexOf('⚠') === 0;
+      if (isErrOutput) {
+        var displayOutput = log.output.replace(/^⚠ /, '').replace(/\/[^\s]*Main\.java:(\d+):/g, function(_, n) {
+          var rel = parseInt(n, 10) - userInputStart + 1;
+          return '[' + (rel > 0 ? '내 코드 ' + rel + '번째 줄' : '전체 ' + n + '번째 줄') + ']';
+        });
+        outputHtml = '<div class="output-box"><span class="output-label">출력</span><pre class="output-val output-val-error">' + esc(displayOutput) + '</pre></div>';
+      } else {
+        var actualLines = log.output.split('\n');
+        var expectedLines = String(q.expected).trim().split('\n');
+        var maxLen = Math.max(actualLines.length, expectedLines.length);
+        var diffRows = '';
+        for (var dli = 0; dli < maxLen; dli++) {
+          var aLine = actualLines[dli] !== undefined ? actualLines[dli] : '';
+          var eLine = expectedLines[dli] !== undefined ? expectedLines[dli] : '';
+          var isMatch = aLine === eLine;
+          diffRows += '<div class="' + (isMatch ? 'diff-row diff-match' : 'diff-row diff-mismatch') + '">' +
+            '<span class="diff-cell diff-expected">' + esc(eLine) + '</span>' +
+            '<span class="diff-cell diff-actual">' + esc(aLine) + '</span>' +
+            '</div>';
+        }
+        outputHtml = '<div class="output-box output-box-diff"><div class="diff-header"><span class="output-label">기대 출력</span><span class="output-label">실제 출력</span></div><div class="diff-body">' + diffRows + '</div></div>';
+      }
+    }
+
+    html += '<div class="actions"><button class="btn btn-grade" data-action="daily-grade">채점</button>';
+    html += '<button class="btn btn-ghost" data-action="daily-reveal">' + (dailyState.revealed[q.id] ? '정답 숨기기' : '정답 보기') + '</button>';
+    if (gradedCount === total) {
+      html += '<button class="btn btn-ghost" style="margin-left:auto;" data-action="daily-results">결과 보기 →</button>';
+    }
+    html += '</div>';
+    html += '<div class="feedback ' + fbClass + '" id="fb-msg">' + fbText + '</div>';
+    html += outputHtml;
+
+    html += '<div class="answer-box' + (dailyState.revealed[q.id] ? ' show' : '') + '">';
+    html += '<div class="lbl">🔍 정답</div>';
+    q.answer.forEach(function(l) { html += '<div class="al">' + esc(l) + '</div>'; });
+    if (q.note) html += '<div class="note">' + esc(q.note) + '</div>';
+    html += '</div>';
+
+    html += '<div class="nav-row">';
+    html += '<button class="btn btn-nav" data-action="daily-prev"' + (dailyState.index === 0 ? ' disabled' : '') + '>← 이전</button>';
+    html += '<span class="pos">' + (dailyState.index + 1) + ' / ' + total + '</span>';
+    html += '<button class="btn btn-nav" data-action="daily-next"' + (dailyState.index >= total - 1 ? ' disabled' : '') + '>다음 →</button>';
+    html += '</div></div></div></div>';
+
+    app.innerHTML = html;
+    updateServerBadge();
+
+    if (dailyState.lastErrorLines && dailyState.lastErrorLines.length) {
+      dailyState.lastErrorLines.forEach(function(ln) {
+        var el = app.querySelector('[data-codeline="' + ln + '"]');
+        if (el) el.classList.add('cl-error');
+      });
+    }
+
+    var ta = document.getElementById('ans-input');
+    if (ta) {
+      function autoResize() { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+      ta.value = savedInput;
+      autoResize();
+      pushUndo(q, ta);
+      ta.addEventListener('input', function() {
+        dailyState.inputs[q.id] = ta.value;
+        scheduleUndo(q, ta);
+        autoResize();
+      });
+      ta.addEventListener('keydown', function(e) { handleEditorKeydown(e, ta, q); });
+    }
+  }
+
+  async function doGradeDaily() {
+    var entry = dailyState.questions[dailyState.index];
+    if (!entry) return;
+    var q = entry.q, ch = entry.ch;
+    var ta = document.getElementById('ans-input');
+    var val = ta ? ta.value : '';
+
+    var gradeBtn = document.querySelector('[data-action="daily-grade"]');
+    if (gradeBtn) { gradeBtn.disabled = true; gradeBtn.textContent = '채점 중...'; }
+
+    var executionOutput = null;
+    var pass;
+    dailyState.lastErrorLines = [];
+
+    if (serverAvailable) {
+      var result = await gradeByExecution(q, val);
+      if (result !== null) {
+        pass = result.pass;
+        executionOutput = result.output;
+        dailyState.lastErrorLines = result.errorLines || [];
+      } else {
+        pass = gradeQuestion(q, val);
+      }
+    } else {
+      pass = gradeQuestion(q, val);
+    }
+
+    if (gradeBtn) { gradeBtn.disabled = false; gradeBtn.textContent = '채점'; }
+
+    if (!dailyState.chProgress[ch]) dailyState.chProgress[ch] = {};
+    dailyState.chProgress[ch][q.id] = { status: pass ? 'pass' : 'fail', input: val };
+    store.set(CHAPTER_DATA[ch].storageKey, JSON.stringify(dailyState.chProgress[ch]));
+    updateChDoneBadges();
+
+    dailyState.log[q.id] = { pass: pass, output: executionOutput };
+
+    var history = loadDailyHistory();
+    var h = history[q.id];
+    history[q.id] = { lastSeen: todayStr(), correct: pass, interval: nextSRSInterval(h, pass) };
+    saveDailyHistory(history);
+    updateDailyBadge();
+
+    renderDaily();
   }
 
   /* ============ 개요 페이지 ============ */
@@ -329,6 +818,8 @@
 
   function renderOverview() {
     isOverview = true;
+    isDailyMode = false;
+    savePosition();
     document.querySelectorAll(".ch-btn").forEach(function (b) {
       b.classList.toggle("ch-active", b.getAttribute("data-ch") === "0");
     });
@@ -457,6 +948,7 @@
   /* ============ 챕터 전환 ============ */
   function switchChapter(ch) {
     chCollapsed = false;
+    isDailyMode = false;
     var lnavReset = document.getElementById('level-nav');
     if (lnavReset) {
       lnavReset.style.display = 'none';
@@ -502,6 +994,10 @@
       var ch = parseInt(btn.getAttribute("data-ch"));
       if (ch === 0) {
         renderOverview();
+        return;
+      }
+      if (ch === -1) {
+        enterDailyMode();
         return;
       }
       if (isOverview || ch !== currentCh) {
@@ -1317,8 +1813,15 @@
     }
   }
   function doCopyCode() {
-    var q = activeQuestionList()[state.index];
-    if (!q) return;
+    var q;
+    if (isDailyMode) {
+      var de = dailyState.questions[dailyState.index];
+      if (!de) return;
+      q = de.q;
+    } else {
+      q = activeQuestionList()[state.index];
+      if (!q) return;
+    }
     var ta = document.getElementById('ans-input');
     var userInput = ta ? ta.value : '';
     var fullCode = buildJavaCode(q, userInput);
@@ -1455,6 +1958,36 @@
     else if (action === "grade") doGrade();
     else if (action === "reset-level") doResetLevel();
     else if (action === "reset-chapter") doResetChapter();
+    else if (action === "daily-grade") doGradeDaily();
+    else if (action === "daily-prev") {
+      if (dailyState.index > 0) { dailyState.index--; savePosition(); renderDaily(); }
+    }
+    else if (action === "daily-next") {
+      if (dailyState.index < dailyState.questions.length - 1) { dailyState.index++; savePosition(); renderDaily(); }
+    }
+    else if (action === "daily-qnav-prev") {
+      if (dailyState.qNavPage > 0) { dailyState.qNavPage--; renderDaily(); }
+    }
+    else if (action === "daily-qnav-next") {
+      var maxDP = Math.max(0, Math.ceil(dailyState.questions.length / 6) - 1);
+      if (dailyState.qNavPage < maxDP) { dailyState.qNavPage++; renderDaily(); }
+    }
+    else if (action === "daily-jump") {
+      dailyState.index = parseInt(el.getAttribute("data-index"), 10);
+      savePosition(); renderDaily();
+    }
+    else if (action === "daily-reveal") {
+      var de = dailyState.questions[dailyState.index];
+      if (de) { dailyState.revealed[de.q.id] = !dailyState.revealed[de.q.id]; renderDaily(); }
+    }
+    else if (action === "daily-results") renderDailyDone();
+    else if (action === "daily-restart") {
+      dailyState.index = 0;
+      dailyState.log = {};
+      dailyState.revealed = {};
+      dailyState.inputs = {};
+      renderDaily();
+    }
     else if (action === "go-chapter") {
       var ch = parseInt(el.getAttribute("data-ch"), 10);
       isOverview = false;
@@ -1479,7 +2012,7 @@
       taf = document.activeElement === ta;
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
-      doGrade();
+      if (isDailyMode) doGradeDaily(); else doGrade();
       return;
     }
     if (taf) {
@@ -1494,13 +2027,16 @@
       focusAnswerInput();
     } else if (e.key === "ArrowLeft") {
       e.preventDefault();
-      doPrev();
+      if (isDailyMode) { if (dailyState.index > 0) { dailyState.index--; dailyState.qNavPage = Math.floor(dailyState.index / 6); savePosition(); renderDaily(); } } else doPrev();
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
-      doNext();
+      if (isDailyMode) { if (dailyState.index < dailyState.questions.length - 1) { dailyState.index++; dailyState.qNavPage = Math.floor(dailyState.index / 6); savePosition(); renderDaily(); } } else doNext();
     } else if (e.key === "r" || e.key === "R") {
       e.preventDefault();
-      doReveal();
+      if (isDailyMode) {
+        var de = dailyState.questions[dailyState.index];
+        if (de) { dailyState.revealed[de.q.id] = !dailyState.revealed[de.q.id]; renderDaily(); }
+      } else doReveal();
     }
   });
 
@@ -1525,8 +2061,9 @@
   render();
   loadProgress().then(function () {
     loadPosition();
-    render();
+    if (!isDailyMode && !isOverview) render();
     updateChDoneBadges();
+    updateDailyBadge();
   });
   checkServer();
 })();

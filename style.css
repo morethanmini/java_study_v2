@@ -122,8 +122,17 @@ body {
 
 /* overview 전용 섹션 */
 #sidebar-overview {
-  padding: 8px 8px 6px;
+  padding: 8px 8px 0px;
   flex-shrink: 0;
+}
+#sidebar-daily {
+  padding: 6px 8px 6px;
+  flex-shrink: 0;
+}
+.daily-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  opacity: 0.7;
 }
 .sidebar-divider {
   height: 1px;
