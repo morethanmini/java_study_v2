@@ -340,6 +340,17 @@ body {
   letter-spacing: 0;
   color: var(--accent);
 }
+/* 사이드바 접힌 상태: 파도/shimmer 제거, 흰 배경 */
+#sidebar:not(:hover):not(.pinned) .ch-btn[data-ch="0"] {
+  background: #fff;
+}
+#sidebar:not(:hover):not(.pinned) .ch-btn[data-ch="0"] .ov-wave-svg {
+  display: none;
+}
+#sidebar:not(:hover):not(.pinned) .ch-btn[data-ch="0"]::before {
+  display: none;
+}
+
 /* SVG가 fill+wave를 담당 — shimmer만 ::before로 오버레이 */
 .ch-btn[data-ch="0"] .ov-wave-svg {
   position: absolute;
