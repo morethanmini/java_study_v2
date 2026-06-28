@@ -515,6 +515,8 @@
         padding: 5px 8px;
         cursor: pointer;
         white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         transition: background 0.1s, color 0.1s;
         width: 100%;
         text-align: left;
@@ -1265,6 +1267,32 @@
           font-size: 12px;
         }
       }
+      #lv-tooltip {
+        position: fixed;
+        background: rgba(255,255,255,0.08);
+        backdrop-filter: blur(40px) saturate(1.8) brightness(1.1);
+        -webkit-backdrop-filter: blur(40px) saturate(1.8) brightness(1.1);
+        border: 1px solid rgba(255,255,255,0.22);
+        border-top-color: rgba(255,255,255,0.55);
+        color: var(--text);
+        font-family: var(--body);
+        font-size: 12px;
+        font-weight: 500;
+        padding: 5px 12px;
+        border-radius: 10px;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transform-origin: center center;
+        transform: translateX(-50%) scaleX(0.72) scaleY(0.82);
+        transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.34,1.4,0.64,1);
+        z-index: 9999;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 1px 0 rgba(255,255,255,0.6) inset;
+      }
+      #lv-tooltip.visible {
+        opacity: 1;
+        transform: translateX(-50%) scaleX(1) scaleY(1);
+      }
     </style>
     <script src="ch1-basic-syntax/items/levels.js"></script>
     <script src="ch1-basic-syntax/items/questions.js"></script>
@@ -1279,6 +1307,7 @@
   </head>
   <body>
     <div id="page-wrap">
+      <div id="lv-tooltip"></div>
       <nav id="sidebar">
         <div id="sidebar-header">
           <button id="sidebar-pin" title="사이드바 고정/해제">
@@ -1624,9 +1653,12 @@
           document.querySelectorAll(".ch-btn").forEach(function (b) {
             b.classList.toggle("ch-active", b.getAttribute("data-ch") === "0");
           });
-          document.getElementById("level-nav").innerHTML = "";
+          var lnavOv = document.getElementById("level-nav");
+          lnavOv.innerHTML = "";
+          lnavOv.style.display = "none";
+          lnavOv.classList.add("lnav-collapsed");
           var html = "";
-          html += '<div style="margin-bottom:24px;">';
+          html += '<div style="padding-top:24px;margin-bottom:24px;">';
           html +=
             '<div class="brand-eyebrow">$ java --curriculum overview</div>';
           html += '<h1 class="brand-title">Java 커리큘럼 전체 개요</h1>';
@@ -1699,6 +1731,35 @@
           document.getElementById("app").innerHTML = html;
         }
 
+        /* ============ lv-btn 커스텀 툴팁 ============ */
+        (function () {
+          var tooltip = document.getElementById('lv-tooltip');
+          var showTimer = null;
+
+          document.addEventListener('mouseover', function (e) {
+            var btn = e.target.closest('.lv-btn');
+            if (!btn) return;
+            clearTimeout(showTimer);
+            showTimer = setTimeout(function () {
+              var textEl = btn.querySelector('.ch-text') || btn;
+              tooltip.textContent = textEl.textContent.trim();
+              var rect = btn.getBoundingClientRect();
+              tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+              tooltip.style.top = rect.top + 'px';
+              tooltip.style.minWidth = rect.width + 'px';
+              tooltip.getBoundingClientRect();
+              tooltip.classList.add('visible');
+            }, 40);
+          });
+
+          document.addEventListener('mouseout', function (e) {
+            var btn = e.target.closest('.lv-btn, .ch-btn');
+            if (!btn) return;
+            clearTimeout(showTimer);
+            tooltip.classList.remove('visible');
+          });
+        })();
+
         /* ============ level-nav 열기/닫기 애니메이션 ============ */
         function setLnavCollapsed(lnav, collapsed) {
           if (collapsed) {
@@ -1716,6 +1777,12 @@
 
         /* ============ 챕터 전환 ============ */
         function switchChapter(ch) {
+          chCollapsed = false;
+          var lnavReset = document.getElementById('level-nav');
+          if (lnavReset) {
+            lnavReset.style.display = 'none';
+            lnavReset.classList.add('lnav-collapsed');
+          }
           currentCh = ch;
           LEVELS = CHAPTER_DATA[ch].levels;
           QUESTIONS = CHAPTER_DATA[ch].questions;
@@ -2136,11 +2203,19 @@
           (function () {
             var activeChBtn = document.querySelector('#chapter-nav .ch-btn[data-ch="' + currentCh + '"]');
             if (activeChBtn) activeChBtn.parentNode.insertBefore(lnav, activeChBtn.nextSibling);
-            lnav.style.display = 'none';
-            lnav.classList.add('lnav-no-transition', 'lnav-collapsed');
-            lnav.getBoundingClientRect();
-            lnav.classList.remove('lnav-no-transition');
-            setLnavCollapsed(lnav, chCollapsed);
+            var alreadyOpen = lnav.style.display !== 'none' && !lnav.classList.contains('lnav-collapsed');
+            if (chCollapsed) {
+              lnav.style.display = 'none';
+              lnav.classList.add('lnav-collapsed');
+            } else if (alreadyOpen) {
+              lnav.classList.remove('lnav-collapsed');
+            } else {
+              lnav.style.display = 'none';
+              lnav.classList.add('lnav-no-transition', 'lnav-collapsed');
+              lnav.getBoundingClientRect();
+              lnav.classList.remove('lnav-no-transition');
+              setLnavCollapsed(lnav, false);
+            }
           })();
           var html = "";
           html +=
@@ -2290,11 +2365,19 @@
           (function () {
             var activeChBtn = document.querySelector('#chapter-nav .ch-btn[data-ch="' + currentCh + '"]');
             if (activeChBtn) activeChBtn.parentNode.insertBefore(lnav, activeChBtn.nextSibling);
-            lnav.style.display = 'none';
-            lnav.classList.add('lnav-no-transition', 'lnav-collapsed');
-            lnav.getBoundingClientRect();
-            lnav.classList.remove('lnav-no-transition');
-            setLnavCollapsed(lnav, chCollapsed);
+            var alreadyOpen = lnav.style.display !== 'none' && !lnav.classList.contains('lnav-collapsed');
+            if (chCollapsed) {
+              lnav.style.display = 'none';
+              lnav.classList.add('lnav-collapsed');
+            } else if (alreadyOpen) {
+              lnav.classList.remove('lnav-collapsed');
+            } else {
+              lnav.style.display = 'none';
+              lnav.classList.add('lnav-no-transition', 'lnav-collapsed');
+              lnav.getBoundingClientRect();
+              lnav.classList.remove('lnav-no-transition');
+              setLnavCollapsed(lnav, false);
+            }
           })();
 
           html += '<div class="layout">';
