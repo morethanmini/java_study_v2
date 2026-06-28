@@ -219,7 +219,7 @@
       #chapter-nav {
         display: flex;
         flex-direction: column;
-        gap: 2px;
+        gap: 0;
         padding: 4px 8px;
         flex-shrink: 0;
       }
@@ -272,6 +272,7 @@
         display: flex;
         align-items: center;
         gap: 6px;
+        margin-bottom: 2px;
         transition: background 0.1s, color 0.1s;
         white-space: nowrap;
       }
@@ -489,6 +490,19 @@
         gap: 2px;
         padding: 4px 8px;
         flex-shrink: 0;
+        overflow: hidden;
+        max-height: 600px;
+        transition: max-height 0.45s ease-in-out, opacity 0.45s ease-in-out, padding 0.45s ease-in-out;
+        opacity: 1;
+      }
+      #level-nav.lnav-collapsed {
+        max-height: 0;
+        opacity: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+      #level-nav.lnav-no-transition {
+        transition: none !important;
       }
       .lv-btn {
         font-family: var(--body);
@@ -1685,6 +1699,21 @@
           document.getElementById("app").innerHTML = html;
         }
 
+        /* ============ level-nav 열기/닫기 애니메이션 ============ */
+        function setLnavCollapsed(lnav, collapsed) {
+          if (collapsed) {
+            lnav.classList.add('lnav-collapsed');
+            lnav.addEventListener('transitionend', function handler() {
+              lnav.removeEventListener('transitionend', handler);
+              if (lnav.classList.contains('lnav-collapsed')) lnav.style.display = 'none';
+            });
+          } else {
+            lnav.style.display = '';
+            lnav.getBoundingClientRect();
+            lnav.classList.remove('lnav-collapsed');
+          }
+        }
+
         /* ============ 챕터 전환 ============ */
         function switchChapter(ch) {
           currentCh = ch;
@@ -1736,7 +1765,7 @@
             } else {
               chCollapsed = !chCollapsed;
               var lnav = document.getElementById('level-nav');
-              if (lnav) lnav.style.display = chCollapsed ? 'none' : '';
+              if (lnav) setLnavCollapsed(lnav, chCollapsed);
             }
           });
 
@@ -2107,7 +2136,11 @@
           (function () {
             var activeChBtn = document.querySelector('#chapter-nav .ch-btn[data-ch="' + currentCh + '"]');
             if (activeChBtn) activeChBtn.parentNode.insertBefore(lnav, activeChBtn.nextSibling);
-            if (chCollapsed) lnav.style.display = 'none';
+            lnav.style.display = 'none';
+            lnav.classList.add('lnav-no-transition', 'lnav-collapsed');
+            lnav.getBoundingClientRect();
+            lnav.classList.remove('lnav-no-transition');
+            setLnavCollapsed(lnav, chCollapsed);
           })();
           var html = "";
           html +=
@@ -2257,7 +2290,11 @@
           (function () {
             var activeChBtn = document.querySelector('#chapter-nav .ch-btn[data-ch="' + currentCh + '"]');
             if (activeChBtn) activeChBtn.parentNode.insertBefore(lnav, activeChBtn.nextSibling);
-            if (chCollapsed) lnav.style.display = 'none';
+            lnav.style.display = 'none';
+            lnav.classList.add('lnav-no-transition', 'lnav-collapsed');
+            lnav.getBoundingClientRect();
+            lnav.classList.remove('lnav-no-transition');
+            setLnavCollapsed(lnav, chCollapsed);
           })();
 
           html += '<div class="layout">';
