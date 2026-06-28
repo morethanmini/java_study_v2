@@ -1492,9 +1492,9 @@ body {
 
 /* ============ 잔디 ============ */
 #grass-wrap {
-  padding: 10px 12px 8px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border-soft);
-  margin-bottom: 6px;
+  margin-bottom: 10px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease;
