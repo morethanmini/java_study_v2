@@ -90,6 +90,36 @@
     return lines.join("\n");
   }
 
+  function getUserInputStartLine(q) {
+    var n = 4; // imports
+    n += (q.topLevel || []).length;
+    if (q.userInputAtTopLevel) return n + 1;
+    n += 1; // public class Main {
+    n += (q.classLevel || []).length;
+    if (q.userInputAtClassLevel) return n + 1;
+    n += 1; // public static void main
+    if (q.methodWrapper) {
+      for (var i = 0; i < q.methodWrapper.length; i++) {
+        if (q.methodWrapper[i] === '~~~') break;
+        n += 1;
+      }
+      return n + 1;
+    }
+    n += (q.before || []).length;
+    return n + 1;
+  }
+
+  function parseErrorLines(errText) {
+    var lines = [];
+    var re = /Main\.java:(\d+):/g;
+    var m;
+    while ((m = re.exec(errText)) !== null) {
+      var ln = parseInt(m[1], 10);
+      if (lines.indexOf(ln) === -1) lines.push(ln);
+    }
+    return lines;
+  }
+
   function gradeByExecution(q, input) {
     return fetch(SERVER_URL, {
       method: "POST",
@@ -104,8 +134,8 @@
         var out = d.output ? d.output.trim() : "";
         var err = d.error ? d.error.trim() : "";
         if (!out && err)
-          return { pass: false, output: "⚠ " + err.split("\n")[0] };
-        return { pass: out === String(q.expected).trim(), output: out };
+          return { pass: false, output: "⚠ " + err, errorLines: parseErrorLines(err) };
+        return { pass: out === String(q.expected).trim(), output: out, errorLines: [] };
       })
       .catch(function () {
         return null;
@@ -1057,9 +1087,16 @@
       '<div class="concept"><b>핵심 개념</b> — ' +
       esc(q.concept) +
       "</div>";
-    html += '<div class="codebox">';
-    q.before.forEach(function (l) {
-      html += '<div class="cl muted">' + esc(l) + "</div>";
+    html += '<div class="codebox">' +
+      '<button class="codebox-copy-btn" data-action="copy-code" title="전체 코드 복사">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<rect x="9" y="9" width="13" height="13" rx="2"/>' +
+      '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>' +
+      '</svg></button>';
+    var userInputStart = getUserInputStartLine(q);
+    var beforeStart = userInputStart - (q.before || []).length;
+    q.before.forEach(function (l, i) {
+      html += '<div class="cl muted" data-codeline="' + (beforeStart + i) + '">' + esc(l) + "</div>";
     });
     q.placeholder.forEach(function (l) {
       html += '<div class="cl muted">' + esc(l) + "</div>";
@@ -1068,12 +1105,21 @@
       state.inputs[q.id] !== undefined
         ? state.inputs[q.id]
         : (state.progress[q.id] && state.progress[q.id].input) || "";
+    var errLines = state.lastErrorLines || [];
+    var userLineCount = savedInput ? savedInput.split('\n').length : 0;
+    var taErrLines = errLines.filter(function (ln) {
+      return ln >= userInputStart && ln < userInputStart + userLineCount;
+    }).map(function (ln) { return ln - userInputStart + 1; });
     html +=
-      '<textarea class="blank" id="ans-input" rows="' +
+      '<textarea class="blank' + (taErrLines.length ? ' textarea-has-error' : '') + '" id="ans-input" rows="' +
       (q.rows || 5) +
       '" placeholder="여기에 코드를 입력하세요"></textarea>';
-    q.after.forEach(function (l) {
-      html += '<div class="cl muted">' + esc(l) + "</div>";
+    if (taErrLines.length) {
+      html += '<div class="textarea-error-hint">↑ 내 코드 ' + taErrLines.map(function(n){ return n + '번째 줄'; }).join(', ') + '에 오류</div>';
+    }
+    var afterStart = userInputStart + userLineCount;
+    q.after.forEach(function (l, i) {
+      html += '<div class="cl muted" data-codeline="' + (afterStart + i) + '">' + esc(l) + "</div>";
     });
     html += "</div>";
     html +=
@@ -1094,15 +1140,25 @@
       fbText = "✓ PASS — 정답입니다.";
     } else if (fb && fb.status === "fail") {
       fbClass = "fail show";
-      fbText = "✗ FAIL — 문법을 다시 확인해보세요.";
+      var isCompileError = lastOutput && lastOutput.indexOf('⚠') === 0;
+      fbText = isCompileError
+        ? "✗ FAIL — 문법을 다시 확인해보세요."
+        : "✗ FAIL — 출력값이 다릅니다.";
     }
     var outputHtml = "";
     if (lastOutput !== null && lastOutput !== undefined) {
+      var userInputStart2 = getUserInputStartLine(q);
+      var displayOutput = lastOutput.replace(/^⚠ /, '').replace(/\/[^\s]*Main\.java:(\d+):/g, function (_, n) {
+        var fullLine = parseInt(n, 10);
+        var rel = fullLine - userInputStart2 + 1;
+        return '[' + (rel > 0 ? '내 코드 ' + rel + '번째 줄' : '전체 ' + fullLine + '번째 줄') + ']';
+      });
+      var isErrOutput = lastOutput.indexOf('⚠') === 0;
       outputHtml =
         '<div class="output-box">' +
         '<span class="output-label">출력</span>' +
-        '<pre class="output-val">' +
-        esc(lastOutput) +
+        '<pre class="output-val' + (isErrOutput ? ' output-val-error' : '') + '">' +
+        esc(displayOutput) +
         "</pre>" +
         "</div>";
     }
@@ -1148,6 +1204,12 @@
 
     app.innerHTML = html;
     updateServerBadge();
+    if (state.lastErrorLines && state.lastErrorLines.length) {
+      state.lastErrorLines.forEach(function (ln) {
+        var el = app.querySelector('[data-codeline="' + ln + '"]');
+        if (el) el.classList.add('cl-error');
+      });
+    }
     var ta = document.getElementById("ans-input");
     if (ta) {
       function autoResize() {
@@ -1224,6 +1286,30 @@
       render();
     }
   }
+  function doCopyCode() {
+    var q = activeQuestionList()[state.index];
+    if (!q) return;
+    var ta = document.getElementById('ans-input');
+    var userInput = ta ? ta.value : '';
+    var fullCode = buildJavaCode(q, userInput);
+    var btn = document.querySelector('[data-action="copy-code"]');
+    var origHTML = btn ? btn.innerHTML : '';
+    var checkSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(fullCode).then(function () {
+        if (btn) { btn.innerHTML = checkSVG; setTimeout(function () { btn.innerHTML = origHTML; }, 1500); }
+      });
+    } else {
+      var ta2 = document.createElement('textarea');
+      ta2.value = fullCode;
+      ta2.style.position = 'fixed'; ta2.style.opacity = '0';
+      document.body.appendChild(ta2);
+      ta2.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta2);
+      if (btn) { btn.innerHTML = checkSVG; setTimeout(function () { btn.innerHTML = origHTML; }, 1500); }
+    }
+  }
   function doReveal() {
     var lq = activeQuestionList(),
       q = lq[state.index];
@@ -1251,11 +1337,13 @@
     }
     var executionOutput = null;
     var pass;
+    state.lastErrorLines = [];
     if (serverAvailable) {
       var result = await gradeByExecution(q, val);
       if (result !== null) {
         pass = result.pass;
         executionOutput = result.output;
+        state.lastErrorLines = result.errorLines || [];
       } else {
         pass = gradeQuestion(q, val);
       }
@@ -1333,6 +1421,7 @@
     else if (action === "reveal") doReveal();
     else if (action === "toggle-bookmark")
       doToggleBookmark(el.getAttribute("data-qid"));
+    else if (action === "copy-code") doCopyCode();
     else if (action === "grade") doGrade();
     else if (action === "reset-level") doResetLevel();
     else if (action === "reset-chapter") doResetChapter();

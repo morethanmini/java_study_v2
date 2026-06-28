@@ -291,6 +291,8 @@ body {
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: transparent;
 }
 .ch-btn[data-ch="0"] .ch-icon,
 .ch-btn[data-ch="0"] .ch-text {
@@ -666,6 +668,31 @@ body {
   font-family: var(--mono);
   font-size: 13.5px;
   line-height: 1.7;
+  position: relative;
+}
+.codebox-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: 5px;
+  padding: 3px 6px;
+  cursor: pointer;
+  color: var(--muted);
+  line-height: 1;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  z-index: 10;
+}
+.codebox-copy-btn:hover {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--hover);
+}
+.codebox-copy-btn svg {
+  display: block;
+  width: 14px;
+  height: 14px;
 }
 .cl {
   white-space: pre-wrap;
@@ -788,6 +815,25 @@ body {
   color: var(--text);
   white-space: pre-wrap;
   word-break: break-all;
+}
+.output-val-error {
+  color: var(--fail);
+}
+.cl-error {
+  background: rgba(224, 92, 92, 0.12);
+  color: var(--fail) !important;
+  border-radius: 3px;
+  outline: 1px solid rgba(224, 92, 92, 0.3);
+}
+.textarea-has-error {
+  border: 1px solid rgba(224, 92, 92, 0.5) !important;
+  outline: none;
+}
+.textarea-error-hint {
+  font-size: 11.5px;
+  color: var(--fail);
+  margin-top: 3px;
+  font-family: var(--mono);
 }
 .answer-box {
   display: none;
