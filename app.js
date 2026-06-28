@@ -1000,7 +1000,7 @@
         enterDailyMode();
         return;
       }
-      if (isOverview || ch !== currentCh) {
+      if (isOverview || isDailyMode || ch !== currentCh) {
         isOverview = false;
         chCollapsed = false;
         switchChapter(ch);
