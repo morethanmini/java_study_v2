@@ -1136,18 +1136,29 @@
         Promise.all(keys.map(function(key) {
           return store.set(key, data[key]);
         })).then(function() {
-          alert('데이터를 성공적으로 가져왔어요! 페이지를 새로고침합니다.');
-          location.reload();
+          showToast('데이터를 가져왔어요! 새로고침합니다.');
+          setTimeout(function() { location.reload(); }, 1200);
         });
       } catch(err) {
-        alert('파일을 읽을 수 없어요. 올바른 JSON 파일인지 확인해 주세요.');
+        showToast('파일을 읽을 수 없어요. 올바른 JSON 파일인지 확인해 주세요.', true);
       }
     };
     reader.readAsText(file);
   }
 
+  function showToast(msg, isError) {
+    var t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' +
+      (isError ? '#c0392b' : '#27ae60') + ';color:#fff;padding:10px 20px;border-radius:8px;' +
+      'font-size:13px;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,.3);pointer-events:none;';
+    document.body.appendChild(t);
+    setTimeout(function() { t.remove(); }, 3000);
+  }
+
   document.getElementById('import-file-input').addEventListener('change', function(e) {
     if (e.target.files[0]) doImportData(e.target.files[0]);
+    e.target.value = '';
   });
 
   document
@@ -1155,6 +1166,10 @@
     .addEventListener("click", function (e) {
       if (e.target.closest("[data-action='export-data']")) {
         doExportData();
+        return;
+      }
+      if (e.target.closest("[data-action='import-data']")) {
+        document.getElementById('import-file-input').click();
         return;
       }
       if (e.target.closest("[data-action='reset-all']")) {
