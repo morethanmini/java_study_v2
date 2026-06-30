@@ -70,6 +70,13 @@
             </div>
             <div id="grass-tooltip"></div>
           </div>
+          <div class="data-transfer-btns">
+            <button class="ch-reset-btn" data-action="export-data"><span class="ch-icon">📤</span><span class="ch-text">데이터 내보내기</span></button>
+            <label class="ch-reset-btn" style="cursor:pointer;">
+              <span class="ch-icon">📥</span><span class="ch-text">데이터 가져오기</span>
+              <input type="file" id="import-file-input" accept=".json" style="display:none;" />
+            </label>
+          </div>
           <button class="ch-reset-btn" data-action="reset-all"><span class="ch-icon">🗑</span><span class="ch-text">전체 초기화</span></button>
         </div>
       </nav>

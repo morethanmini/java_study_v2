@@ -249,6 +249,18 @@ body {
   justify-content: center;
   gap: 6px;
 }
+.data-transfer-btns {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.data-transfer-btns .ch-reset-btn {
+  flex: 1;
+}
+.data-transfer-btns .ch-reset-btn:hover {
+  background: rgba(52, 120, 246, 0.08);
+  color: var(--accent);
+}
 .ch-reset-btn:hover {
   background: rgba(192, 57, 43, 0.07);
   color: var(--fail);

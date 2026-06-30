@@ -1100,9 +1100,58 @@
     loadProgress().then(function () { render(); updateChDoneBadges(); });
   }
 
+  var EXPORT_KEYS = [
+    'ds_quiz_progress_v1_basic', 'ds_quiz_bookmarks_v1_basic',
+    'ds_quiz_progress_v2_oop', 'ds_quiz_bookmarks_v2_oop',
+    'ds_quiz_progress_v3_collections', 'ds_quiz_bookmarks_v3_collections',
+    'ds_quiz_progress_v4_ds', 'ds_quiz_bookmarks_v4_ds',
+    'ds_quiz_progress_v5_lambda', 'ds_quiz_bookmarks_v5_lambda',
+    'java_study_pos', 'java_study_grass', 'java_daily_history', 'java_daily_set', 'sidebar_pinned'
+  ];
+
+  function doExportData() {
+    var data = {};
+    EXPORT_KEYS.forEach(function(key) {
+      var val = localStorage.getItem(key);
+      if (val !== null) data[key] = val;
+    });
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'java_study_data_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function doImportData(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var data = JSON.parse(e.target.result);
+        EXPORT_KEYS.forEach(function(key) {
+          if (data[key] !== undefined) localStorage.setItem(key, data[key]);
+        });
+        alert('데이터를 성공적으로 가져왔어요! 페이지를 새로고침합니다.');
+        location.reload();
+      } catch(err) {
+        alert('파일을 읽을 수 없어요. 올바른 JSON 파일인지 확인해 주세요.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  document.getElementById('import-file-input').addEventListener('change', function(e) {
+    if (e.target.files[0]) doImportData(e.target.files[0]);
+  });
+
   document
     .getElementById("sidebar")
     .addEventListener("click", function (e) {
+      if (e.target.closest("[data-action='export-data']")) {
+        doExportData();
+        return;
+      }
       if (e.target.closest("[data-action='reset-all']")) {
         doResetAll();
         return;
