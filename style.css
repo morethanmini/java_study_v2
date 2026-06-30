@@ -1005,6 +1005,54 @@ body {
   color: var(--muted);
   line-height: 1.6;
 }
+.memo-wrap {
+  margin: 10px 0 4px;
+}
+.memo-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.1s, color 0.1s;
+}
+.memo-toggle:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+.memo-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+}
+.memo-body {
+  margin-top: 6px;
+}
+.memo-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: var(--body);
+  font-size: 13px;
+  color: var(--fg);
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+  line-height: 1.6;
+}
+.memo-input:focus {
+  border-color: var(--accent);
+}
 .nav-row {
   display: flex;
   justify-content: space-between;

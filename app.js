@@ -790,6 +790,7 @@
     q.answer.forEach(function(l) { html += '<div class="al">' + esc(l) + '</div>'; });
     if (q.note) html += '<div class="note">' + esc(q.note) + '</div>';
     html += '</div>';
+    html += getMemoHtml(q.id);
 
     html += '<div class="nav-row">';
     html += '<button class="btn btn-nav" data-action="daily-prev"' + (dailyState.index === 0 ? ' disabled' : '') + '>← 이전</button>';
@@ -798,6 +799,7 @@
     html += '</div></div></div></div>';
 
     app.innerHTML = html;
+    attachMemoEvents(q.id);
     updateServerBadge();
 
     if (dailyState.lastErrorLines && dailyState.lastErrorLines.length) {
@@ -1106,8 +1108,55 @@
     'ds_quiz_progress_v3_collections', 'ds_quiz_bookmarks_v3_collections',
     'ds_quiz_progress_v4_ds', 'ds_quiz_bookmarks_v4_ds',
     'ds_quiz_progress_v5_lambda', 'ds_quiz_bookmarks_v5_lambda',
-    'java_study_pos', 'java_study_grass', 'java_daily_history', 'java_daily_set', 'sidebar_pinned'
+    'java_study_pos', 'java_study_grass', 'java_daily_history', 'java_daily_set', 'sidebar_pinned',
+    'java_study_memo'
   ];
+
+  var MEMO_KEY = 'java_study_memo';
+  function loadMemos() {
+    try { return JSON.parse(localStorage.getItem(MEMO_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveMemo(qid, text) {
+    var memos = loadMemos();
+    if (text) memos[qid] = text;
+    else delete memos[qid];
+    localStorage.setItem(MEMO_KEY, JSON.stringify(memos));
+  }
+  function getMemoHtml(qid) {
+    var memos = loadMemos();
+    var val = memos[qid] || '';
+    return '<div class="memo-wrap">' +
+      '<button class="memo-toggle" data-action="toggle-memo" data-qid="' + qid + '">' +
+      '📝 메모' + (val ? ' <span class="memo-dot"></span>' : '') + '</button>' +
+      '<div class="memo-body" id="memo-body-' + qid + '" style="display:none;">' +
+      '<textarea class="memo-input" id="memo-input-' + qid + '" placeholder="이 문제에 대한 메모를 남겨보세요..." rows="3">' + esc(val) + '</textarea>' +
+      '</div></div>';
+  }
+  function attachMemoEvents(qid) {
+    var toggleBtn = document.querySelector('[data-action="toggle-memo"][data-qid="' + qid + '"]');
+    var body = document.getElementById('memo-body-' + qid);
+    var ta = document.getElementById('memo-input-' + qid);
+    if (!toggleBtn || !body || !ta) return;
+    toggleBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var open = body.style.display === 'none';
+      body.style.display = open ? 'block' : 'none';
+      if (open) ta.focus();
+    });
+    var saveTimer;
+    ta.addEventListener('input', function() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(function() {
+        saveMemo(qid, ta.value.trim());
+        var dot = toggleBtn.querySelector('.memo-dot');
+        if (ta.value.trim()) {
+          if (!dot) { var s = document.createElement('span'); s.className = 'memo-dot'; toggleBtn.appendChild(s); }
+        } else {
+          if (dot) dot.remove();
+        }
+      }, 500);
+    });
+  }
 
   function doExportData() {
     Promise.all(EXPORT_KEYS.map(function(key) {
@@ -1898,6 +1947,7 @@
     });
     if (q.note) html += '<div class="note">' + esc(q.note) + "</div>";
     html += "</div>";
+    html += getMemoHtml(q.id);
     html += '<div class="nav-row">';
     html +=
       '<button class="btn btn-nav" data-action="prev" ' +
@@ -1916,6 +1966,7 @@
     html += "</div></div></div>";
 
     app.innerHTML = html;
+    attachMemoEvents(q.id);
     updateServerBadge();
     if (state.lastErrorLines && state.lastErrorLines.length) {
       state.lastErrorLines.forEach(function (ln) {
