@@ -1110,18 +1110,21 @@
   ];
 
   function doExportData() {
-    var data = {};
-    EXPORT_KEYS.forEach(function(key) {
-      var val = localStorage.getItem(key);
-      if (val !== null) data[key] = val;
+    Promise.all(EXPORT_KEYS.map(function(key) {
+      return store.get(key).then(function(val) {
+        return { key: key, val: val };
+      });
+    })).then(function(results) {
+      var data = {};
+      results.forEach(function(r) { if (r.val !== null) data[r.key] = r.val; });
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'java_study_data_' + new Date().toISOString().slice(0,10) + '.json';
+      a.click();
+      URL.revokeObjectURL(url);
     });
-    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'java_study_data_' + new Date().toISOString().slice(0,10) + '.json';
-    a.click();
-    URL.revokeObjectURL(url);
   }
 
   function doImportData(file) {
@@ -1129,11 +1132,13 @@
     reader.onload = function(e) {
       try {
         var data = JSON.parse(e.target.result);
-        EXPORT_KEYS.forEach(function(key) {
-          if (data[key] !== undefined) localStorage.setItem(key, data[key]);
+        var keys = Object.keys(data).filter(function(k) { return EXPORT_KEYS.indexOf(k) !== -1; });
+        Promise.all(keys.map(function(key) {
+          return store.set(key, data[key]);
+        })).then(function() {
+          alert('데이터를 성공적으로 가져왔어요! 페이지를 새로고침합니다.');
+          location.reload();
         });
-        alert('데이터를 성공적으로 가져왔어요! 페이지를 새로고침합니다.');
-        location.reload();
       } catch(err) {
         alert('파일을 읽을 수 없어요. 올바른 JSON 파일인지 확인해 주세요.');
       }
