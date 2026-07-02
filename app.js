@@ -239,7 +239,7 @@
       localStorage.setItem(
         "java_study_pos",
         JSON.stringify({
-          mode: isOverview ? 'overview' : isDailyMode ? 'daily' : 'chapter',
+          mode: isOverview ? 'overview' : isDailyMode ? 'daily' : isStatsMode ? 'stats' : 'chapter',
           ch: currentCh,
           level: state.level,
           index: state.index,
@@ -254,6 +254,7 @@
       if (!pos) return;
       if (pos.mode === 'overview') { renderOverview(); return; }
       if (pos.mode === 'daily') { enterDailyMode(); return; }
+      if (pos.mode === 'stats') { renderStats(); return; }
       if (!CHAPTER_DATA[pos.ch]) return;
       if (pos.ch !== currentCh) switchChapter(pos.ch);
       state.level = pos.level || 0;
@@ -268,6 +269,7 @@
 
   /* ============ 데일리 모드 ============ */
   var isDailyMode = false;
+  var isStatsMode = false;
   var DAILY_HISTORY_KEY = 'java_daily_history';
   var DAILY_SET_KEY = 'java_daily_set';
   var DAILY_COUNT = 10;
@@ -295,6 +297,34 @@
     var dd = String(d.getDate()).padStart(2, '0');
     return yyyy + '-' + mm + '-' + dd;
   }
+  /* ============ 오답 로그 ============ */
+  var WRONG_LOG_KEY = 'java_wrong_log';
+
+  function loadWrongLog() {
+    try { return JSON.parse(localStorage.getItem(WRONG_LOG_KEY)) || {}; } catch(e) { return {}; }
+  }
+
+  function saveWrongLog(w) {
+    try { localStorage.setItem(WRONG_LOG_KEY, JSON.stringify(w)); } catch(e) {}
+  }
+
+  function recordWrongLog(ch, q, pass, output, input) {
+    var log = loadWrongLog();
+    var entry = log[q.id] || { ch: ch, wrongCount: 0 };
+    entry.ch = ch;
+    if (pass) {
+      entry.wrongCount = Math.max(0, (entry.wrongCount || 0) - 1);
+    } else {
+      entry.wrongCount = (entry.wrongCount || 0) + 1;
+      entry.lastWrongAt = todayStr();
+      entry.lastExpected = String(q.expected);
+      entry.lastActual = output || '';
+      entry.lastInput = input || '';
+    }
+    log[q.id] = entry;
+    saveWrongLog(log);
+  }
+
   /* ============ 잔디 ============ */
   var GRASS_KEY = 'java_study_grass';
 
@@ -538,6 +568,7 @@
   async function enterDailyMode() {
     isDailyMode = true;
     isOverview = false;
+    isStatsMode = false;
     document.querySelectorAll('.ch-btn').forEach(function(b) {
       b.classList.toggle('ch-active', b.getAttribute('data-ch') === '-1');
     });
@@ -860,6 +891,7 @@
     updateChDoneBadges();
 
     dailyState.log[q.id] = { pass: pass, output: executionOutput };
+    recordWrongLog(ch, q, pass, executionOutput, val);
     if (pass) recordGrass();
 
     var history = loadDailyHistory();
@@ -869,6 +901,189 @@
     updateDailyBadge();
 
     renderDaily();
+  }
+
+  /* ============ 오답 통계 페이지 ============ */
+  var WRONG_PROMPT_LIMIT = 15;
+
+  function frequentlyWrongList() {
+    var wrongLog = loadWrongLog();
+    return Object.keys(wrongLog).map(function(qid) {
+      var e = wrongLog[qid];
+      var chData = CHAPTER_DATA[e.ch];
+      var q = chData ? chData.questions.find(function(qq) { return qq.id === qid; }) : null;
+      if (!q) return null;
+      return {
+        qid: qid, ch: e.ch, q: q, wrongCount: e.wrongCount,
+        lastWrongAt: e.lastWrongAt, lastExpected: e.lastExpected,
+        lastActual: e.lastActual, lastInput: e.lastInput,
+      };
+    }).filter(function(x) { return x && x.wrongCount > 0; })
+      .sort(function(a, b) { return b.wrongCount - a.wrongCount; });
+  }
+
+  function statCardHtml(label, value, color) {
+    return '<div class="card" style="flex:1;min-width:120px;padding:16px 20px;align-items:center;text-align:center;">' +
+      '<div style="font-size:26px;font-weight:700;color:' + color + ';">' + value + '</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:2px;">' + esc(label) + '</div>' +
+      '</div>';
+  }
+
+  function buildQidChapterMap() {
+    var map = {};
+    [1, 2, 3, 4, 5].forEach(function(ch) {
+      CHAPTER_DATA[ch].questions.forEach(function(q) { map[q.id] = ch; });
+    });
+    return map;
+  }
+
+  // 오답 로그 도입 이전에 이미 데일리에서 틀려있던 문제를 소급 반영
+  function backfillWrongLogFromHistory() {
+    var history = loadDailyHistory();
+    var log = loadWrongLog();
+    var qidChMap = buildQidChapterMap();
+    var changed = false;
+    Object.keys(history).forEach(function(qid) {
+      var h = history[qid];
+      if (h.correct === false && !log[qid]) {
+        var ch = qidChMap[qid];
+        if (!ch) return;
+        log[qid] = { ch: ch, wrongCount: 1, lastWrongAt: h.lastSeen, lastExpected: '', lastActual: '', lastInput: '' };
+        changed = true;
+      }
+    });
+    if (changed) saveWrongLog(log);
+  }
+
+  function renderStats() {
+    isStatsMode = true;
+    isOverview = false;
+    isDailyMode = false;
+    savePosition();
+    document.querySelectorAll('.ch-btn').forEach(function(b) {
+      b.classList.toggle('ch-active', b.getAttribute('data-ch') === '-2');
+    });
+    var lnav = document.getElementById('level-nav');
+    lnav.innerHTML = '';
+    lnav.style.display = 'none';
+    lnav.classList.add('lnav-collapsed');
+
+    renderStatsContent();
+  }
+
+  function renderStatsContent() {
+    backfillWrongLogFromHistory();
+    var wrongList = frequentlyWrongList();
+    var topWrong = wrongList.slice(0, WRONG_PROMPT_LIMIT);
+
+    // 데일리 히스토리 기준 집계 (챕터 학습 중 오답은 집계하지 않음)
+    var history = loadDailyHistory();
+    var qidChMap = buildQidChapterMap();
+    var chAgg = { 1: {pass:0,fail:0}, 2: {pass:0,fail:0}, 3: {pass:0,fail:0}, 4: {pass:0,fail:0}, 5: {pass:0,fail:0} };
+    var totalSeen = 0, totalPass = 0, totalFail = 0;
+    Object.keys(history).forEach(function(qid) {
+      var ch = qidChMap[qid];
+      if (!ch) return;
+      totalSeen++;
+      if (history[qid].correct) { totalPass++; chAgg[ch].pass++; }
+      else { totalFail++; chAgg[ch].fail++; }
+    });
+    var chStats = [1, 2, 3, 4, 5].map(function(ch) {
+      var a = chAgg[ch];
+      return { ch: ch, total: a.pass + a.fail, pass: a.pass, fail: a.fail };
+    });
+
+    var html = '';
+    html += '<div style="padding-top:32px;margin-bottom:24px;">';
+    html += '<div class="brand-eyebrow">$ java --stats</div>';
+    html += '<h1 class="brand-title">오답 통계</h1>';
+    html += '<div class="brand-sub">데일리 복습에서 자주 틀리는 문제를 모아 확인하고, AI에게 물어볼 프롬프트로 내보낼 수 있어요.</div>';
+    html += '</div>';
+
+    html += '<div style="display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap;">';
+    html += statCardHtml('데일리 학습 문제', totalSeen, 'var(--text)');
+    html += statCardHtml('정답', totalPass, 'var(--pass)');
+    html += statCardHtml('오답', totalFail, 'var(--fail)');
+    html += statCardHtml('자주 틀리는 문제', wrongList.length, '#C77DFF');
+    html += '</div>';
+
+    html += '<div class="card" style="padding:24px;margin-bottom:20px;">';
+    html += '<div class="card-title" style="margin-bottom:16px;">챕터별 데일리 정답률</div>';
+    chStats.forEach(function(cs) {
+      var pct = cs.total > 0 ? Math.round((cs.pass / cs.total) * 100) : 0;
+      var color = DAILY_CH_COLORS[cs.ch] || '#888';
+      html += '<div style="margin-bottom:14px;">';
+      html += '<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;">';
+      html += '<span>' + esc(DAILY_CH_NAMES[cs.ch] || ('Ch' + cs.ch)) + '</span>';
+      html += '<span style="color:var(--muted);">' + (cs.total > 0 ? (cs.pass + ' / ' + cs.total + ' (' + pct + '%)') : '아직 데일리에 안 나옴') + '</span>';
+      html += '</div>';
+      html += '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%;background:' + color + ';"></div></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    html += '<div class="card" style="padding:24px;margin-bottom:20px;">';
+    html += '<div class="card-title" style="margin-bottom:16px;">자주 틀리는 문제 Top ' + WRONG_PROMPT_LIMIT + '</div>';
+    if (topWrong.length === 0) {
+      html += '<div style="color:var(--muted);font-size:13px;">아직 반복해서 틀린 문제가 없어요.</div>';
+    } else {
+      topWrong.forEach(function(w, i) {
+        var color = DAILY_CH_COLORS[w.ch] || '#888';
+        html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">';
+        html += '<span style="font-family:var(--mono);font-size:12px;color:var(--muted);width:20px;">' + (i + 1) + '</span>';
+        html += '<span style="font-size:11px;padding:2px 6px;border-radius:4px;background:' + color + '22;color:' + color + ';">' + esc(DAILY_CH_NAMES[w.ch] || '') + '</span>';
+        html += '<span style="flex:1;font-size:13px;">' + esc(w.q.title) + '</span>';
+        html += '<span style="font-size:12px;color:var(--fail);">' + w.wrongCount + '회 오답</span>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+
+    html += '<div class="actions">';
+    html += '<button class="btn btn-grade" data-action="export-wrong-prompt"' + (topWrong.length === 0 ? ' disabled' : '') + '>📋 AI 프롬프트로 복사</button>';
+    html += '<button class="btn btn-ghost" data-action="reset-wrong-log">🗑 오답 로그 초기화</button>';
+    html += '</div>';
+
+    document.getElementById('app').innerHTML = html;
+  }
+
+  function doResetWrongLog() {
+    if (!window.confirm('오답 로그를 전부 초기화할까요? 되돌릴 수 없습니다.')) return;
+    saveWrongLog({});
+    renderStats();
+    showToast('오답 로그를 초기화했어요.');
+  }
+
+  function doExportWrongPrompt() {
+    var memos = loadMemos();
+    var list = frequentlyWrongList().slice(0, WRONG_PROMPT_LIMIT);
+    if (!list.length) { showToast('아직 반복해서 틀린 문제가 없어요.', true); return; }
+
+    var lines = [];
+    lines.push('아래는 Java 학습 중 자주 틀리는 문제들입니다. 각 문제에서 왜 이런 실수를 반복하는지 패턴을 짚어주고, 개념 설명과 연습 방향을 제안해주세요.');
+    lines.push('');
+    list.forEach(function(w, i) {
+      lines.push('[' + (i + 1) + '] ' + (DAILY_CH_NAMES[w.ch] || '') + ' — ' + w.q.title + ' (누적 ' + w.wrongCount + '회 오답)');
+      if (w.q.concept) lines.push('개념: ' + String(w.q.concept).replace(/\s+/g, ' ').trim());
+      if (w.q.answer) lines.push('정답 코드:\n' + [].concat(w.q.answer).join('\n'));
+      lines.push('기대 출력: ' + (w.lastExpected != null ? w.lastExpected : String(w.q.expected)));
+      if (w.lastInput) lines.push('내가 마지막으로 작성한 코드: ' + w.lastInput);
+      if (w.lastActual) lines.push('마지막 제출 시 실제 출력: ' + w.lastActual);
+      var memo = memos[w.qid];
+      if (memo) lines.push('내 메모: ' + memo);
+      lines.push('');
+    });
+
+    var text = lines.join('\n');
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(function() {
+        showToast('프롬프트를 클립보드에 복사했어요!');
+      }).catch(function() {
+        showToast('복사에 실패했어요.', true);
+      });
+    } else {
+      showToast('클립보드 복사를 지원하지 않는 환경이에요.', true);
+    }
   }
 
   /* ============ 개요 페이지 ============ */
@@ -940,6 +1155,7 @@
   function renderOverview() {
     isOverview = true;
     isDailyMode = false;
+    isStatsMode = false;
     savePosition();
     document.querySelectorAll(".ch-btn").forEach(function (b) {
       b.classList.toggle("ch-active", b.getAttribute("data-ch") === "0");
@@ -1070,6 +1286,7 @@
   function switchChapter(ch) {
     chCollapsed = false;
     isDailyMode = false;
+    isStatsMode = false;
     var lnavReset = document.getElementById('level-nav');
     if (lnavReset) {
       lnavReset.style.display = 'none';
@@ -1110,7 +1327,7 @@
     'ds_quiz_progress_v4_ds', 'ds_quiz_bookmarks_v4_ds',
     'ds_quiz_progress_v5_lambda', 'ds_quiz_bookmarks_v5_lambda',
     'java_study_pos', 'java_study_grass', 'java_daily_history', 'java_daily_set', 'sidebar_pinned',
-    'java_study_memo'
+    'java_study_memo', 'java_wrong_log'
   ];
 
   var MEMO_KEY = 'java_study_memo';
@@ -1237,7 +1454,11 @@
         enterDailyMode();
         return;
       }
-      if (isOverview || isDailyMode || ch !== currentCh) {
+      if (ch === -2) {
+        renderStats();
+        return;
+      }
+      if (isOverview || isDailyMode || isStatsMode || ch !== currentCh) {
         isOverview = false;
         chCollapsed = false;
         switchChapter(ch);
@@ -2233,6 +2454,8 @@
       isOverview = false;
       switchChapter(ch);
     }
+    else if (action === "export-wrong-prompt") doExportWrongPrompt();
+    else if (action === "reset-wrong-log") doResetWrongLog();
   }
   document
     .getElementById("level-nav")
@@ -2302,7 +2525,7 @@
   renderGrass();
   loadProgress().then(function () {
     loadPosition();
-    if (!isDailyMode && !isOverview) render();
+    if (!isDailyMode && !isOverview && !isStatsMode) render();
     updateChDoneBadges();
     updateDailyBadge();
   });

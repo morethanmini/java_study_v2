@@ -129,6 +129,10 @@ body {
   padding: 6px 8px 8px;
   flex-shrink: 0;
 }
+#sidebar-stats {
+  padding: 6px 8px 8px;
+  flex-shrink: 0;
+}
 .daily-badge {
   font-family: var(--mono);
   font-size: 10px;
