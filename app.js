@@ -327,6 +327,7 @@
 
   /* ============ 잔디 ============ */
   var GRASS_KEY = 'java_study_grass';
+  var GRASS_SEEN_KEY = 'java_study_grass_seen';
 
   function loadGrass() {
     try { return JSON.parse(localStorage.getItem(GRASS_KEY)) || {}; } catch(e) { return {}; }
@@ -336,7 +337,24 @@
     try { localStorage.setItem(GRASS_KEY, JSON.stringify(g)); } catch(e) {}
   }
 
-  function recordGrass() {
+  // 오늘 이미 잔디에 기여한 qid 목록 (초기화 후 같은 날 재정답해도 중복 집계 방지)
+  function loadGrassSeenToday() {
+    try {
+      var data = JSON.parse(localStorage.getItem(GRASS_SEEN_KEY));
+      return (data && data.date === todayStr()) ? (data.qids || {}) : {};
+    } catch(e) { return {}; }
+  }
+
+  function markGrassSeen(qid) {
+    var seen = loadGrassSeenToday();
+    seen[qid] = true;
+    try { localStorage.setItem(GRASS_SEEN_KEY, JSON.stringify({ date: todayStr(), qids: seen })); } catch(e) {}
+  }
+
+  function recordGrass(qid) {
+    var seen = loadGrassSeenToday();
+    if (seen[qid]) return;
+    markGrassSeen(qid);
     var g = loadGrass();
     var today = todayStr();
     g[today] = (g[today] || 0) + 1;
@@ -886,13 +904,14 @@
     if (gradeBtn) { gradeBtn.disabled = false; gradeBtn.textContent = '채점'; }
 
     if (!dailyState.chProgress[ch]) dailyState.chProgress[ch] = {};
+    var wasAlreadyPassed = dailyState.chProgress[ch][q.id] && dailyState.chProgress[ch][q.id].status === 'pass';
     dailyState.chProgress[ch][q.id] = { status: pass ? 'pass' : 'fail', input: val };
     store.set(CHAPTER_DATA[ch].storageKey, JSON.stringify(dailyState.chProgress[ch]));
     updateChDoneBadges();
 
     dailyState.log[q.id] = { pass: pass, output: executionOutput };
     recordWrongLog(ch, q, pass, executionOutput, val);
-    if (pass) recordGrass();
+    if (pass && !wasAlreadyPassed) recordGrass(q.id);
 
     var history = loadDailyHistory();
     var h = history[q.id];
@@ -1326,7 +1345,7 @@
     'ds_quiz_progress_v3_collections', 'ds_quiz_bookmarks_v3_collections',
     'ds_quiz_progress_v4_ds', 'ds_quiz_bookmarks_v4_ds',
     'ds_quiz_progress_v5_lambda', 'ds_quiz_bookmarks_v5_lambda',
-    'java_study_pos', 'java_study_grass', 'java_daily_history', 'java_daily_set', 'sidebar_pinned',
+    'java_study_pos', 'java_study_grass', 'java_study_grass_seen', 'java_daily_history', 'java_daily_set', 'sidebar_pinned',
     'java_study_memo', 'java_wrong_log'
   ];
 
@@ -2347,10 +2366,11 @@
       gradeBtn.disabled = false;
       gradeBtn.textContent = "채점";
     }
+    var wasAlreadyPassed = state.progress[q.id] && state.progress[q.id].status === "pass";
     state.progress[q.id] = { status: pass ? "pass" : "fail", input: val };
     pushLog(q.id, pass, executionOutput);
     saveProgress();
-    if (pass) recordGrass();
+    if (pass && !wasAlreadyPassed) recordGrass(q.id);
     render();
   }
   function doResetLevel() {
