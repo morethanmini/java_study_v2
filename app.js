@@ -523,12 +523,12 @@
       var saved = JSON.parse(localStorage.getItem(DAILY_SET_KEY));
       if (saved && saved.date === today && Array.isArray(saved.questions)) {
         var history = loadDailyHistory();
-        var done = saved.questions.filter(function(ref) {
+        var correct = saved.questions.filter(function(ref) {
           var h = history[ref.id];
-          return h && h.lastSeen === today;
+          return h && h.lastSeen === today && h.correct;
         }).length;
         var total = saved.questions.length;
-        badge.textContent = done > 0 ? ' ' + done + '/' + total : '';
+        badge.textContent = correct > 0 ? ' ' + correct + '/' + total : '';
         return;
       }
     } catch(e) {}
@@ -640,6 +640,7 @@
     var history = loadDailyHistory();
     var h = history[q.id];
     var gradedCount = dailyState.questions.filter(function(e) { return !!dailyState.log[e.q.id]; }).length;
+    var correctCount = dailyState.questions.filter(function(e) { var l = dailyState.log[e.q.id]; return l && l.pass; }).length;
 
     var html = '';
 
@@ -651,8 +652,8 @@
     html += '<div class="brand-sub">오늘의 10문제를 풀어보세요. <span id="server-badge" style="font-size:0.85em;">● regex 채점 (서버 꺼짐)</span></div>';
     html += '</div>';
     html += '<div class="top-stats-box">';
-    html += '<div class="progress-wrap"><div class="progress-label"><span>오늘 진행</span><b>' + gradedCount + ' / ' + total + '</b></div>';
-    html += '<div class="progress-track"><div class="progress-fill" style="width:' + Math.round(gradedCount / total * 100) + '%"></div></div></div>';
+    html += '<div class="progress-wrap"><div class="progress-label"><span>오늘 진행</span><b>' + correctCount + ' / ' + total + '</b></div>';
+    html += '<div class="progress-track"><div class="progress-fill" style="width:' + Math.round(correctCount / total * 100) + '%"></div></div></div>';
     html += '</div></div>';
 
     // Q-nav dots (페이지네이션, 6개씩)
