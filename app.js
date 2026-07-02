@@ -273,6 +273,11 @@
   var DAILY_HISTORY_KEY = 'java_daily_history';
   var DAILY_SET_KEY = 'java_daily_set';
   var DAILY_COUNT = 10;
+
+  // 데일리에서 작성한 코드/정답 상태는 챕터 모드와 완전히 분리된 저장소를 사용
+  function dailyStorageKey(ch) {
+    return CHAPTER_DATA[ch].storageKey + '_daily';
+  }
   var SRS_INTERVALS = [1, 3, 7, 14, 30];
 
   var dailyState = {
@@ -615,7 +620,7 @@
     });
 
     await Promise.all(chapters.map(function(ch) {
-      return store.get(CHAPTER_DATA[ch].storageKey).then(function(raw) {
+      return store.get(dailyStorageKey(ch)).then(function(raw) {
         try { dailyState.chProgress[ch] = JSON.parse(raw) || {}; } catch(e) { dailyState.chProgress[ch] = {}; }
       });
     }));
@@ -906,8 +911,7 @@
     if (!dailyState.chProgress[ch]) dailyState.chProgress[ch] = {};
     var wasAlreadyPassed = dailyState.chProgress[ch][q.id] && dailyState.chProgress[ch][q.id].status === 'pass';
     dailyState.chProgress[ch][q.id] = { status: pass ? 'pass' : 'fail', input: val };
-    store.set(CHAPTER_DATA[ch].storageKey, JSON.stringify(dailyState.chProgress[ch]));
-    updateChDoneBadges();
+    store.set(dailyStorageKey(ch), JSON.stringify(dailyState.chProgress[ch]));
 
     dailyState.log[q.id] = { pass: pass, output: executionOutput };
     recordWrongLog(ch, q, pass, executionOutput, val);
@@ -1340,11 +1344,11 @@
   }
 
   var EXPORT_KEYS = [
-    'ds_quiz_progress_v1_basic', 'ds_quiz_bookmarks_v1_basic',
-    'ds_quiz_progress_v2_oop', 'ds_quiz_bookmarks_v2_oop',
-    'ds_quiz_progress_v3_collections', 'ds_quiz_bookmarks_v3_collections',
-    'ds_quiz_progress_v4_ds', 'ds_quiz_bookmarks_v4_ds',
-    'ds_quiz_progress_v5_lambda', 'ds_quiz_bookmarks_v5_lambda',
+    'ds_quiz_progress_v1_basic', 'ds_quiz_bookmarks_v1_basic', 'ds_quiz_progress_v1_basic_daily',
+    'ds_quiz_progress_v2_oop', 'ds_quiz_bookmarks_v2_oop', 'ds_quiz_progress_v2_oop_daily',
+    'ds_quiz_progress_v3_collections', 'ds_quiz_bookmarks_v3_collections', 'ds_quiz_progress_v3_collections_daily',
+    'ds_quiz_progress_v4_ds', 'ds_quiz_bookmarks_v4_ds', 'ds_quiz_progress_v4_ds_daily',
+    'ds_quiz_progress_v5_lambda', 'ds_quiz_bookmarks_v5_lambda', 'ds_quiz_progress_v5_lambda_daily',
     'java_study_pos', 'java_study_grass', 'java_study_grass_seen', 'java_daily_history', 'java_daily_set', 'sidebar_pinned',
     'java_study_memo', 'java_wrong_log'
   ];
