@@ -41,6 +41,7 @@
     lines.push("import java.io.*;");
     lines.push("import java.util.*;");
     lines.push("import java.util.stream.*;");
+    lines.push("import java.util.function.*;");
     lines.push("import java.lang.annotation.*;");
     (q.topLevel || []).forEach(function (l) { lines.push(l); });
     if (q.userInputAtTopLevel) {
