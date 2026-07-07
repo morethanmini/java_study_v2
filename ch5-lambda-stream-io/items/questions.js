@@ -61,7 +61,7 @@ window.CHAPTER_DATA[5].questions = [
      note:'(s) -> System.out.println(s) 와 완전히 같은 동작이지만 더 간결합니다.',
      regex:[/names\.forEach\s*\(\s*System\.out::println\s*\)/]},
 
-    /* ---------------- 6장 Stream API 기초 ---------------- */,
+    /* ---------------- 6장 Stream API 기초 ---------------- */
     {id:'SM1', level:1, title:'stream() + filter() + forEach()',
      concept:'컬렉션에서 .stream()을 호출하면 데이터를 가공하는 파이프라인을 시작할 수 있습니다. filter()는 조건을 만족하는 원소만 남기고, forEach()는 각 원소에 대해 동작을 실행합니다.',
      before:['List<Integer> nums = Arrays.asList(1, 2, 3, 4, 5, 6);'],
@@ -128,7 +128,7 @@ window.CHAPTER_DATA[5].questions = [
      answer:['String result = names.stream().collect(Collectors.joining(", "));'], note:'',
      regex:[/String\s+result\s*=\s*names\.stream\s*\(\s*\)/, /Collectors\.joining\s*\(\s*",\s*"\s*\)/]},
 
-    /* ---------------- 7장 변형 연습 ---------------- */,
+    /* ---------------- 7장 변형 연습 ---------------- */
     {id:'V5', level:3, title:'🔁 변형: 람다 Comparator (내림차순)',
      concept:'LM3과 같은 람다 Comparator 패턴이지만, 이번엔 내림차순입니다.',
      before:['List<Integer> list = new ArrayList<>(Arrays.asList(5, 1, 3));'],
