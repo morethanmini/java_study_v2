@@ -314,11 +314,11 @@
     try { localStorage.setItem(WRONG_LOG_KEY, JSON.stringify(w)); } catch(e) {}
   }
 
-  function recordWrongLog(ch, q, pass, output, input) {
+  function recordWrongLog(ch, q, pass, output, input, wasRevealed) {
     var log = loadWrongLog();
     var entry = log[q.id] || { ch: ch, wrongCount: 0 };
     entry.ch = ch;
-    if (pass) {
+    if (pass && !wasRevealed) {
       entry.wrongCount = Math.max(0, (entry.wrongCount || 0) - 1);
     } else {
       entry.wrongCount = (entry.wrongCount || 0) + 1;
@@ -915,7 +915,7 @@
     store.set(dailyStorageKey(ch), JSON.stringify(dailyState.chProgress[ch]));
 
     dailyState.log[q.id] = { pass: pass, output: executionOutput };
-    recordWrongLog(ch, q, pass, executionOutput, val);
+    recordWrongLog(ch, q, pass, executionOutput, val, !!dailyState.revealed[q.id]);
     if (pass && !wasAlreadyPassed) recordGrass(q.id);
 
     var history = loadDailyHistory();
