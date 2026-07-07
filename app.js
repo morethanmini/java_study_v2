@@ -2296,6 +2296,25 @@
       render();
     }
   }
+  function doPrevLevel() {
+    if (state.level > 0) {
+      doSelectLevel(state.level - 1);
+    } else if (CHAPTER_DATA[currentCh - 1]) {
+      switchChapter(currentCh - 1);
+      state.level = LEVELS.length - 1;
+      state.index = 0;
+      savePosition();
+      render();
+    }
+  }
+  function doNextLevel() {
+    if (state.level < LEVELS.length - 1) {
+      doSelectLevel(state.level + 1);
+    } else if (CHAPTER_DATA[currentCh + 1]) {
+      switchChapter(currentCh + 1);
+      savePosition();
+    }
+  }
   function doCopyCode() {
     var q;
     if (isDailyMode) {
@@ -2528,6 +2547,12 @@
     } else if (e.key === "ArrowRight") {
       e.preventDefault();
       if (isDailyMode) { if (dailyState.index < dailyState.questions.length - 1) { dailyState.index++; dailyState.qNavPage = Math.floor(dailyState.index / 6); savePosition(); renderDaily(); } } else doNext();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!isDailyMode && !isOverview && !isStatsMode) doPrevLevel();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!isDailyMode && !isOverview && !isStatsMode) doNextLevel();
     } else if (e.key === "r" || e.key === "R") {
       e.preventDefault();
       if (isDailyMode) {
