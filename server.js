@@ -36,7 +36,7 @@ http.createServer((req, res) => {
 
     fs.writeFileSync(filePath, code);
 
-    exec(`javac ${filePath} && java -cp ${tmpDir} Main`, { timeout: 5000 }, (err, stdout, stderr) => {
+    exec(`javac ${filePath} && java -cp ${tmpDir} Main`, { timeout: 5000, cwd: tmpDir }, (err, stdout, stderr) => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
