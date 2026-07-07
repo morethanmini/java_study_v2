@@ -2497,7 +2497,9 @@
 
   document.addEventListener("keydown", function (e) {
     var ta = document.getElementById("ans-input"),
-      taf = document.activeElement === ta;
+      taf = document.activeElement === ta,
+      activeEl = document.activeElement,
+      isEditable = activeEl && (activeEl.tagName === "TEXTAREA" || activeEl.tagName === "INPUT" || activeEl.isContentEditable);
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
       if (isDailyMode) doGradeDaily(); else doGrade();
@@ -2507,6 +2509,13 @@
       if (e.key === "Escape") {
         e.preventDefault();
         ta.blur();
+      }
+      return;
+    }
+    if (isEditable) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        activeEl.blur();
       }
       return;
     }
