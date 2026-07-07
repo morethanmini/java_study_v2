@@ -220,7 +220,7 @@ window.CHAPTER_DATA[5].questions = [
    before:['StringBuilder sb = new StringBuilder();','String[] words = {"apple", "banana", "cherry"};','for (String w : words) {'],
    placeholder:['    // TODO: sb에 w와 줄바꿈(\\n)을 함께 추가'],
    after:['}','System.out.print(sb);'],
-   expected:'apple\\nbanana\\ncherry\\n',
+   expected:'apple\nbanana\ncherry\n',
    answer:['sb.append(w).append("\\n");'],
    note:'append()는 자기 자신을 반환하므로 메서드 체이닝이 가능합니다.',
    regex:[/sb\.append\s*\(\s*w\s*\).*\.append\s*\(\s*"\\n"\s*\)\s*;?/]},
