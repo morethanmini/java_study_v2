@@ -21,7 +21,7 @@
 
 | 동작 | 명령어 |
 | ---- | ------ |
-| 서버만 실행 (콘솔에 로그 표시) | `node server.js` |
+| 서버만 실행 (콘솔에 로그 표시) | `node server/server.js` |
 | 서버 상태 확인 | `lsof -i :3000` |
 | 서버 종료 | `pkill -f "server.js"` |
 
@@ -33,9 +33,9 @@
 | ---- | ------ |
 | 서버 시작 / 재시작 (창 없이 백그라운드) | `restart-server.bat` 더블클릭 (또는 `.\restart-server.bat`) |
 | 서버 상태 확인 | `netstat -ano \| findstr :3000` |
-| 콘솔 창을 띄운 채로 직접 실행 (디버깅용) | `node server.js` (종료는 `Ctrl+C`) |
+| 콘솔 창을 띄운 채로 직접 실행 (디버깅용) | `node server\server.js` (종료는 `Ctrl+C`) |
 
-`restart-server.bat`은 켜져 있든 꺼져 있든 상관없이 실행하면 됩니다 — 실행 중이면 종료 후 재시작하고, 꺼져 있으면 바로 새로 시작합니다. 내부적으로 `start-server-hidden.vbs`를 통해 `node server.js`를 창 없이 실행하며, 서버 로그는 `server-startup.log`에 쌓입니다.
+`restart-server.bat`은 켜져 있든 꺼져 있든 상관없이 실행하면 됩니다 — 실행 중이면 종료 후 재시작하고, 꺼져 있으면 바로 새로 시작합니다. 내부적으로 `server/start-server-hidden.vbs`를 통해 `node server.js`를 창 없이 실행하며, 서버 로그는 `server/server-startup.log`에 쌓입니다.
 
 ## 채점 방식
 
@@ -144,19 +144,21 @@
 | `java_study_memo` | 문제별 메모 |
 | `sidebar_pinned` | 사이드바 고정 여부 |
 
-모든 키는 사이드바의 **데이터 내보내기 / 가져오기**로 한 번에 백업·복원됩니다. (`app.js`의 `EXPORT_KEYS` 참고)
+모든 키는 사이드바의 **데이터 내보내기 / 가져오기**로 한 번에 백업·복원됩니다. (`client/app.js`의 `EXPORT_KEYS` 참고)
 
 ## 프로젝트 구조
 
 ```
 java_study_v2/
-├── index.html                  # 메인 UI
-├── app.js                      # 앱 로직 (채점, 렌더링, 데일리 모드 등)
-├── style.css                   # 스타일
-├── server.js                   # 로컬 Java 채점 서버 (Node.js)
+├── index.html                  # 메인 UI (진입점)
 ├── open.sh                     # (Mac) 서버 시작 + 브라우저 열기
 ├── restart-server.bat          # (Windows) 서버 시작/재시작
-├── start-server-hidden.vbs     # (Windows) 콘솔 창 없이 node 실행하는 런처
+├── client/
+│   ├── app.js                  # 앱 로직 (채점, 렌더링, 데일리 모드 등)
+│   └── style.css                # 스타일
+├── server/
+│   ├── server.js                # 로컬 Java 채점 서버 (Node.js)
+│   └── start-server-hidden.vbs  # (Windows) 콘솔 창 없이 node 실행하는 런처
 ├── ch1-basic-syntax/items/
 ├── ch2-oop/items/
 ├── ch3-collections/items/

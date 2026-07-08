@@ -20,11 +20,11 @@ if !FOUND!==0 (
 )
 
 echo Starting grading server...
-cscript //nologo start-server-hidden.vbs
+cscript //nologo server\start-server-hidden.vbs
 ping -n 2 127.0.0.1 >nul
 netstat -ano | findstr :3000 | findstr LISTENING >nul
 if errorlevel 1 (
-    echo Failed to start server. Check server-startup.log
+    echo Failed to start server. Check server\server-startup.log
 ) else (
     echo Server started at http://localhost:3000
 )
