@@ -36,7 +36,7 @@ http.createServer((req, res) => {
 
     fs.writeFileSync(filePath, code);
 
-    exec(`javac -encoding UTF-8 ${filePath} && java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -cp ${tmpDir} Main`, { timeout: 5000, cwd: tmpDir }, (err, stdout, stderr) => {
+    exec(`javac -encoding UTF-8 ${filePath} && java -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -cp ${tmpDir} Main`, { timeout: 5000, cwd: tmpDir }, (err, stdout, stderr) => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
