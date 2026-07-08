@@ -41,8 +41,8 @@ http.createServer((req, res) => {
 
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
-        output: stdout.trim(),
-        error: stderr.trim() || (err ? err.message : '')
+        output: stdout.replace(/\r\n/g, '\n').trim(),
+        error: stderr.replace(/\r\n/g, '\n').trim() || (err ? err.message : '')
       }));
     });
   });
